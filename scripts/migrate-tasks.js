@@ -15,16 +15,19 @@ async function migrate() {
     
     await client.query(`
       CREATE TABLE IF NOT EXISTS public.tasks (
-        id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+        id uuid DEFAULT public.uuid_generate_v4() PRIMARY KEY,
         handover_id uuid REFERENCES public.handovers(id) ON DELETE CASCADE,
         facility_id uuid REFERENCES public.facilities(id) ON DELETE CASCADE,
         resident_id uuid REFERENCES public.residents(id) ON DELETE CASCADE,
         title text NOT NULL,
         description text NOT NULL,
+        assigned_role text DEFAULT 'carer',
         tags text[] DEFAULT '{}'::text[],
         is_completed boolean DEFAULT false,
         created_at timestamptz DEFAULT now() NOT NULL
       );
+
+      ALTER TABLE public.tasks ADD COLUMN IF NOT EXISTS assigned_role text DEFAULT 'carer';
 
       ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
       

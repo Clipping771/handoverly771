@@ -62,8 +62,8 @@ B - Background: Relevant history, ongoing conditions
 A - Assessment: Clinical interpretation
 R - Recommendation: What the incoming RN should watch for or action
 
-OUTPUT 2 — CARER HANDOVER (Plain English task list):
-Simple numbered action list. No clinical jargon.
+OUTPUT 2 — SHIFT TASKS (Actionable task list):
+Generate tasks for both Registered Nurses (clinical actions, medication, review) and Carers (hygiene, mobility, comfort).
 
 RISK FLAGS — Always check for:
 fall | injury | refused medication | medication error | aggression | hospital transfer | rapid deterioration
@@ -80,11 +80,12 @@ Return ONLY valid JSON with this exact structure (no surrounding markdown, no ba
     "assessment": "clinical evaluation details",
     "recommendation": "recommendations for next shift"
   },
-  "carer_tasks": [
+  "shift_tasks": [
     {
       "title": "short concise tagline (e.g., Comfort Check, Vitals Monitoring)",
-      "description": "action item description in plain language",
-      "tags": ["incidents"|"medication"|"hygiene"|"mobility"|"nutrition"|"general"]
+      "description": "action item description",
+      "assigned_role": "rn|carer|all",
+      "tags": ["incidents"|"medication"|"hygiene"|"mobility"|"nutrition"|"clinical_review"|"general"]
     }
   ],
   "follow_up_questions": ["question 1", "question 2 (Only include if critical safety info is MISSING, max 2. Otherwise empty array)"]

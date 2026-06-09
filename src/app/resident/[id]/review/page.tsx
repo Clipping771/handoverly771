@@ -25,10 +25,11 @@ interface ISBAR {
   recommendation: string;
 }
 
-interface CarerTask {
+interface ShiftTask {
   title: string;
   description: string;
   tags: string[];
+  assigned_role?: string;
 }
 
 const AVAILABLE_TAGS = ['incidents', 'medication', 'hygiene', 'mobility', 'nutrition', 'general'];
@@ -57,7 +58,7 @@ export default function ReviewHandover() {
   const [inputMethod, setInputMethod] = useState<'voice' | 'text'>('text');
   const [originalResult, setOriginalResult] = useState<any>(null);
   const [isbar, setIsbar] = useState<ISBAR>({ identify: '', situation: '', background: '', assessment: '', recommendation: '' });
-  const [carerTasks, setCarerTasks] = useState<CarerTask[]>([]);
+  const [shiftTasks, setShiftTasks] = useState<ShiftTask[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskText, setNewTaskText] = useState('');
   const [urgency, setUrgency] = useState<'critical' | 'attention' | 'routine'>('routine');
@@ -96,17 +97,18 @@ export default function ReviewHandover() {
       setOriginalResult(parsed);
       setIsbar(parsed.rn_summary);
       
-      const normalizedTasks: CarerTask[] = (parsed.carer_tasks || []).map((t: any) => {
+      const normalizedTasks: ShiftTask[] = (parsed.shift_tasks || parsed.carer_tasks || []).map((t: any) => {
         if (typeof t === 'string') {
-          return { title: 'Action Item', description: t, tags: ['general'] };
+          return { title: 'Action Item', description: t, tags: ['general'], assigned_role: 'carer' };
         }
         return {
           title: t.title || 'Action Item',
           description: t.description || '',
-          tags: Array.isArray(t.tags) ? t.tags : ['general']
+          tags: Array.isArray(t.tags) ? t.tags : ['general'],
+          assigned_role: t.assigned_role || 'carer'
         };
       });
-      setCarerTasks(normalizedTasks);
+      setShiftTasks(normalizedTasks);
       setUrgency(parsed.urgency || 'routine');
       setRiskFlags(parsed.risk_flags || []);
       setFlagsStatus(parsed.flags_status || 'none_detected');
@@ -134,9 +136,9 @@ export default function ReviewHandover() {
     setIsbar((prev) => ({ ...prev, [field]: val }));
   };
 
-  // Carer tasks editors
+  // Shift tasks editors
   const handleTaskTitleChange = (idx: number, val: string) => {
-    setCarerTasks((prev) => {
+    setShiftTasks((prev) => {
       const updated = [...prev];
       updated[idx] = { ...updated[idx], title: val };
       return updated;
@@ -144,7 +146,7 @@ export default function ReviewHandover() {
   };
 
   const handleTaskChange = (idx: number, val: string) => {
-    setCarerTasks((prev) => {
+    setShiftTasks((prev) => {
       const updated = [...prev];
       updated[idx] = { ...updated[idx], description: val };
       return updated;
@@ -152,7 +154,7 @@ export default function ReviewHandover() {
   };
 
   const handleTaskTagToggle = (taskIdx: number, tag: string) => {
-    setCarerTasks((prev) => {
+    setShiftTasks((prev) => {
       const updated = [...prev];
       const currentTags = updated[taskIdx].tags || [];
       if (currentTags.includes(tag)) {
@@ -172,13 +174,13 @@ export default function ReviewHandover() {
 
   const handleAddTask = () => {
     if (!newTaskTitle.trim() || !newTaskText.trim()) return;
-    setCarerTasks((prev) => [...prev, { title: newTaskTitle.trim(), description: newTaskText.trim(), tags: ['general'] }]);
+    setShiftTasks((prev) => [...prev, { title: newTaskTitle.trim(), description: newTaskText.trim(), tags: ['general'], assigned_role: 'carer' }]);
     setNewTaskTitle('');
     setNewTaskText('');
   };
 
   const handleRemoveTask = (idx: number) => {
-    setCarerTasks((prev) => prev.filter((_, i) => i !== idx));
+    setShiftTasks((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const playTaskAudio = (text: string) => {
@@ -223,7 +225,7 @@ export default function ReviewHandover() {
         raw_input: rawInput,
         rn_summary: isbar,
         rn_summary_original: originalResult.rn_summary,
-        carer_tasks: carerTasks,
+        shift_tasks: shiftTasks,
         urgency,
         risk_flags: riskFlags,
         flags_status: flagsStatus,
@@ -242,7 +244,7 @@ export default function ReviewHandover() {
         payload: {
           endpoint: '/api/sync-handover',
           method: 'POST',
-          body: { handoverRecord, carerTasks }
+          body: { handoverRecord, shiftTasks }
         }
       });
 
@@ -364,7 +366,7 @@ export default function ReviewHandover() {
             }`}
           >
             <Sparkles className="w-4 h-4" />
-            Carer Task List
+            Shift Task List
           </button>
         </div>
 
@@ -387,13 +389,13 @@ export default function ReviewHandover() {
               ))}
             </div>
           ) : (
-            /* Carer Tasks Editor */
+            /* Shift Tasks Editor */
             <div className="space-y-5">
               <div className="space-y-3">
                 <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 block">
                   Action Tasks & Tag Classifications
                 </label>
-                {carerTasks.map((task, idx) => (
+                {shiftTasks.map((task, idx) => (
                   <div key={idx} className="flex flex-col gap-3 bg-white border border-[#e3e3e3] dark:bg-[#121214] dark:border-[#202024] p-5 rounded-[20px] transition-colors duration-200 shadow-sm relative">
                     
                     {/* Top Row: Title/Tagline, Play, Delete */}
@@ -439,25 +441,39 @@ export default function ReviewHandover() {
                       />
                     </div>
 
-                    {/* Bottom Row: Tag Selectors */}
-                    <div className="flex flex-wrap gap-1.5 pt-2 border-t border-[#f5f5f5] dark:border-[#1c1c1f] pl-5">
-                      {AVAILABLE_TAGS.map((tag) => {
-                        const isActive = task.tags?.includes(tag);
-                        return (
+                    {/* Bottom Row: Tag Selectors & Role */}
+                    <div className="flex flex-wrap items-center gap-2 mt-3 justify-between">
+                      <div className="flex flex-wrap items-center gap-2">
+                        {AVAILABLE_TAGS.map(tag => (
                           <button
                             key={tag}
                             type="button"
                             onClick={() => handleTaskTagToggle(idx, tag)}
-                            className={`text-[8.5px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full transition-all cursor-pointer ${
-                              isActive 
-                                ? TAG_COLORS[tag] || 'bg-slate-200 text-slate-800' 
-                                : 'border border-dashed border-[#e3e3e3] dark:border-[#202024] text-slate-400 dark:text-slate-500 hover:border-slate-400 hover:text-slate-600 dark:hover:text-slate-355 bg-transparent'
+                            className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase transition-colors ${
+                              task.tags?.includes(tag)
+                                ? TAG_COLORS[tag] || 'bg-slate-200 text-slate-800'
+                                : 'bg-slate-100 text-slate-400 hover:bg-slate-200 dark:bg-slate-800/50 dark:text-slate-500 dark:hover:bg-slate-700/50 border border-dashed border-slate-200 dark:border-slate-700'
                             }`}
                           >
                             {tag}
                           </button>
-                        );
-                      })}
+                        ))}
+                      </div>
+                      <select
+                        value={task.assigned_role || 'carer'}
+                        onChange={(e) => {
+                          setShiftTasks(prev => {
+                            const newTasks = [...prev];
+                            newTasks[idx].assigned_role = e.target.value;
+                            return newTasks;
+                          });
+                        }}
+                        className="bg-slate-100 dark:bg-slate-800/50 border-0 rounded-lg text-[10px] font-bold px-3 py-1.5 focus:ring-2 focus:ring-blue-500/50 dark:text-white uppercase tracking-wider"
+                      >
+                        <option value="carer">Carer Task</option>
+                        <option value="rn">RN Task</option>
+                        <option value="all">Any Role</option>
+                      </select>
                     </div>
 
                   </div>

@@ -4,7 +4,8 @@ import { supabase } from '@/lib/supabase'; // Assuming a server/admin client
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { handoverRecord, carerTasks } = body;
+    const { handoverRecord, shiftTasks, carerTasks } = body;
+    const tasksToSync = shiftTasks || carerTasks;
 
     // Insert Handover
     const { data: insertedHandover, error: handoverError } = await supabase
@@ -19,14 +20,15 @@ export async function POST(req: Request) {
     }
 
     // Insert Tasks
-    if (carerTasks && carerTasks.length > 0) {
-      const taskRecords = carerTasks.map((t: any) => ({
+    if (tasksToSync && tasksToSync.length > 0) {
+      const taskRecords = tasksToSync.map((t: any) => ({
         handover_id: insertedHandover.id,
         facility_id: handoverRecord.facility_id,
         resident_id: handoverRecord.resident_id,
         title: t.title,
         description: t.description,
-        tags: t.tags
+        tags: t.tags,
+        assigned_role: t.assigned_role || 'carer'
       }));
       
       const { error: tasksError } = await supabase
