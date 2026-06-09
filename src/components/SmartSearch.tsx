@@ -88,7 +88,7 @@ export default function SmartSearch() {
           <div className="bg-slate-900 dark:bg-slate-800 p-4 flex items-center justify-between text-white">
             <div className="flex items-center gap-2">
               <Bot className="w-5 h-5" />
-              <span className="font-semibold text-sm tracking-wide">Smart Clinical Assistant</span>
+              <span className="font-semibold text-sm tracking-wide">Smart Clinical Assistant v2</span>
             </div>
             <div className="flex items-center gap-1">
               {messages.length > 0 && (

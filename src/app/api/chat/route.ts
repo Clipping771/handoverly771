@@ -91,7 +91,9 @@ Example to create a task:
 }
 </action>
 
-Answer the user's query accurately based ONLY on the provided history. Be concise, professional, and directly address the question.`;
+Answer the user's query accurately based ONLY on the provided history. Be concise, professional, and directly address the question.
+
+CRITICAL: If you generate a table, you MUST use proper markdown format with explicit NEWLINES separating every single row (do NOT output tables on a single line).`;
 
     let answerStr: string | null = null;
     const targetProvider = provider || 'auto';
