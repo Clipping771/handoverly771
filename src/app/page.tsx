@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { User2, LogOut, Clock, ShieldAlert, Sparkles, Brain, CheckCircle2, Sun, Moon, Activity, Inbox, Volume2 } from 'lucide-react';
+import { User2, LogOut, Clock, ShieldAlert, Sparkles, Brain, CheckCircle2, Sun, Moon, Activity, Inbox, Volume2, Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import AdvancedCalendar from '@/components/AdvancedCalendar';
 
@@ -33,6 +33,10 @@ export default function Dashboard() {
   const [filterRole, setFilterRole] = useState<'rn' | 'carer'>('carer');
   const [urgencyFilter, setUrgencyFilter] = useState<'all' | 'critical' | 'attention' | 'routine'>('all');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [expandedIds, setExpandedIds] = useState<string[]>([]);
   const [datesWithHandovers, setDatesWithHandovers] = useState<string[]>([]);
 
   useEffect(() => {
@@ -153,9 +157,21 @@ export default function Dashboard() {
   }
 
   const filteredHandovers = handovers.filter((h) => {
-    if (urgencyFilter === 'all') return true;
-    return h.urgency === urgencyFilter;
+    let matchUrgency = true;
+    if (urgencyFilter !== 'all') {
+      matchUrgency = h.urgency === urgencyFilter;
+    }
+    const matchSearch = h.resident_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                        h.room_number.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchUrgency && matchSearch;
   });
+
+  const totalPages = Math.ceil(filteredHandovers.length / itemsPerPage);
+  const paginatedHandovers = filteredHandovers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] dark:bg-[#0a0a0c] text-slate-900 dark:text-slate-100 flex flex-col pb-16 font-sans selection:bg-blue-100 dark:selection:bg-blue-900/30 transition-colors duration-300">
@@ -256,21 +272,49 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* Urgency Filter Tabs */}
-        <div className="flex gap-2 overflow-x-auto pb-2 mb-8 no-scrollbar">
-          {(['all', 'critical', 'attention', 'routine'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setUrgencyFilter(tab)}
-              className={`px-5 py-2.5 rounded-full text-[11px] font-bold tracking-wider uppercase transition-all duration-300 shrink-0 ${
-                urgencyFilter === tab
-                  ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/80 dark:bg-[#2a2a2d] dark:text-white dark:ring-white/10'
-                  : 'bg-transparent text-slate-500 hover:bg-slate-200/50 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-200'
-              }`}
+        {/* Toolbar: Urgency, Search, Pagination Limit */}
+        <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center mb-8">
+          {/* Urgency Filter Tabs */}
+          <div className="flex gap-2 overflow-x-auto no-scrollbar w-full md:w-auto">
+            {(['all', 'critical', 'attention', 'routine'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => { setUrgencyFilter(tab); setCurrentPage(1); }}
+                className={`px-5 py-2.5 rounded-full text-[11px] font-bold tracking-wider uppercase transition-all duration-300 shrink-0 ${
+                  urgencyFilter === tab
+                    ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/80 dark:bg-[#2a2a2d] dark:text-white dark:ring-white/10'
+                    : 'bg-transparent text-slate-500 hover:bg-slate-200/50 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-200'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
+            {/* Search Bar */}
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                type="text"
+                placeholder="Search room or name..."
+                value={searchQuery}
+                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                className="w-full bg-white dark:bg-[#1a1a1c] border border-slate-200 dark:border-white/10 rounded-full pl-9 pr-4 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors"
+              />
+            </div>
+            
+            {/* Items Per Page */}
+            <select
+              value={itemsPerPage}
+              onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+              className="w-full sm:w-auto bg-white dark:bg-[#1a1a1c] border border-slate-200 dark:border-white/10 rounded-full px-4 py-2 text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:border-blue-500 transition-colors"
             >
-              {tab}
-            </button>
-          ))}
+              <option value={10}>10 per page</option>
+              <option value={20}>20 per page</option>
+              <option value={50}>50 per page</option>
+            </select>
+          </div>
         </div>
 
         {/* List of handovers */}
@@ -278,19 +322,20 @@ export default function Dashboard() {
           <div className="flex-1 flex flex-col items-center justify-center py-20">
              <div className="w-10 h-10 border-[3px] border-blue-600 border-t-transparent rounded-full animate-spin mb-6"></div>
           </div>
-        ) : filteredHandovers.length === 0 ? (
+        ) : paginatedHandovers.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center py-24 px-6 rounded-3xl border border-slate-200/60 bg-white/50 dark:border-white/5 dark:bg-white/[0.02] shadow-sm backdrop-blur-xl">
             <div className="w-16 h-16 rounded-3xl bg-slate-100 dark:bg-white/5 flex items-center justify-center mb-6 shadow-inner">
-              <Inbox className="w-8 h-8 text-slate-400 dark:text-slate-500" />
+              <Search className="w-8 h-8 text-slate-400 dark:text-slate-500" />
             </div>
-            <h3 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-2">No Handovers Yet</h3>
+            <h3 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-2">No results found</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400 text-center max-w-sm leading-relaxed">
-              When RNs approve handovers, they will automatically appear here in real-time.
+              Try adjusting your search query or urgency filter.
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {filteredHandovers.map((h) => {
+          <div className="grid grid-cols-1 gap-4">
+            {paginatedHandovers.map((h) => {
+              const isExpanded = expandedIds.includes(h.id);
               let urgencyBorder = 'border-slate-200/80 hover:border-slate-300 bg-white dark:border-white/10 dark:hover:border-white/20 dark:bg-[#151518]';
               let urgencyIndicator = 'bg-slate-400 dark:bg-slate-500';
               
@@ -308,37 +353,54 @@ export default function Dashboard() {
               return (
                 <div 
                   key={h.id} 
-                  className={`relative border rounded-3xl p-7 shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden ${urgencyBorder}`}
+                  className={`relative border rounded-2xl shadow-sm hover:shadow-md transition-all duration-300 group overflow-hidden ${urgencyBorder}`}
                 >
                   {/* Subtle top gradient line indicating urgency */}
                   <div className={`absolute top-0 left-0 w-full h-1 opacity-50 ${urgencyIndicator.split(' ')[0]}`}></div>
 
-                  {/* Meta header */}
-                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
-                    <div>
-                      <div className="flex items-center gap-3 mb-1.5">
-                        <h3 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">{h.resident_name}</h3>
-                        <div className={`w-2 h-2 rounded-full ${urgencyIndicator}`}></div>
+                  {/* Meta header (Clickable to expand) */}
+                  <div 
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors"
+                    onClick={() => toggleExpand(h.id)}
+                  >
+                    <div className="flex items-center gap-4">
+                      {/* Chevron Indicator */}
+                      <div className="w-8 h-8 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-500 dark:text-slate-400 shrink-0 transition-transform duration-300">
+                        {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                       </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-300">
-                          Room {h.room_number}
-                        </span>
-                        <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Care Level: {h.care_level}</span>
+                      
+                      <div>
+                        <div className="flex items-center gap-3 mb-1">
+                          <h3 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white">{h.resident_name}</h3>
+                          <div className={`w-2 h-2 rounded-full ${urgencyIndicator}`}></div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-semibold px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-300">
+                            Room {h.room_number}
+                          </span>
+                          <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">Care Level: {h.care_level}</span>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 self-start">
+                    <div className="flex items-center gap-3 sm:self-start">
                       <span className="text-[10px] uppercase tracking-widest font-bold px-3 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 dark:bg-white/5 dark:text-slate-300 dark:border-white/10">
                         {h.shift_type}
                       </span>
+                      <div className="hidden sm:flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-slate-200 dark:bg-white/10 flex items-center justify-center">
+                          <User2 className="w-3 h-3 text-slate-500 dark:text-slate-400" />
+                        </div>
+                        <span className="text-xs font-medium text-slate-600 dark:text-slate-400">
+                          {h.rn_name}
+                        </span>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Divider */}
-                  <div className="h-px w-full bg-slate-100 dark:bg-white/5 mb-6"></div>
-
-                  {/* Body Content based on role tab */}
+                  {/* Expanded Body Content */}
+                  {isExpanded && (
+                    <div className="p-5 pt-0 border-t border-slate-100 dark:border-white/5 mt-2">
                   {filterRole === 'rn' ? (
                     /* RN SUMMARY: ISBAR Display */
                     <div className="space-y-5">
@@ -465,10 +527,41 @@ export default function Dashboard() {
                     </span>
                   </div>
                 </div>
-              );
-            })}
+                )}
+              </div>
+            );
+          })}
           </div>
         )}
+
+        {/* Pagination Controls */}
+        {!loading && filteredHandovers.length > 0 && (
+          <div className="flex items-center justify-between mt-8 mb-4 border-t border-slate-200 dark:border-white/5 pt-6">
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredHandovers.length)} of {filteredHandovers.length}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 disabled:opacity-50 transition-colors flex items-center"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-sm font-semibold text-slate-700 dark:text-slate-200 px-3">
+                {currentPage} / {totalPages}
+              </span>
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-lg border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-white/5 disabled:opacity-50 transition-colors flex items-center"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
       </main>
     </div>
   );
