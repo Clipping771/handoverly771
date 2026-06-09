@@ -416,6 +416,8 @@ export default function AdminSetup() {
 
   const handleSaveApiKeys = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!facility) return;
+    
     try {
       const res = await fetch('/api/admin/config', {
         method: 'POST',

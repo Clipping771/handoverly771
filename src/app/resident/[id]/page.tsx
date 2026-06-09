@@ -261,7 +261,6 @@ export default function ResidentProfile() {
               No insights generated yet.
             </div>
           )}
-          )}
         </section>
 
         {/* Activity Timeline */}
