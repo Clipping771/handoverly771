@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { Bot, Send, X, Loader2, CheckCircle2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 export default function SmartSearch() {
   const { facility, user } = useAuth();
@@ -88,7 +90,20 @@ export default function SmartSearch() {
                       ? 'bg-slate-800 dark:bg-slate-700 text-white rounded-br-none' 
                       : 'bg-white dark:bg-[#1c1c21] text-slate-800 dark:text-slate-200 border border-slate-100 dark:border-[#202024] rounded-bl-none shadow-sm'
                   }`}>
-                    {m.content}
+                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm]}
+                        components={{
+                          table: ({node, ...props}) => <div className="overflow-x-auto my-3"><table className="min-w-full text-left border-collapse" {...props} /></div>,
+                          th: ({node, ...props}) => <th className="border-b border-slate-200 dark:border-slate-700 px-3 py-2 text-xs font-semibold text-slate-800 dark:text-slate-200 bg-slate-50 dark:bg-[#202024]" {...props} />,
+                          td: ({node, ...props}) => <td className="border-b border-slate-100 dark:border-slate-800 px-3 py-2 text-xs" {...props} />,
+                          p: ({node, ...props}) => <p className="mb-2 last:mb-0 leading-relaxed" {...props} />,
+                          strong: ({node, ...props}) => <strong className="font-bold text-slate-900 dark:text-white" {...props} />,
+                        }}
+                      >
+                        {m.content}
+                      </ReactMarkdown>
+                    </div>
                     {m.actions && m.actions.length > 0 && (
                       <div className="mt-3 space-y-2">
                         {m.actions.map((act, idx) => (
