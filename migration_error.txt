@@ -1,0 +1,13 @@
+Error: (ENOTFOUND) tenant/user postgres.rqbkoryrlkglgsnqonvf not found
+Stack: error: (ENOTFOUND) tenant/user postgres.rqbkoryrlkglgsnqonvf not found
+    at parseErrorMessage (C:\My World\gravity\handoverly\node_modules\pg-protocol\dist\parser.js:305:11)
+    at Parser.handlePacket (C:\My World\gravity\handoverly\node_modules\pg-protocol\dist\parser.js:143:27)
+    at Parser.parse (C:\My World\gravity\handoverly\node_modules\pg-protocol\dist\parser.js:37:38)
+    at TLSSocket.<anonymous> (C:\My World\gravity\handoverly\node_modules\pg-protocol\dist\index.js:11:42)
+    at TLSSocket.emit (node:events:524:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at TLSWrap.onStreamRead (node:internal/stream_base_commons:189:23)
+    at TLSWrap.callbackTrampoline (node:internal/async_hooks:130:17)
+Details: {"length":84,"name":"error","severity":"FATAL","code":"XX000"}

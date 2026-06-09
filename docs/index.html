@@ -1,0 +1,975 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Handoverly — System Documentation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#06060f;
+  --bg2:#09091a;
+  --surface:#0e0e20;
+  --surface2:#13132a;
+  --surface3:#171730;
+  --border:rgba(120,120,255,0.08);
+  --border2:rgba(120,120,255,0.18);
+  --glow:rgba(99,102,241,0.25);
+  --accent:#6366f1;
+  --accent2:#818cf8;
+  --accent3:#a5b4fc;
+  --accent4:#c7d2fe;
+  --green:#10b981;
+  --green2:#34d399;
+  --amber:#f59e0b;
+  --red:#ef4444;
+  --text:#e2e8f0;
+  --muted:#64748b;
+  --muted2:#94a3b8;
+  --muted3:#cbd5e1;
+}
+html{scroll-behavior:smooth}
+body{
+  font-family:'Inter',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  overflow-x:hidden;
+  line-height:1.6;
+}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:linear-gradient(var(--accent),var(--accent2));border-radius:2px}
+
+/* ── CANVAS ── */
+#canvas{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0.35}
+
+/* ── NAV ── */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:200;
+  height:60px;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 2rem;
+  background:rgba(6,6,15,0.7);
+  backdrop-filter:blur(24px);
+  border-bottom:1px solid var(--border);
+}
+.nav-logo{
+  font-size:1rem;font-weight:900;letter-spacing:-0.03em;
+  background:linear-gradient(135deg,#c7d2fe,#6366f1);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  display:flex;align-items:center;gap:0.5rem;
+}
+.nav-logo::before{
+  content:'⬡';font-size:1.1rem;
+  background:linear-gradient(135deg,#818cf8,#4f46e5);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+}
+.nav-links{display:flex;gap:0.25rem}
+.nav-links a{
+  font-size:0.72rem;font-weight:600;color:var(--muted2);
+  text-decoration:none;padding:0.4rem 0.9rem;border-radius:8px;
+  transition:all 0.2s;letter-spacing:0.04em;text-transform:uppercase;
+}
+.nav-links a:hover{color:var(--accent3);background:rgba(99,102,241,0.08)}
+.nav-pill{
+  font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;
+  color:var(--green2);
+  background:rgba(16,185,129,0.1);
+  border:1px solid rgba(16,185,129,0.25);
+  padding:0.3rem 0.75rem;border-radius:20px;
+  display:flex;align-items:center;gap:0.4rem;
+}
+.nav-pill::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--green2);animation:live 2s infinite}
+@keyframes live{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(52,211,153,0.4)}50%{opacity:0.6;box-shadow:0 0 0 4px rgba(52,211,153,0)}}
+
+/* ── HERO ── */
+.hero{
+  min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:8rem 2rem 5rem;
+  position:relative;z-index:1;
+}
+.hero-glow{
+  position:absolute;
+  top:20%;left:50%;transform:translateX(-50%);
+  width:700px;height:500px;
+  background:radial-gradient(ellipse, rgba(99,102,241,0.15) 0%, transparent 70%);
+  pointer-events:none;animation:breathe 4s ease-in-out infinite;
+}
+@keyframes breathe{0%,100%{transform:translateX(-50%) scale(1);opacity:1}50%{transform:translateX(-50%) scale(1.1);opacity:0.7}}
+.hero-eyebrow{
+  display:inline-flex;align-items:center;gap:0.6rem;
+  font-size:0.68rem;font-weight:700;letter-spacing:0.14em;text-transform:uppercase;
+  color:var(--accent3);
+  background:rgba(99,102,241,0.08);
+  border:1px solid rgba(99,102,241,0.2);
+  padding:0.45rem 1.1rem;border-radius:30px;
+  margin-bottom:2rem;
+  animation:fadeUp 0.7s both;
+}
+.hero-eyebrow-dot{width:6px;height:6px;border-radius:50%;background:var(--accent2);animation:live 2s infinite}
+.hero-title{
+  font-size:clamp(3rem,8vw,6.5rem);
+  font-weight:900;letter-spacing:-0.05em;line-height:1;
+  animation:fadeUp 0.7s 0.1s both;
+  margin-bottom:0.3rem;
+}
+.hero-title .g{
+  background:linear-gradient(135deg,#c7d2fe 0%,#a5b4fc 30%,#818cf8 55%,#6366f1 75%,#4f46e5 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+}
+.hero-sub-title{
+  font-size:clamp(1.8rem,4vw,3rem);font-weight:200;letter-spacing:-0.02em;
+  color:rgba(255,255,255,0.25);margin-bottom:1.5rem;
+  animation:fadeUp 0.7s 0.15s both;
+}
+.hero-desc{
+  font-size:1.05rem;color:var(--muted2);max-width:560px;
+  line-height:1.75;margin:0 auto 2.5rem;
+  animation:fadeUp 0.7s 0.2s both;
+}
+.hero-badges{
+  display:flex;flex-wrap:wrap;gap:0.6rem;justify-content:center;
+  animation:fadeUp 0.7s 0.3s both;margin-bottom:3rem;
+}
+.hb{
+  display:inline-flex;align-items:center;gap:0.4rem;
+  padding:0.5rem 1.1rem;border-radius:10px;
+  font-size:0.78rem;font-weight:600;border:1px solid;
+  transition:all 0.3s;cursor:default;
+}
+.hb:hover{transform:translateY(-2px);filter:brightness(1.15)}
+.hb-g{background:rgba(16,185,129,0.08);color:#6ee7b7;border-color:rgba(16,185,129,0.2)}
+.hb-i{background:rgba(99,102,241,0.08);color:var(--accent3);border-color:rgba(99,102,241,0.2)}
+.hb-a{background:rgba(245,158,11,0.08);color:#fcd34d;border-color:rgba(245,158,11,0.2)}
+.hb-r{background:rgba(239,68,68,0.08);color:#fca5a5;border-color:rgba(239,68,68,0.2)}
+.hero-cta{
+  display:inline-flex;align-items:center;gap:0.75rem;
+  padding:0.9rem 2.5rem;border-radius:14px;
+  background:linear-gradient(135deg,var(--accent),#4f46e5);
+  color:white;font-size:0.85rem;font-weight:700;
+  text-decoration:none;letter-spacing:0.04em;text-transform:uppercase;
+  animation:fadeUp 0.7s 0.35s both;
+  transition:all 0.3s;box-shadow:0 0 40px rgba(99,102,241,0.3);
+  border:none;cursor:pointer;
+}
+.hero-cta:hover{transform:translateY(-3px);box-shadow:0 0 60px rgba(99,102,241,0.5)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── STATS ── */
+.stats-section{
+  position:relative;z-index:1;
+  max-width:1100px;margin:0 auto;padding:0 2rem 5rem;
+}
+.stats-grid{
+  display:grid;grid-template-columns:repeat(6,1fr);
+  border:1px solid var(--border2);border-radius:24px;overflow:hidden;
+  background:linear-gradient(135deg,var(--surface) 0%,var(--surface2) 100%);
+  box-shadow:0 0 80px rgba(99,102,241,0.08),inset 0 1px 0 rgba(255,255,255,0.04);
+}
+.stat{
+  padding:2rem 1rem;text-align:center;
+  border-right:1px solid var(--border);
+  transition:background 0.3s;cursor:default;
+}
+.stat:last-child{border-right:none}
+.stat:hover{background:rgba(99,102,241,0.06)}
+.stat-n{
+  font-size:2.8rem;font-weight:900;letter-spacing:-0.04em;
+  background:linear-gradient(135deg,var(--accent3),var(--accent));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  line-height:1;
+}
+.stat-l{font-size:0.65rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-top:0.4rem}
+
+/* ── SECTIONS ── */
+.section{position:relative;z-index:1;max-width:1100px;margin:0 auto;padding:5rem 2rem}
+.section-tag{
+  display:inline-flex;align-items:center;gap:0.5rem;
+  font-size:0.65rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;
+  color:var(--accent2);margin-bottom:1rem;
+}
+.section-tag::before{content:'//';opacity:0.5}
+h2{
+  font-size:clamp(1.8rem,3.5vw,2.8rem);
+  font-weight:800;letter-spacing:-0.03em;
+  line-height:1.15;margin-bottom:1rem;
+}
+.section-sub{color:var(--muted2);max-width:580px;line-height:1.75;margin-bottom:3rem;font-size:0.95rem}
+
+/* ── DIVIDER ── */
+.div{height:1px;background:linear-gradient(90deg,transparent,rgba(99,102,241,0.15),transparent);margin:0 2rem}
+
+/* ── GLASS CARD ── */
+.glass{
+  background:linear-gradient(135deg,rgba(255,255,255,0.035) 0%,rgba(255,255,255,0.01) 100%);
+  border:1px solid var(--border);border-radius:20px;
+  backdrop-filter:blur(12px);
+  transition:all 0.35s cubic-bezier(0.23,1,0.32,1);
+  position:relative;overflow:hidden;
+}
+.glass::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.08),transparent);
+}
+.glass:hover{
+  border-color:rgba(99,102,241,0.3);
+  transform:translateY(-4px) scale(1.005);
+  box-shadow:0 24px 64px rgba(0,0,0,0.4),0 0 0 1px rgba(99,102,241,0.15),0 0 40px rgba(99,102,241,0.08);
+}
+
+/* ── CLASSIFICATION GRID ── */
+.class-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1rem}
+.class-card{padding:1.75rem;cursor:default}
+.class-card-icon{font-size:1.8rem;margin-bottom:1rem;display:block}
+.class-card-title{font-size:0.9rem;font-weight:700;margin-bottom:0.5rem}
+.class-card-desc{font-size:0.8rem;color:var(--muted2);line-height:1.65}
+.status-chip{
+  display:inline-flex;align-items:center;gap:0.4rem;
+  font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
+  padding:0.3rem 0.75rem;border-radius:8px;margin-top:1rem;
+}
+.chip-yes{background:rgba(16,185,129,0.1);color:#6ee7b7;border:1px solid rgba(16,185,129,0.2)}
+.chip-no{background:rgba(239,68,68,0.07);color:#fca5a5;border:1px solid rgba(239,68,68,0.15)}
+
+/* ── AI CHAIN ── */
+.ai-chain-wrap{
+  background:linear-gradient(135deg,var(--surface),var(--surface2));
+  border:1px solid var(--border2);border-radius:24px;overflow:hidden;
+  box-shadow:0 0 60px rgba(99,102,241,0.06);
+  margin-top:2.5rem;
+}
+.ai-chain-header{
+  padding:1.5rem 2rem;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+}
+.ai-chain-label{font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:var(--muted)}
+.ai-chain-body{display:flex;align-items:stretch}
+.ai-node{
+  flex:1;padding:2rem 1rem;text-align:center;
+  border-right:1px solid var(--border);
+  position:relative;cursor:default;
+  transition:background 0.3s;
+}
+.ai-node:last-child{border-right:none}
+.ai-node:hover{background:rgba(99,102,241,0.06)}
+.ai-node-num{
+  position:absolute;top:1rem;left:1rem;
+  font-size:0.6rem;font-weight:700;font-family:'JetBrains Mono',monospace;
+  color:var(--muted);opacity:0.5;
+}
+.ai-node-icon{font-size:1.8rem;margin-bottom:0.75rem;display:block}
+.ai-node-name{font-size:0.82rem;font-weight:700;margin-bottom:0.35rem}
+.ai-node-model{font-size:0.68rem;color:var(--muted);font-family:'JetBrains Mono',monospace;line-height:1.5}
+.ai-arrow{
+  position:absolute;right:-14px;top:50%;transform:translateY(-50%);
+  width:28px;height:28px;border-radius:50%;
+  background:var(--surface3);border:1px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:0.65rem;color:var(--accent2);z-index:2;
+}
+.ai-node:last-child .ai-arrow{display:none}
+
+/* ── WORKFLOW ── */
+.workflow{position:relative;padding-left:3.5rem;margin-top:2rem}
+.workflow::before{
+  content:'';position:absolute;left:22px;top:2rem;bottom:2rem;width:2px;
+  background:linear-gradient(180deg,var(--accent) 0%,rgba(99,102,241,0.1) 100%);
+  border-radius:1px;
+}
+.wf-step{
+  position:relative;margin-bottom:2rem;cursor:default;
+  transition:all 0.3s;
+}
+.wf-step:last-child{margin-bottom:0}
+.wf-dot{
+  position:absolute;left:-3.5rem;top:0;
+  width:46px;height:46px;border-radius:50%;
+  background:linear-gradient(135deg,var(--surface3),var(--surface2));
+  border:2px solid var(--accent);
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.1rem;
+  transition:all 0.3s;
+  box-shadow:0 0 20px rgba(99,102,241,0.2);
+}
+.wf-step:hover .wf-dot{
+  background:rgba(99,102,241,0.15);
+  box-shadow:0 0 30px rgba(99,102,241,0.4);
+  border-color:var(--accent2);
+}
+.wf-body{
+  background:linear-gradient(135deg,rgba(255,255,255,0.02),rgba(255,255,255,0.005));
+  border:1px solid var(--border);border-radius:16px;padding:1.25rem 1.5rem;
+  transition:all 0.3s;
+}
+.wf-step:hover .wf-body{border-color:rgba(99,102,241,0.25);background:rgba(99,102,241,0.04)}
+.wf-tag{
+  font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;
+  color:var(--accent2);margin-bottom:0.4rem;
+}
+.wf-title{font-size:0.95rem;font-weight:700;margin-bottom:0.4rem}
+.wf-desc{font-size:0.82rem;color:var(--muted2);line-height:1.65}
+
+/* ── FEATURES ── */
+.feat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:1rem}
+.feat-card{padding:1.75rem;cursor:default}
+.feat-icon{font-size:1.8rem;margin-bottom:1rem;display:block}
+.feat-title{font-size:0.9rem;font-weight:700;margin-bottom:0.4rem}
+.feat-desc{font-size:0.8rem;color:var(--muted2);line-height:1.7}
+.feat-tags{display:flex;flex-wrap:wrap;gap:0.35rem;margin-top:0.9rem}
+.ftag{
+  font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;
+  padding:0.2rem 0.55rem;border-radius:5px;
+  background:rgba(99,102,241,0.1);color:var(--accent3);
+  border:1px solid rgba(99,102,241,0.18);
+}
+
+/* ── TABS ── */
+.tabs{
+  display:flex;gap:0.35rem;flex-wrap:wrap;
+  background:rgba(255,255,255,0.02);border:1px solid var(--border);
+  padding:0.4rem;border-radius:16px;margin-bottom:2rem;
+}
+.tbtn{
+  padding:0.55rem 1.1rem;border-radius:10px;border:none;
+  font-size:0.75rem;font-weight:600;cursor:pointer;
+  font-family:'Inter',sans-serif;transition:all 0.25s;
+  background:transparent;color:var(--muted2);
+  letter-spacing:0.02em;
+}
+.tbtn.on{
+  background:rgba(99,102,241,0.18);color:var(--accent3);
+  border:1px solid rgba(99,102,241,0.3);
+  box-shadow:0 0 20px rgba(99,102,241,0.15);
+}
+.tbtn:hover:not(.on){color:var(--text);background:rgba(255,255,255,0.04)}
+.tpanel{display:none}
+.tpanel.on{display:block;animation:panelIn 0.3s ease}
+@keyframes panelIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── ROLES ── */
+.role-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin-top:2rem}
+.role-card{padding:2rem 1.5rem;text-align:center;cursor:default}
+.role-icon{font-size:2.8rem;display:block;margin-bottom:1rem}
+.role-name{font-size:1rem;font-weight:700;margin-bottom:0.75rem}
+.role-list{list-style:none;font-size:0.78rem;color:var(--muted2);line-height:2.1}
+.role-list li::before{content:'↳ ';color:var(--accent2);font-weight:700}
+
+/* ── TECHNICAL TABLES ── */
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{
+  font-size:0.65rem;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;
+  color:var(--muted);padding:0.75rem 1rem;text-align:left;
+  border-bottom:1px solid var(--border);
+}
+.tbl td{
+  font-size:0.8rem;padding:0.9rem 1rem;
+  border-bottom:1px solid rgba(255,255,255,0.03);
+  vertical-align:top;
+}
+.tbl tr:hover td{background:rgba(255,255,255,0.02)}
+.mono{
+  font-family:'JetBrains Mono',monospace;font-size:0.75rem;
+  color:var(--accent3);background:rgba(99,102,241,0.09);
+  padding:0.15rem 0.45rem;border-radius:5px;
+}
+.pill{
+  display:inline-block;font-size:0.6rem;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;
+  padding:0.2rem 0.5rem;border-radius:5px;
+}
+.pk{background:rgba(16,185,129,0.1);color:#6ee7b7;border:1px solid rgba(16,185,129,0.2)}
+.fk{background:rgba(245,158,11,0.1);color:#fcd34d;border:1px solid rgba(245,158,11,0.2)}
+.nu{background:rgba(148,163,184,0.08);color:var(--muted2);border:1px solid rgba(148,163,184,0.15)}
+.method{
+  font-family:'JetBrains Mono',monospace;font-size:0.68rem;font-weight:700;
+  padding:0.2rem 0.55rem;border-radius:5px;
+}
+.get{background:rgba(16,185,129,0.1);color:#6ee7b7}
+.post{background:rgba(99,102,241,0.1);color:var(--accent3)}
+pre{
+  background:var(--surface2);border:1px solid var(--border2);
+  border-radius:16px;padding:1.75rem;
+  font-family:'JetBrains Mono',monospace;font-size:0.78rem;
+  color:var(--muted2);line-height:1.8;overflow-x:auto;
+}
+pre .kw{color:var(--accent3)}
+pre .str{color:#6ee7b7}
+pre .cm{color:var(--muted);font-style:italic}
+
+/* ── SCROLL REVEAL ── */
+.reveal{opacity:0;transform:translateY(36px);transition:opacity 0.8s ease,transform 0.8s ease}
+.reveal.v{opacity:1;transform:translateY(0)}
+.reveal-d1{transition-delay:0.1s}
+.reveal-d2{transition-delay:0.2s}
+.reveal-d3{transition-delay:0.3s}
+
+/* ── FOOTER ── */
+footer{
+  text-align:center;padding:5rem 2rem 3rem;
+  position:relative;z-index:1;
+  border-top:1px solid var(--border);
+}
+.footer-logo{
+  font-size:2rem;font-weight:900;letter-spacing:-0.04em;
+  background:linear-gradient(135deg,#c7d2fe,#6366f1);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  margin-bottom:0.5rem;
+}
+.footer-sub{font-size:0.78rem;color:var(--muted);line-height:2}
+.footer-badges{
+  display:flex;flex-wrap:wrap;gap:0.5rem;justify-content:center;margin-top:1.5rem;
+}
+.fbadge{
+  font-size:0.65rem;font-weight:600;color:var(--muted2);
+  border:1px solid var(--border);padding:0.3rem 0.8rem;border-radius:8px;
+}
+
+/* ── MOBILE ── */
+@media(max-width:768px){
+  .nav-links{display:none}
+  .stats-grid{grid-template-columns:repeat(3,1fr)}
+  .class-grid,.feat-grid{grid-template-columns:1fr}
+  .role-grid{grid-template-columns:1fr}
+  .ai-chain-body{flex-direction:column}
+  .ai-node{border-right:none;border-bottom:1px solid var(--border)}
+  .ai-arrow{display:none!important}
+}
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<!-- ── NAV ── -->
+<nav>
+  <div class="nav-logo">Handoverly</div>
+  <div class="nav-links">
+    <a href="#classify">Intelligence</a>
+    <a href="#roles">Roles</a>
+    <a href="#features">Features</a>
+    <a href="#workflow">Workflow</a>
+    <a href="#technical">Technical</a>
+  </div>
+  <div class="nav-pill">Live System</div>
+</nav>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-glow"></div>
+  <div class="hero-eyebrow">
+    <span class="hero-eyebrow-dot"></span>
+    Clinical Decision Support System · Australian Aged Care
+  </div>
+  <h1 class="hero-title">
+    <span class="g">Handoverly</span>
+  </h1>
+  <div class="hero-sub-title">System Reference</div>
+  <p class="hero-desc">
+    A fault-tolerant, context-aware clinical decision support system that transforms informal shift notes into structured ISBAR handovers — with human-in-the-loop validation at every stage.
+  </p>
+  <div class="hero-badges">
+    <span class="hb hb-g">✔ Context-Aware</span>
+    <span class="hb hb-i">✔ Human-in-the-Loop</span>
+    <span class="hb hb-a">✔ Fault-Tolerant AI</span>
+    <span class="hb hb-g">✔ Voice Dictation (en-AU)</span>
+    <span class="hb hb-i">✔ Real-Time Dashboard</span>
+    <span class="hb hb-r">✘ Not Autonomous</span>
+  </div>
+  <button class="hero-cta" onclick="document.getElementById('classify').scrollIntoView({behavior:'smooth'})">
+    <span>Explore Documentation</span>
+    <span>↓</span>
+  </button>
+</section>
+
+<!-- ── STATS ── -->
+<div class="stats-section reveal">
+  <div class="stats-grid">
+    <div class="stat"><div class="stat-n" data-t="5">0</div><div class="stat-l">AI Providers</div></div>
+    <div class="stat"><div class="stat-n" data-t="3">0</div><div class="stat-l">User Roles</div></div>
+    <div class="stat"><div class="stat-n" data-t="7">0</div><div class="stat-l">Risk Flags</div></div>
+    <div class="stat"><div class="stat-n" data-t="6">0</div><div class="stat-l">API Routes</div></div>
+    <div class="stat"><div class="stat-n" data-t="5">0</div><div class="stat-l">DB Tables</div></div>
+    <div class="stat"><div class="stat-n" data-t="7">0</div><div class="stat-l">Workflow Stages</div></div>
+  </div>
+</div>
+
+<div class="div"></div>
+
+<!-- ── CLASSIFICATION ── -->
+<section class="section" id="classify">
+  <div class="reveal">
+    <div class="section-tag">Architecture Classification</div>
+    <h2>System Intelligence &amp; Design Principles</h2>
+    <p class="section-sub">
+      Handoverly is classified as a <strong>Clinical Decision Support System (CDSS)</strong> — augmenting clinical judgment through AI assistance while keeping the registered nurse fully accountable for every published outcome.
+    </p>
+  </div>
+
+  <div class="class-grid">
+    <div class="glass class-card reveal reveal-d1">
+      <span class="class-card-icon">🧠</span>
+      <div class="class-card-title">Intelligent Decision Support</div>
+      <div class="class-card-desc">AI-assisted layer that structures and refines clinical documentation. Dynamically adapts to resident profile, care requirements, and current workflow stage — not a passive static form.</div>
+      <div class="status-chip chip-yes">✔ Confirmed</div>
+    </div>
+    <div class="glass class-card reveal reveal-d2">
+      <span class="class-card-icon">🔄</span>
+      <div class="class-card-title">Interactive Workflow Engine</div>
+      <div class="class-card-desc">Multi-step progressive pipeline: record → generate → edit → approve → publish. Each stage is explicit, sequential, and human-controlled. No stage can be skipped or automated past.</div>
+      <div class="status-chip chip-yes">✔ Confirmed</div>
+    </div>
+    <div class="glass class-card reveal reveal-d3">
+      <span class="class-card-icon">⚡</span>
+      <div class="class-card-title">Fault-Tolerant AI Orchestration</div>
+      <div class="class-card-desc">5-provider cascade with graceful degradation. Failure of any single provider triggers immediate fallback to the next — ensuring continuous care documentation under all network conditions.</div>
+      <div class="status-chip chip-yes">✔ Confirmed</div>
+    </div>
+    <div class="glass class-card reveal reveal-d1">
+      <span class="class-card-icon">👤</span>
+      <div class="class-card-title">Human-in-the-Loop</div>
+      <div class="class-card-desc">All AI outputs require explicit RN review and approval before database persistence. No content is published without a deliberate human decision at the mandatory approval gate.</div>
+      <div class="status-chip chip-yes">✔ Confirmed</div>
+    </div>
+    <div class="glass class-card reveal reveal-d2">
+      <span class="class-card-icon">🧩</span>
+      <div class="class-card-title">Role-Driven Adaptive Interface</div>
+      <div class="class-card-desc">Interface adapts available controls and information density based on authenticated role (Admin/RN/Carer) and current workflow stage — presenting only contextually relevant actions.</div>
+      <div class="status-chip chip-yes">✔ Confirmed</div>
+    </div>
+    <div class="glass class-card reveal reveal-d3">
+      <span class="class-card-icon">🚫</span>
+      <div class="class-card-title">Autonomous / Self-Aware</div>
+      <div class="class-card-desc">The system does not make autonomous clinical decisions, learn from behaviour patterns, or act without human instruction. Full clinical accountability remains with the registered nurse at all times.</div>
+      <div class="status-chip chip-no">✘ Not Applicable</div>
+    </div>
+  </div>
+
+  <!-- AI Chain -->
+  <div class="reveal" style="margin-top:4rem">
+    <div class="section-tag">Fault-Tolerant Orchestration</div>
+    <h2 style="font-size:1.7rem;margin-bottom:0.5rem">AI Provider Priority Chain</h2>
+    <p class="section-sub" style="margin-bottom:0">Each provider is attempted in sequence. On failure the next is tried instantly — zero downtime for clinical documentation.</p>
+    <div class="ai-chain-wrap">
+      <div class="ai-chain-header">
+        <span class="ai-chain-label">Provider priority — left (highest) to right (fallback)</span>
+        <span style="font-size:0.65rem;color:var(--muted)">Auto-routing enabled</span>
+      </div>
+      <div class="ai-chain-body">
+        <div class="ai-node">
+          <span class="ai-node-num">01</span>
+          <div class="ai-arrow">→</div>
+          <span class="ai-node-icon">⚗️</span>
+          <div class="ai-node-name">Anthropic Claude</div>
+          <div class="ai-node-model">claude-3-5-sonnet<br/>Best quality</div>
+        </div>
+        <div class="ai-node">
+          <span class="ai-node-num">02</span>
+          <div class="ai-arrow">→</div>
+          <span class="ai-node-icon">🌐</span>
+          <div class="ai-node-name">OpenRouter</div>
+          <div class="ai-node-model">User-selected model<br/>Auto-fallback: gemini-2.5-flash</div>
+        </div>
+        <div class="ai-node">
+          <span class="ai-node-num">03</span>
+          <div class="ai-arrow">→</div>
+          <span class="ai-node-icon">⚡</span>
+          <div class="ai-node-name">Groq</div>
+          <div class="ai-node-model">Llama 3.3 70B<br/>Ultra-fast inference</div>
+        </div>
+        <div class="ai-node">
+          <span class="ai-node-num">04</span>
+          <div class="ai-arrow">→</div>
+          <span class="ai-node-icon">🖥️</span>
+          <div class="ai-node-name">Ollama</div>
+          <div class="ai-node-model">Local / offline<br/>Zero internet</div>
+        </div>
+        <div class="ai-node">
+          <span class="ai-node-num">05</span>
+          <span class="ai-node-icon">🎭</span>
+          <div class="ai-node-name" style="color:var(--muted2)">Mock Engine</div>
+          <div class="ai-node-model">Deterministic fallback<br/>No API key needed</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="div"></div>
+
+<!-- ── ROLES ── -->
+<section class="section" id="roles">
+  <div class="reveal">
+    <div class="section-tag">Access Control</div>
+    <h2>User Roles &amp; Permissions</h2>
+    <p class="section-sub">PIN-based authentication with bcryptjs (10 rounds). No plain-text PIN storage at any point in the system.</p>
+  </div>
+  <div class="role-grid">
+    <div class="glass role-card reveal reveal-d1">
+      <span class="role-icon">🛡️</span>
+      <div class="role-name">Admin</div>
+      <ul class="role-list">
+        <li>Manage all staff accounts</li>
+        <li>Register &amp; deactivate residents</li>
+        <li>Create &amp; manage wings</li>
+        <li>Configure all 5 AI providers</li>
+        <li>Full system access</li>
+      </ul>
+    </div>
+    <div class="glass role-card reveal reveal-d2">
+      <span class="role-icon">🏥</span>
+      <div class="role-name">Registered Nurse</div>
+      <ul class="role-list">
+        <li>Shift Registry workspace</li>
+        <li>Voice / text note recording</li>
+        <li>AI handover generation</li>
+        <li>Review, edit &amp; approve</li>
+        <li>Quick-register residents</li>
+      </ul>
+    </div>
+    <div class="glass role-card reveal reveal-d3">
+      <span class="role-icon">💼</span>
+      <div class="role-name">Carer</div>
+      <ul class="role-list">
+        <li>Live Dashboard (read-only)</li>
+        <li>Plain-English task list view</li>
+        <li>Text-to-speech playback</li>
+        <li>Urgency filter tabs</li>
+        <li>No editing access</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<div class="div"></div>
+
+<!-- ── FEATURES ── -->
+<section class="section" id="features">
+  <div class="reveal">
+    <div class="section-tag">Capabilities</div>
+    <h2>Feature Reference</h2>
+    <p class="section-sub">All features grouped by module. Select a tab to explore each area in detail.</p>
+  </div>
+
+  <div class="tabs reveal">
+    <button class="tbtn on" onclick="st(event,'shift')">Shift Registry</button>
+    <button class="tbtn" onclick="st(event,'input')">Note Recording</button>
+    <button class="tbtn" onclick="st(event,'ai')">AI Processing</button>
+    <button class="tbtn" onclick="st(event,'review')">Review &amp; Approve</button>
+    <button class="tbtn" onclick="st(event,'dash')">Live Dashboard</button>
+    <button class="tbtn" onclick="st(event,'admin')">Admin Panel</button>
+    <button class="tbtn" onclick="st(event,'wings')">Wings</button>
+  </div>
+
+  <!-- SHIFT -->
+  <div id="tp-shift" class="tpanel on">
+    <div class="feat-grid">
+      <div class="glass feat-card"><span class="feat-icon">🏠</span><div class="feat-title">Resident Cards Grid</div><div class="feat-desc">Each card shows room number, name, care level, wing assignment, and today's handover status badge. Colour-coded borders: red = critical, amber = attention, green = routine.</div><div class="feat-tags"><span class="ftag">RN</span><span class="ftag">Real-time</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">🔍</span><div class="feat-title">Name &amp; Room Search</div><div class="feat-desc">Instant free-text search matching both resident name and room number simultaneously. Client-side, no network round-trip. Composable with wing filter and status tabs.</div><div class="feat-tags"><span class="ftag">RN</span><span class="ftag">Instant</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">🏛️</span><div class="feat-title">Wing Filter Dropdown</div><div class="feat-desc">Filter by All Wings, any specific wing name, or Unassigned. Designed for 30–40+ residents per wing. Works simultaneously with text search and status tab filter.</div><div class="feat-tags"><span class="ftag">RN</span><span class="ftag">Wings</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">📋</span><div class="feat-title">Status Tab Filter</div><div class="feat-desc">Three tabs: All, Pending (no handover submitted today), Completed (approved handover exists today). Composable with search and wing filter for precision triage.</div><div class="feat-tags"><span class="ftag">RN</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">➕</span><div class="feat-title">Quick Register Resident</div><div class="feat-desc">On-the-fly resident registration modal: name, room, DOB, care level, wing. New profile appears instantly in the registry grid without any page reload.</div><div class="feat-tags"><span class="ftag">RN</span><span class="ftag">Modal</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">⚙️</span><div class="feat-title">Settings Quick-Access</div><div class="feat-desc">Gear icon in the sticky header opens the AI configuration modal without navigating to admin — RNs can switch AI providers mid-shift without leaving their workspace.</div><div class="feat-tags"><span class="ftag">RN</span></div></div>
+    </div>
+  </div>
+
+  <!-- INPUT -->
+  <div id="tp-input" class="tpanel">
+    <div class="feat-grid">
+      <div class="glass feat-card"><span class="feat-icon">🗂️</span><div class="feat-title">Node-Based Task Input</div><div class="feat-desc">Clinical observations captured as individual "task nodes", each with a tagline (e.g. "Pain Assessment") and freeform description. Multiple nodes per resident per shift — one per observation type.</div><div class="feat-tags"><span class="ftag">Core</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">🎙️</span><div class="feat-title">Per-Node Voice Dictation</div><div class="feat-desc">Dedicated microphone per node via Web Speech API (en-AU locale). Live interim transcription displays in real time with a pulsing "Listening…" indicator. Continuous recognition mode.</div><div class="feat-tags"><span class="ftag">Voice</span><span class="ftag">en-AU</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">✨</span><div class="feat-title">Auto AI Text Refinement</div><div class="feat-desc">When dictation stops, the node text is auto-sent to /api/enhance-text. AI removes filler, fixes grammar, improves clinical precision. Violet "✨ AI Refining…" overlay during processing.</div><div class="feat-tags"><span class="ftag">AI</span><span class="ftag">Auto</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">📝</span><div class="feat-title">Manual Text Input</div><div class="feat-desc">All nodes are also directly editable text areas. Voice and typed text can be freely mixed across nodes in the same session. No restriction on input method per node.</div><div class="feat-tags"><span class="ftag">RN</span></div></div>
+    </div>
+  </div>
+
+  <!-- AI -->
+  <div id="tp-ai" class="tpanel">
+    <div class="feat-grid">
+      <div class="glass feat-card"><span class="feat-icon">🤖</span><div class="feat-title">ISBAR Handover Generation</div><div class="feat-desc">Converts raw notes into clinical ISBAR: Identify → Situation → Background → Assessment → Recommendation. Written in Australian English. Resident context (name, room, age, care level) is automatically injected.</div><div class="feat-tags"><span class="ftag">AI</span><span class="ftag">ISBAR</span><span class="ftag">en-AU</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">📌</span><div class="feat-title">Carer Task List Generation</div><div class="feat-desc">Generates a plain-English numbered action list for carers — zero clinical jargon. Each task has a short tagline, full description, and 6-category tag classification (incidents, medication, hygiene, mobility, nutrition, general).</div><div class="feat-tags"><span class="ftag">AI</span><span class="ftag">Carers</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">🚩</span><div class="feat-title">Clinical Risk Detection</div><div class="feat-desc">Scans input for 7 risk keywords: fall · injury · refused medication · medication error · aggression · hospital transfer · rapid deterioration. Returns detected flags with urgency level and completeness status.</div><div class="feat-tags"><span class="ftag">Safety</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">❓</span><div class="feat-title">Follow-Up Safety Questions</div><div class="feat-desc">If critical information is missing (e.g. fall noted but no neurological observations), AI generates up to 2 targeted follow-up questions to ensure clinical completeness before the RN approves.</div><div class="feat-tags"><span class="ftag">Safety</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">🔀</span><div class="feat-title">Auto Routing + Pinned Mode</div><div class="feat-desc">Admin sets routing policy: Auto (cascade through all providers) or Pinned (force a specific provider). Active selection stored in localStorage, passed with every generation request.</div><div class="feat-tags"><span class="ftag">Config</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">🎭</span><div class="feat-title">Offline Mock Engine</div><div class="feat-desc">Built-in deterministic fallback: keyword matching generates realistic ISBAR, carer tasks, urgency levels, and follow-ups. Zero API keys — ideal for offline deployment, demos, and testing.</div><div class="feat-tags"><span class="ftag">Offline</span><span class="ftag">Demo</span></div></div>
+    </div>
+  </div>
+
+  <!-- REVIEW -->
+  <div id="tp-review" class="tpanel">
+    <div class="feat-grid">
+      <div class="glass feat-card"><span class="feat-icon">🛡️</span><div class="feat-title">Risk Flags Indicator</div><div class="feat-desc">Animated pulsing red badges for each detected risk flag. If no risks: green "No safety incidents flagged" chip. Positioned at top of review page for immediate clinical situational awareness before editing.</div><div class="feat-tags"><span class="ftag">Safety</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">📄</span><div class="feat-title">Full ISBAR Editor</div><div class="feat-desc">Editable textareas for all 5 ISBAR sections. RNs can correct, expand, or fully rewrite AI output. Both the original AI version and the edited version are saved for audit traceability.</div><div class="feat-tags"><span class="ftag">Edit</span><span class="ftag">Audit</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">✏️</span><div class="feat-title">Carer Task Editor</div><div class="feat-desc">Each task card has editable title + description, 6-category tag toggles (colour-coded), a TTS play button, and delete. Manual task addition via the "Add Custom Task Node" panel at the bottom.</div><div class="feat-tags"><span class="ftag">Edit</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">🔊</span><div class="feat-title">TTS Review Playback</div><div class="feat-desc">Speaker icon on each carer task reads title + description aloud via browser Speech Synthesis API at 0.9x speed. Enables verbal review of task content before the RN approves the record.</div><div class="feat-tags"><span class="ftag">TTS</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">🚨</span><div class="feat-title">Urgency Override</div><div class="feat-desc">Three-button selector: Critical (red), Attention (amber), Routine (green). RN can override the AI's urgency classification at any point before publishing. Final choice is what appears on the dashboard.</div><div class="feat-tags"><span class="ftag">Safety</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">✅</span><div class="feat-title">Approve &amp; Publish</div><div class="feat-desc">Single click publishes the handover. Shift type auto-detected from local clock (morning 6AM–2PM / afternoon 2PM–10PM / night 10PM–6AM). Full session data cleared on successful save.</div><div class="feat-tags"><span class="ftag">Core</span></div></div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="tp-dash" class="tpanel">
+    <div class="feat-grid">
+      <div class="glass feat-card"><span class="feat-icon">⚡</span><div class="feat-title">Real-Time Updates</div><div class="feat-desc">Supabase Postgres Realtime channel subscription. Every approved handover is instantly broadcast to all connected dashboard clients — no polling, no manual refresh, no delay.</div><div class="feat-tags"><span class="ftag">Realtime</span><span class="ftag">WebSocket</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">👁️</span><div class="feat-title">Dual Role View Toggle</div><div class="feat-desc">Segmented control switches between Carer View (plain task list) and RN View (full ISBAR + risk flags). Auto-defaults to the appropriate view based on the logged-in user's role.</div><div class="feat-tags"><span class="ftag">RN</span><span class="ftag">Carer</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">🌡️</span><div class="feat-title">Urgency Visual System</div><div class="feat-desc">Colour-coded card borders with glowing dot indicators and top accent lines. Critical = red glow, Attention = amber, Routine = green. Cards auto-sorted by urgency (Critical always first).</div><div class="feat-tags"><span class="ftag">Safety</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">🔊</span><div class="feat-title">Per-Task TTS Playback</div><div class="feat-desc">Speaker icon on each task reads title and description aloud. Designed for carers in fast-paced environments who prefer to listen while working rather than stopping to read a screen.</div><div class="feat-tags"><span class="ftag">TTS</span><span class="ftag">Accessibility</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">🎚️</span><div class="feat-title">Urgency Filter Tabs</div><div class="feat-desc">Filter cards by All, Critical, Attention, or Routine. Instant client-side filtering — critical-focused views can be achieved in a single click during high-pressure shift transitions.</div><div class="feat-tags"><span class="ftag">UI</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">🔏</span><div class="feat-title">Handover Audit Stamp</div><div class="feat-desc">Each card footer shows the submitting RN's name and exact approval timestamp (HH:MM, local time). Creates a visible, auditable accountability trail on the live dashboard.</div><div class="feat-tags"><span class="ftag">Audit</span></div></div>
+    </div>
+  </div>
+
+  <!-- ADMIN -->
+  <div id="tp-admin" class="tpanel">
+    <div class="feat-grid">
+      <div class="glass feat-card"><span class="feat-icon">👤</span><div class="feat-title">Staff Management</div><div class="feat-desc">Add staff with name, role (RN/Carer/Admin), and PIN. PIN hashed server-side via /api/auth/register-staff before storage. Table shows all accounts with role badges and active status indicators.</div><div class="feat-tags"><span class="ftag">Admin</span><span class="ftag">Security</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">🏠</span><div class="feat-title">Resident Management</div><div class="feat-desc">Register residents with name, room, DOB, care level, and wing. Soft-delete (is_active = false) deactivates without removing historical handover records. Wing assignment shown as a badge on the residents table.</div><div class="feat-tags"><span class="ftag">Admin</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">🤖</span><div class="feat-title">AI Engine Configuration</div><div class="feat-desc">Full panel for all 5 AI providers — API keys, model selectors, routing policy. OpenRouter includes a live searchable model dropdown fetched from /api/openrouter-models. All keys stored in localStorage only.</div><div class="feat-tags"><span class="ftag">Admin</span><span class="ftag">AI</span></div></div>
+    </div>
+  </div>
+
+  <!-- WINGS -->
+  <div id="tp-wings" class="tpanel">
+    <div class="feat-grid">
+      <div class="glass feat-card"><span class="feat-icon">🏛️</span><div class="feat-title">Create Wings</div><div class="feat-desc">Admin creates named wings (e.g. "North Wing", "Dementia Care Unit") scoped to the facility. Stored in the dedicated public.wings table with Row-Level Security and facility-level isolation.</div><div class="feat-tags"><span class="ftag">Admin</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">🗑️</span><div class="feat-title">Safe Wing Deletion</div><div class="feat-desc">Deleting a wing sets all residents' wing_id to NULL (Unassigned) — no residents or historical handover data is removed. Confirmation dialog required before deletion proceeds.</div><div class="feat-tags"><span class="ftag">Safe</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">🔗</span><div class="feat-title">Resident-Wing Assignment</div><div class="feat-desc">Wing assignment is optional at resident creation (Admin) or quick-registration (RN). Residents without an assigned wing appear as "Unassigned" and remain fully accessible in all views.</div><div class="feat-tags"><span class="ftag">Admin</span><span class="ftag">RN</span></div></div>
+      <div class="glass feat-card"><span class="feat-icon">🔍</span><div class="feat-title">Wing Filter on Shift Registry</div><div class="feat-desc">RNs filter the full resident list by wing via the dropdown — built to handle 30–40+ residents per wing. Combined filtering (wing + search + status tab) allows precise resident targeting.</div><div class="feat-tags"><span class="ftag">RN</span></div></div>
+    </div>
+  </div>
+</section>
+
+<div class="div"></div>
+
+<!-- ── WORKFLOW ── -->
+<section class="section" id="workflow">
+  <div class="reveal">
+    <div class="section-tag">End-to-End</div>
+    <h2>Clinical Handover Workflow</h2>
+    <p class="section-sub">The complete lifecycle from login to published handover, with the mandatory human decision at each stage.</p>
+  </div>
+  <div class="workflow">
+    <div class="wf-step reveal"><div class="wf-dot">🔐</div><div class="wf-body"><div class="wf-tag">Stage 01</div><div class="wf-title">Authentication</div><div class="wf-desc">Staff selects facility → enters name + PIN. bcrypt compare server-side. Role determines redirect: Admin → /admin, RN → /shift, Carer → /dashboard. Session persisted in context + sessionStorage.</div></div></div>
+    <div class="wf-step reveal"><div class="wf-dot">📋</div><div class="wf-body"><div class="wf-tag">Stage 02</div><div class="wf-title">Shift Registry — Resident Selection</div><div class="wf-desc">RN views all active residents with today's status indicators. Filters by wing, name/room text, and status tab. Selects a resident to begin or update their handover record for the current shift.</div></div></div>
+    <div class="wf-step reveal"><div class="wf-dot">🎙️</div><div class="wf-body"><div class="wf-tag">Stage 03</div><div class="wf-title">Note Recording — Voice or Text</div><div class="wf-desc">RN records observations as task nodes: voice dictation (Web Speech API, en-AU, continuous mode) or manual text. Each node auto-refined by AI after dictation stops. Multiple nodes per session.</div></div></div>
+    <div class="wf-step reveal"><div class="wf-dot">🤖</div><div class="wf-body"><div class="wf-tag">Stage 04</div><div class="wf-title">AI Processing — Handover Generation</div><div class="wf-desc">Raw notes sent to /api/generate-handover. Provider cascade: Claude → OpenRouter → Groq → Ollama → Mock. Returns structured ISBAR + carer tasks + risk flags + urgency + follow-up questions.</div></div></div>
+    <div class="wf-step reveal"><div class="wf-dot">✏️</div><div class="wf-body"><div class="wf-tag">Stage 05 — Human-in-the-Loop Gate</div><div class="wf-title">Review &amp; Edit</div><div class="wf-desc">RN reviews all AI output. Can edit any ISBAR section, modify/add/delete carer tasks, toggle category tags, override urgency level, and play tasks via TTS. This stage is mandatory — cannot be bypassed.</div></div></div>
+    <div class="wf-step reveal"><div class="wf-dot">✅</div><div class="wf-body"><div class="wf-tag">Stage 06</div><div class="wf-title">Approve &amp; Publish</div><div class="wf-desc">RN approves. Shift type auto-detected from clock. Full record persisted: raw input, original AI output, RN-edited output, risk flags, urgency, submitter ID, approval timestamp, shift date.</div></div></div>
+    <div class="wf-step reveal"><div class="wf-dot">📺</div><div class="wf-body"><div class="wf-tag">Stage 07</div><div class="wf-title">Live Dashboard — Real-Time Broadcast</div><div class="wf-desc">Supabase Realtime instantly pushes the new handover to all connected clients. Carers see plain task lists. RNs see full ISBAR summaries + risk flags. Auto-sorted by urgency, colour-coded for priority.</div></div></div>
+  </div>
+</section>
+
+<div class="div"></div>
+
+<!-- ── TECHNICAL ── -->
+<section class="section" id="technical">
+  <div class="reveal">
+    <div class="section-tag">Technical Reference</div>
+    <h2>Database, Schema &amp; API</h2>
+    <p class="section-sub">Supabase PostgreSQL · Tokyo cluster (aws-1) · Row-Level Security on all tables · Schema managed via incremental migration scripts.</p>
+  </div>
+
+  <div class="tabs reveal">
+    <button class="tbtn on" onclick="st2(event,'schema')">Database Schema</button>
+    <button class="tbtn" onclick="st2(event,'api')">API Routes</button>
+    <button class="tbtn" onclick="st2(event,'json')">AI Output JSON</button>
+  </div>
+
+  <div id="tp2-schema" class="tpanel on">
+    <div style="overflow-x:auto;border:1px solid var(--border);border-radius:16px;background:var(--surface)">
+      <table class="tbl">
+        <thead><tr><th>Table</th><th>Column</th><th>Type</th><th>Key</th><th>Notes</th></tr></thead>
+        <tbody>
+          <tr><td rowspan="3" style="font-weight:700;color:var(--accent3);border-right:1px solid var(--border)">facilities</td><td><span class="mono">id</span></td><td><span class="mono">uuid</span></td><td><span class="pill pk">PK</span></td><td>Auto-generated facility identifier</td></tr>
+          <tr><td><span class="mono">name</span></td><td><span class="mono">text</span></td><td></td><td>Human-readable facility name</td></tr>
+          <tr><td><span class="mono">code</span></td><td><span class="mono">text</span></td><td></td><td>Unique short code (e.g. ADL001)</td></tr>
+          <tr style="border-top:2px solid var(--border)"><td rowspan="3" style="font-weight:700;color:var(--accent3);border-right:1px solid var(--border)">wings</td><td><span class="mono">id</span></td><td><span class="mono">uuid</span></td><td><span class="pill pk">PK</span></td><td>Wing identifier</td></tr>
+          <tr><td><span class="mono">facility_id</span></td><td><span class="mono">uuid</span></td><td><span class="pill fk">FK</span></td><td>→ facilities.id (cascade delete)</td></tr>
+          <tr><td><span class="mono">name</span></td><td><span class="mono">text</span></td><td></td><td>Wing name (e.g. "North Wing")</td></tr>
+          <tr style="border-top:2px solid var(--border)"><td rowspan="6" style="font-weight:700;color:var(--accent3);border-right:1px solid var(--border)">residents</td><td><span class="mono">id</span></td><td><span class="mono">uuid</span></td><td><span class="pill pk">PK</span></td><td>Resident identifier</td></tr>
+          <tr><td><span class="mono">facility_id</span></td><td><span class="mono">uuid</span></td><td><span class="pill fk">FK</span></td><td>→ facilities.id</td></tr>
+          <tr><td><span class="mono">wing_id</span></td><td><span class="mono">uuid</span></td><td><span class="pill nu">NULLABLE FK</span></td><td>→ wings.id (set null on delete)</td></tr>
+          <tr><td><span class="mono">name</span></td><td><span class="mono">text</span></td><td></td><td>Full resident name</td></tr>
+          <tr><td><span class="mono">room_number</span></td><td><span class="mono">text</span></td><td></td><td>Room identifier</td></tr>
+          <tr><td><span class="mono">care_level</span></td><td><span class="mono">text</span></td><td></td><td>High / Low / Dementia</td></tr>
+          <tr style="border-top:2px solid var(--border)"><td rowspan="6" style="font-weight:700;color:var(--accent3);border-right:1px solid var(--border)">handovers</td><td><span class="mono">id</span></td><td><span class="mono">uuid</span></td><td><span class="pill pk">PK</span></td><td>Handover record identifier</td></tr>
+          <tr><td><span class="mono">facility_id, resident_id</span></td><td><span class="mono">uuid</span></td><td><span class="pill fk">FK</span></td><td>Links to facility and resident</td></tr>
+          <tr><td><span class="mono">rn_summary</span></td><td><span class="mono">jsonb</span></td><td></td><td>RN-edited ISBAR content</td></tr>
+          <tr><td><span class="mono">rn_summary_original</span></td><td><span class="mono">jsonb</span></td><td></td><td>Original AI output (audit trail)</td></tr>
+          <tr><td><span class="mono">carer_tasks</span></td><td><span class="mono">jsonb</span></td><td></td><td>Array of task objects with tags</td></tr>
+          <tr><td><span class="mono">urgency, risk_flags</span></td><td><span class="mono">text, jsonb</span></td><td></td><td>Clinical risk classification</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tp2-api" class="tpanel">
+    <div style="border:1px solid var(--border);border-radius:16px;background:var(--surface);overflow:hidden">
+      <table class="tbl">
+        <thead><tr><th>Route</th><th>Method</th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><span class="mono">/api/auth/login</span></td><td><span class="method post">POST</span></td><td>Validates staff PIN via bcrypt compare — returns full staff profile and role</td></tr>
+          <tr><td><span class="mono">/api/auth/register-staff</span></td><td><span class="method post">POST</span></td><td>Hashes PIN with bcryptjs (10 rounds) and creates staff record in database</td></tr>
+          <tr><td><span class="mono">/api/generate-handover</span></td><td><span class="method post">POST</span></td><td>Main AI orchestration: generates ISBAR + carer tasks + risk flags via 5-provider cascade</td></tr>
+          <tr><td><span class="mono">/api/enhance-text</span></td><td><span class="method post">POST</span></td><td>Refines a single voice-transcribed text node for clinical clarity, grammar, and Australian English</td></tr>
+          <tr><td><span class="mono">/api/openrouter-models</span></td><td><span class="method get">GET</span></td><td>Fetches live model list from OpenRouter API for the admin configuration panel model selector</td></tr>
+          <tr><td><span class="mono">/api/resident/delete</span></td><td><span class="method post">POST</span></td><td>Soft-deletes a resident (is_active = false) without removing historical handover records</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tp2-json" class="tpanel">
+    <p style="color:var(--muted2);margin-bottom:1rem;font-size:0.83rem">All 5 providers use the same system prompt — strict JSON response schema enforced for consistency across providers.</p>
+    <pre><span class="cm">// /api/generate-handover — enforced AI response schema</span>
+{
+  <span class="kw">"urgency"</span>: <span class="str">"critical | attention | routine"</span>,
+
+  <span class="kw">"risk_flags"</span>: [<span class="str">"fall"</span>, <span class="str">"refused medication"</span>, ...],
+  <span class="cm">// 7 detectable flags: fall · injury · refused medication · medication error</span>
+  <span class="cm">//                   aggression · hospital transfer · rapid deterioration</span>
+
+  <span class="kw">"flags_status"</span>: <span class="str">"all_present | some_missing | none_detected"</span>,
+
+  <span class="kw">"rn_summary"</span>: {
+    <span class="kw">"identify"</span>:      <span class="str">"Name, Room, Age, Care Level"</span>,
+    <span class="kw">"situation"</span>:     <span class="str">"Current clinical status"</span>,
+    <span class="kw">"background"</span>:    <span class="str">"Relevant history and ongoing conditions"</span>,
+    <span class="kw">"assessment"</span>:    <span class="str">"Clinical interpretation and evaluation"</span>,
+    <span class="kw">"recommendation"</span>: <span class="str">"Actions required of incoming RN"</span>
+  },
+
+  <span class="kw">"carer_tasks"</span>: [
+    {
+      <span class="kw">"title"</span>:       <span class="str">"Short tagline (e.g. 'Comfort Check')"</span>,
+      <span class="kw">"description"</span>: <span class="str">"Plain-English action in Australian English"</span>,
+      <span class="kw">"tags"</span>: [<span class="str">"incidents"</span>, <span class="str">"medication"</span>, <span class="str">"hygiene"</span>, <span class="str">"mobility"</span>, ...]
+    }
+  ],
+
+  <span class="kw">"follow_up_questions"</span>: [
+    <span class="str">"Only generated if critical safety info is MISSING — max 2 questions"</span>
+  ]
+}</pre>
+  </div>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="footer-logo">Handoverly</div>
+  <div class="footer-sub">
+    AI-Powered Clinical Handover System · Australian Residential Aged Care<br/>
+    Built on Next.js · Supabase · Anthropic Claude · Australian English (en-AU)
+  </div>
+  <div class="footer-badges">
+    <span class="fbadge">Context-Aware CDSS</span>
+    <span class="fbadge">Human-in-the-Loop</span>
+    <span class="fbadge">Fault-Tolerant AI</span>
+    <span class="fbadge">Real-Time via Supabase</span>
+    <span class="fbadge">Voice Dictation (en-AU)</span>
+    <span class="fbadge">bcrypt Authentication</span>
+    <span class="fbadge">Row-Level Security</span>
+  </div>
+</footer>
+
+<script>
+/* ── PARTICLE CANVAS ── */
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
+let W, H, particles = [];
+function resize() {
+  W = canvas.width = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+class P {
+  constructor() { this.reset(); this.y = Math.random() * H; }
+  reset() {
+    this.x = Math.random() * W;
+    this.y = H + 10;
+    this.r = Math.random() * 1.5 + 0.3;
+    this.vy = -(Math.random() * 0.4 + 0.1);
+    this.vx = (Math.random() - 0.5) * 0.2;
+    this.a = Math.random() * 0.5 + 0.1;
+    this.hue = Math.random() > 0.5 ? 240 : 260;
+  }
+  update() {
+    this.x += this.vx; this.y += this.vy;
+    if (this.y < -10) this.reset();
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.fillStyle = `hsla(${this.hue}, 80%, 75%, ${this.a})`;
+    ctx.fill();
+  }
+}
+for (let i = 0; i < 120; i++) particles.push(new P());
+
+function loop() {
+  ctx.clearRect(0, 0, W, H);
+  particles.forEach(p => { p.update(); p.draw(); });
+  requestAnimationFrame(loop);
+}
+loop();
+
+/* ── TABS ── */
+function st(e, name) {
+  document.querySelectorAll('#features .tpanel').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('#features .tbtn').forEach(b => b.classList.remove('on'));
+  document.getElementById('tp-' + name).classList.add('on');
+  e.target.classList.add('on');
+}
+function st2(e, name) {
+  document.querySelectorAll('#technical .tpanel').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('#technical .tbtn').forEach(b => b.classList.remove('on'));
+  document.getElementById('tp2-' + name).classList.add('on');
+  e.target.classList.add('on');
+}
+
+/* ── SCROLL REVEAL ── */
+const ro = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add('v'); ro.unobserve(e.target); } });
+}, { threshold: 0.08 });
+document.querySelectorAll('.reveal').forEach(el => ro.observe(el));
+
+/* ── COUNTER ANIMATION ── */
+function count(el) {
+  const t = parseInt(el.dataset.t);
+  let c = 0;
+  const iv = setInterval(() => {
+    c = Math.min(c + 1, t);
+    el.textContent = c;
+    if (c >= t) clearInterval(iv);
+  }, 55);
+}
+const co = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.querySelectorAll('[data-t]').forEach(count);
+      co.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.4 });
+document.querySelectorAll('.stats-grid').forEach(el => co.observe(el));
+
+/* ── NAV ACTIVE ── */
+const navLinks = document.querySelectorAll('.nav-links a');
+window.addEventListener('scroll', () => {
+  let cur = '';
+  document.querySelectorAll('section[id]').forEach(s => {
+    if (window.scrollY >= s.offsetTop - 130) cur = s.id;
+  });
+  navLinks.forEach(a => {
+    a.style.color = a.getAttribute('href') === '#' + cur ? 'var(--accent3)' : '';
+    a.style.background = a.getAttribute('href') === '#' + cur ? 'rgba(99,102,241,0.08)' : '';
+  });
+});
+</script>
+</body>
+</html>
