@@ -237,6 +237,7 @@ export default function ReviewHandover() {
       };
 
       await addToQueue({
+        id: crypto.randomUUID(),
         resident_id: residentId,
         payload: {
           endpoint: '/api/sync-handover',
