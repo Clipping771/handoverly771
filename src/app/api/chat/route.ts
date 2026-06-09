@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     const { data: handovers } = await supabase
       .from('handovers')
       .select(`
-        shift_date, shift_type, urgency, risk_flags, rn_summary,
+        shift_date, shift_type, urgency, risk_flags, rn_summary, carer_tasks,
         resident:residents (name, room_number)
       `)
       .eq('facility_id', facilityId)
@@ -47,13 +47,18 @@ export async function POST(request: Request) {
 
     let contextStr = 'No handovers found in the last 14 days.';
     if (handovers && handovers.length > 0) {
-      contextStr = handovers.slice(0, 50).map((h: any) => 
-        `Resident: ${h.resident?.name} (Room ${h.resident?.room_number})
+      contextStr = handovers.slice(0, 50).map((h: any) => {
+        const carerTasksStr = h.carer_tasks && h.carer_tasks.length > 0
+          ? h.carer_tasks.map((t: any) => `- ${t.title || t}: ${t.description || ''}`).join('\n')
+          : 'None';
+        return `Resident: ${h.resident?.name} (Room ${h.resident?.room_number})
 Date: ${h.shift_date} (${h.shift_type})
 Urgency: ${h.urgency}
 Flags: ${h.risk_flags?.join(', ') || 'None'}
-Summary: ${h.rn_summary?.situation || ''} ${h.rn_summary?.assessment || ''}`
-      ).join('\n\n---\n\n');
+RN Handover Summary: ${h.rn_summary?.situation || ''} ${h.rn_summary?.assessment || ''}
+Carer Tasks:
+${carerTasksStr}`;
+      }).join('\n\n---\n\n');
     }
 
     let residentsStr = 'No active residents.';
@@ -93,7 +98,7 @@ Example to create a task:
 
 Answer the user's query accurately based ONLY on the provided history. Be concise, professional, and directly address the question.
 
-CRITICAL: If you generate a table, you MUST use proper markdown format with explicit NEWLINES separating every single row (do NOT output tables on a single line).`;
+CRITICAL: If you generate a table, you MUST use proper markdown format with explicit NEWLINES separating every single row, and you MUST include a delimiter row immediately after the headers (e.g. \`|---|---|---|\`).`;
 
     let answerStr: string | null = null;
     const targetProvider = provider || 'auto';
