@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Bot, Send, X, Loader2, CheckCircle2 } from 'lucide-react';
+import { Bot, Send, X, Loader2, CheckCircle2, Trash2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -13,7 +13,31 @@ export default function SmartSearch() {
   const [messages, setMessages] = useState<{ role: 'user' | 'ai'; content: string; actions?: any[] }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  React.useEffect(() => {
+    if (user?.id) {
+      const saved = localStorage.getItem(`handoverly_chat_${user.id}`);
+      if (saved) {
+        try {
+          setMessages(JSON.parse(saved));
+        } catch (e) {}
+      }
+    }
+  }, [user?.id]);
+
+  React.useEffect(() => {
+    if (user?.id) {
+      localStorage.setItem(`handoverly_chat_${user.id}`, JSON.stringify(messages));
+    }
+  }, [messages, user?.id]);
+
   if (!facility || !user) return null;
+
+  const clearChat = () => {
+    if (window.confirm('Are you sure you want to clear the chat history?')) {
+      setMessages([]);
+      localStorage.removeItem(`handoverly_chat_${user.id}`);
+    }
+  };
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,9 +90,16 @@ export default function SmartSearch() {
               <Bot className="w-5 h-5" />
               <span className="font-semibold text-sm tracking-wide">Smart Clinical Assistant</span>
             </div>
-            <button onClick={() => setIsOpen(false)} className="p-1 hover:bg-white/20 rounded-full transition-colors">
-              <X className="w-4 h-4" />
-            </button>
+            <div className="flex items-center gap-1">
+              {messages.length > 0 && (
+                <button onClick={clearChat} className="p-1.5 hover:bg-white/20 rounded-full transition-colors text-slate-300 hover:text-white" title="Clear Chat">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+              <button onClick={() => setIsOpen(false)} className="p-1.5 hover:bg-white/20 rounded-full transition-colors">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
 
           {/* Messages Area */}
