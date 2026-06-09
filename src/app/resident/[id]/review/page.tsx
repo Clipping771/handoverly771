@@ -251,11 +251,11 @@ export default function ReviewHandover() {
       sessionStorage.removeItem('handover_input_method');
       sessionStorage.removeItem('handover_api_result');
 
-      // Trigger background sync
-      triggerSync();
+      // Trigger background sync and wait for it if online
+      toast.success('Submitting handover...');
+      await triggerSync();
 
       router.push('/shift');
-      toast.success('Handover queued for sync.');
     } catch (err) {
       console.error('Failed to submit handover:', err);
       toast.error('Failed to save handover. Please try again.');

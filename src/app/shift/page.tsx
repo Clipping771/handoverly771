@@ -119,6 +119,28 @@ export default function MyShift() {
       if (handError) throw handError;
 
       const statusMap: Record<string, HandoverStatus> = {};
+      
+      // 1. Fetch offline queue items first
+      try {
+        const { getPendingQueue } = await import('@/lib/db');
+        const pendingQueue = await getPendingQueue();
+        pendingQueue.forEach(item => {
+          if (item.payload?.body?.handoverRecord) {
+            const hr = item.payload.body.handoverRecord;
+            statusMap[hr.resident_id] = {
+              resident_id: hr.resident_id,
+              is_approved: true,
+              urgency: hr.urgency || 'routine',
+              shift_type: hr.shift_type || 'morning',
+              updated_at: new Date(item.created_at).toISOString()
+            };
+          }
+        });
+      } catch (e) {
+        console.error('Failed to read local queue:', e);
+      }
+
+      // 2. Override with server data
       (handData || []).forEach((h) => {
         statusMap[h.resident_id] = {
           resident_id: h.resident_id,
