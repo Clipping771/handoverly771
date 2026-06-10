@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { User2, LogOut, Clock, ShieldAlert, Sparkles, Brain, CheckCircle2, Sun, Moon, Activity, Inbox, Volume2, Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
 import AdvancedCalendar from '@/components/AdvancedCalendar';
+import OnboardingTour from '@/components/OnboardingTour';
 
 interface HandoverWithDetails {
   id: string;
@@ -218,7 +219,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#f8f9fa] dark:bg-[#0a0a0c] text-slate-900 dark:text-slate-100 flex flex-col pb-16 font-sans selection:bg-blue-100 dark:selection:bg-blue-900/30 transition-colors duration-300">
-      
+      <OnboardingTour />
       {/* Premium Header */}
       <header className="sticky top-0 z-40 bg-white/80 dark:bg-[#0a0a0c]/80 backdrop-blur-2xl border-b border-slate-200/60 dark:border-white/5 px-6 py-4 transition-colors duration-300">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
@@ -237,6 +238,7 @@ export default function Dashboard() {
 
           <div className="flex items-center gap-3">
             <button
+              id="tour-theme-toggle"
               onClick={toggleTheme}
               className="p-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all duration-200 dark:bg-white/5 dark:hover:bg-white/10 dark:text-slate-300"
               title={theme === 'dark' ? "Switch to Day Mode" : "Switch to Night Mode"}
@@ -246,6 +248,7 @@ export default function Dashboard() {
 
             {user.role === 'carer' ? (
               <Link
+                id="tour-shift-action"
                 href="/tasks"
                 className="px-5 py-2.5 rounded-full bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-semibold dark:bg-[#1a1a1c] dark:border-white/10 dark:hover:border-white/20 dark:text-slate-200 transition-all shadow-sm"
               >
@@ -253,6 +256,7 @@ export default function Dashboard() {
               </Link>
             ) : (
               <Link
+                id="tour-shift-action"
                 href="/shift"
                 className="px-5 py-2.5 rounded-full bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-semibold dark:bg-[#1a1a1c] dark:border-white/10 dark:hover:border-white/20 dark:text-slate-200 transition-all shadow-sm"
               >
@@ -287,7 +291,7 @@ export default function Dashboard() {
           </div>
 
           {/* Role Switcher (Segmented Control) */}
-          <div className="flex bg-slate-200/60 p-1.5 rounded-full dark:bg-white/5 border border-slate-200/50 dark:border-white/5 self-start shadow-inner">
+          <div id="tour-role-switcher" className="flex bg-slate-200/60 p-1.5 rounded-full dark:bg-white/5 border border-slate-200/50 dark:border-white/5 self-start shadow-inner">
             <button
               onClick={() => setFilterRole('carer')}
               className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-semibold transition-all duration-300 ${
@@ -314,7 +318,7 @@ export default function Dashboard() {
         </div>
 
         {/* Advanced Calendar Date Selector */}
-        <div className="mb-8">
+        <div id="tour-calendar" className="mb-8">
           <AdvancedCalendar
             selectedDate={selectedDate}
             onChange={setSelectedDate}
@@ -325,7 +329,7 @@ export default function Dashboard() {
         {/* Toolbar: Urgency, Search, Pagination Limit */}
         <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center mb-8">
           {/* Urgency Filter Tabs */}
-          <div className="flex gap-2 overflow-x-auto no-scrollbar w-full md:w-auto">
+          <div id="tour-urgency-filter" className="flex gap-2 overflow-x-auto no-scrollbar w-full md:w-auto">
             {(['all', 'critical', 'attention', 'routine'] as const).map((tab) => (
               <button
                 key={tab}
@@ -343,7 +347,7 @@ export default function Dashboard() {
 
           <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
             {/* Search Bar */}
-            <div className="relative w-full sm:w-64">
+            <div id="tour-search" className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 type="text"

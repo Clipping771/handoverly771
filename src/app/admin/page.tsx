@@ -148,22 +148,22 @@ export default function AdminSetup() {
   const handleUpdateRole = async (id: string) => {
     if (!editRoleName.trim()) return;
     try {
-      const { error } = await supabase
-        .from('roles')
-        .update({ name: editRoleName.trim().toLowerCase() })
-        .eq('id', id);
-      if (error) throw error;
+      const res = await fetch('/api/roles/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, name: editRoleName })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to update role.');
+      
       setFeedback('Role updated successfully.');
       setEditingRoleId(null);
       loadData();
     } catch (err: any) {
-      if (err.message.includes('unique')) {
-        setError('That role already exists.');
-      } else {
-        setError(err.message || 'Failed to update role.');
-      }
+      setError(err.message || 'Failed to update role.');
     }
   };
+
 
   const loadData = async () => {
     if (!facility) return;
