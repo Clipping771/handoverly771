@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useTheme } from '@/context/ThemeContext';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { ShieldCheck, Plus, Building, UserPlus, AlertCircle, RefreshCw, Sun, Moon, Lock } from 'lucide-react';
+import { ShieldCheck, Plus, Building, UserPlus, AlertCircle, RefreshCw, Sun, Moon, Lock, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 
 interface Facility {
@@ -21,6 +21,7 @@ export default function SystemAdminSetup() {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [masterPassword, setMasterPassword] = useState('');
+  const [showMasterPassword, setShowMasterPassword] = useState(false);
 
   // Facility Form
   const [newFacName, setNewFacName] = useState('');
@@ -31,6 +32,7 @@ export default function SystemAdminSetup() {
   const [adminEmail, setAdminEmail] = useState('');
   const [adminEmpId, setAdminEmpId] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [selectedFacilityId, setSelectedFacilityId] = useState('');
 
   const [feedback, setFeedback] = useState('');
@@ -159,12 +161,19 @@ export default function SystemAdminSetup() {
               <div className="relative flex items-center">
                 <Lock className="absolute left-4 w-4 h-4 text-slate-400" />
                 <input
-                  type="password"
+                  type={showMasterPassword ? 'text' : 'password'}
                   placeholder="Master Password"
                   value={masterPassword}
                   onChange={(e) => setMasterPassword(e.target.value)}
-                  className="w-full h-12 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl pl-11 pr-4 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors"
+                  className="w-full h-12 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl pl-11 pr-11 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500 transition-colors"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowMasterPassword(!showMasterPassword)}
+                  className="absolute right-4 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none transition-colors cursor-pointer"
+                >
+                  {showMasterPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
             {error && <p className="text-rose-500 text-xs font-semibold text-center">{error}</p>}
@@ -362,13 +371,22 @@ export default function SystemAdminSetup() {
               </div>
               <div>
                 <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">Password</label>
-                <input
-                  type="password"
-                  placeholder="Min 6 characters"
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                  className="w-full h-10 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 text-xs focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-slate-100"
-                />
+                <div className="relative flex items-center">
+                  <input
+                    type={showAdminPassword ? 'text' : 'password'}
+                    placeholder="Min 6 characters"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    className="w-full h-10 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg pl-3 pr-10 text-xs focus:outline-none focus:border-indigo-500 text-slate-800 dark:text-slate-100"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAdminPassword(!showAdminPassword)}
+                    className="absolute right-3 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none transition-colors cursor-pointer"
+                  >
+                    {showAdminPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
               </div>
 
               <button

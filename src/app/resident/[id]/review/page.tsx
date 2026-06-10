@@ -67,6 +67,28 @@ export default function ReviewHandover() {
 
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [shiftDate, setShiftDate] = useState(() => {
+    const now = new Date();
+    const localHour = now.getHours();
+    const targetDate = new Date(now);
+    // 12 AM to 12 PM: Typically Night Shift submission, so date is Yesterday
+    if (localHour >= 0 && localHour < 12) {
+      targetDate.setDate(targetDate.getDate() - 1);
+    }
+    const year = targetDate.getFullYear();
+    const month = String(targetDate.getMonth() + 1).padStart(2, '0');
+    const day = String(targetDate.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
+  const [shiftType, setShiftType] = useState<'morning' | 'afternoon' | 'night'>(() => {
+    const localHour = new Date().getHours();
+    // 12 AM to 12 PM: Night Shift submission
+    if (localHour >= 0 && localHour < 12) return 'night';
+    // 12 PM to 5 PM (17:00): Morning Shift submission
+    if (localHour >= 12 && localHour < 17) return 'morning';
+    // 5 PM to 12 AM: Afternoon Shift submission
+    return 'afternoon';
+  });
   const { triggerSync } = useSync();
 
   useEffect(() => {
@@ -201,19 +223,8 @@ export default function ReviewHandover() {
       return;
     }
 
-    setIsSubmitting(true);
-
     try {
-      const localHour = new Date().getHours();
-      let shiftType: 'morning' | 'afternoon' | 'night' = 'morning';
-      if (localHour >= 14 && localHour < 22) {
-        shiftType = 'afternoon';
-      } else if (localHour >= 22 || localHour < 6) {
-        shiftType = 'night';
-      }
-
-      const todayStr = new Date().toISOString().split('T')[0];
-
+      setIsSubmitting(true);
       // Generate a mock device id and version number for MVP
       const deviceId = localStorage.getItem('device_id') || `Device-${Math.floor(Math.random() * 1000)}`;
       localStorage.setItem('device_id', deviceId);
@@ -231,7 +242,7 @@ export default function ReviewHandover() {
         flags_status: flagsStatus,
         is_approved: true,
         approved_at: new Date().toISOString(),
-        shift_date: todayStr,
+        shift_date: shiftDate,
         shift_type: shiftType,
         input_method: inputMethod,
         device_id: deviceId,
@@ -341,6 +352,43 @@ export default function ReviewHandover() {
                 </span>
               ))
             )}
+          </div>
+        </div>
+
+        {/* Shift Details Selectors */}
+        <div className="mb-6 bg-white border border-slate-200 dark:bg-[#121214] dark:border-[#202024] p-5 rounded-[24px] shadow-sm">
+          <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/60 px-4 py-2.5 rounded-xl border border-slate-100 dark:border-[#202024]">
+            <div>
+              <span className="font-semibold text-indigo-600 dark:text-indigo-400">🕐 Auto-selected:</span>
+              <span className="ml-1 font-bold text-slate-800 dark:text-slate-200 capitalize">{shiftType} Shift</span>
+              <span className="mx-1.5">•</span>
+              <span className="font-medium">{new Date(shiftDate + 'T00:00:00').toLocaleDateString([], { day: 'numeric', month: 'short' })}</span>
+            </div>
+            <span className="text-[10px] text-slate-400 dark:text-slate-500 font-normal sm:ml-auto">If incorrect, please change below ↓</span>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="flex-1">
+              <label className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider block mb-1.5">Shift Date</label>
+              <input
+                type="date"
+                value={shiftDate}
+                onChange={(e) => setShiftDate(e.target.value)}
+                className="w-full h-11 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-[#202024] rounded-xl px-3.5 text-xs focus:outline-none text-slate-700 dark:text-slate-350"
+              />
+            </div>
+            <div className="flex-1">
+              <label className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider block mb-1.5">Shift Type</label>
+              <select
+                value={shiftType}
+                onChange={(e) => setShiftType(e.target.value as any)}
+                className="w-full h-11 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-[#202024] rounded-xl px-3.5 text-xs focus:outline-none text-slate-705 dark:text-slate-350 cursor-pointer"
+              >
+                <option value="morning">Morning Shift</option>
+                <option value="afternoon">Afternoon Shift</option>
+                <option value="night">Night Shift</option>
+              </select>
+            </div>
           </div>
         </div>
 

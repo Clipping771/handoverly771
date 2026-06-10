@@ -30,39 +30,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setPendingCount(count);
   }, []);
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setIsOnline(navigator.onLine);
-
-      const handleOnline = () => {
-        setIsOnline(true);
-        toast.success('Connection restored. Syncing...', { id: 'network-status' });
-        triggerSync();
-      };
-
-      const handleOffline = () => {
-        setIsOnline(false);
-        toast.error('Offline mode enabled. Drafts will be saved locally.', { id: 'network-status', duration: 4000 });
-      };
-
-      window.addEventListener('online', handleOnline);
-      window.addEventListener('offline', handleOffline);
-
-      // Initial check
-      checkQueueCount();
-      
-      // Auto-sync interval just in case
-      const interval = setInterval(checkQueueCount, 15000);
-
-      return () => {
-        window.removeEventListener('online', handleOnline);
-        window.removeEventListener('offline', handleOffline);
-        clearInterval(interval);
-      };
-    }
-  }, [checkQueueCount]);
-
-  const triggerSync = async () => {
+  const triggerSync = useCallback(async () => {
     if (!navigator.onLine || syncInProgress) return;
 
     try {
@@ -83,9 +51,6 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           await updateQueueItemStatus(item.id, 'syncing');
           
-          // Here we would normally do the API call.
-          // Since this is a generic queue, the payload should determine the endpoint.
-          // For MVP, we assume payload has `endpoint`, `method`, and `body`
           const res = await fetch(item.payload.endpoint || '/api/generate-handover', {
             method: item.payload.method || 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -115,7 +80,43 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setSyncInProgress(false);
     }
-  };
+  }, [syncInProgress, checkQueueCount]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setIsOnline(navigator.onLine);
+
+      const handleOnline = () => {
+        setIsOnline(true);
+        toast.success('Connection restored. Syncing...', { id: 'network-status' });
+        triggerSync();
+      };
+
+      const handleOffline = () => {
+        setIsOnline(false);
+        toast.error('Offline mode enabled. Drafts will be saved locally.', { id: 'network-status', duration: 4000 });
+      };
+
+      window.addEventListener('online', handleOnline);
+      window.addEventListener('offline', handleOffline);
+
+      // Initial check and trigger sync
+      checkQueueCount();
+      triggerSync();
+      
+      // Auto-sync interval
+      const interval = setInterval(() => {
+        checkQueueCount();
+        triggerSync();
+      }, 15000);
+
+      return () => {
+        window.removeEventListener('online', handleOnline);
+        window.removeEventListener('offline', handleOffline);
+        clearInterval(interval);
+      };
+    }
+  }, [checkQueueCount, triggerSync]);
 
   return (
     <SyncContext.Provider value={{ isOnline, pendingCount, syncInProgress, triggerSync }}>

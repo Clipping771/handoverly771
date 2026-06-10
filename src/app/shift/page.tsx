@@ -47,13 +47,7 @@ export default function MyShift() {
   // Modal States for Dynamic Resident Insertion
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [newResName, setNewResName] = useState('');
-  const [newResRoom, setNewResRoom] = useState('');
-  const [newResDob, setNewResDob] = useState('');
-  const [newResCare, setNewResCare] = useState('High');
-  const [newResWingId, setNewResWingId] = useState('');
-  const [modalError, setModalError] = useState('');
-  const [submittingModal, setSubmittingModal] = useState(false);
+
 
   const handleDeleteResident = async (id: string, name: string) => {
     const confirmed = window.confirm(`⚠️ WARNING: Are you absolutely sure you want to delete the profile of ${name}?\n\nThis will remove the resident from the active shift list and cannot be undone.`);
@@ -109,7 +103,14 @@ export default function MyShift() {
       if (resError) throw resError;
       setResidents(resData || []);
 
-      const todayStr = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const localHour = now.getHours();
+      const targetDate = new Date(now);
+      if (localHour >= 0 && localHour < 12) {
+        targetDate.setDate(targetDate.getDate() - 1);
+      }
+      const todayStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+
       const { data: handData, error: handError } = await supabase
         .from('handovers')
         .select('resident_id, is_approved, urgency, shift_type, created_at')
@@ -167,49 +168,7 @@ export default function MyShift() {
     logout();
   };
 
-  const handleAddResidentSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setModalError('');
-    if (!newResName || !newResRoom || !newResDob) {
-      setModalError('Please fill in all fields.');
-      return;
-    }
-    if (!facility) return;
 
-    setSubmittingModal(true);
-    try {
-      const { data, error } = await supabase
-        .from('residents')
-        .insert([{
-          facility_id: facility.id,
-          wing_id: newResWingId || null,
-          name: newResName,
-          room_number: newResRoom,
-          dob: newResDob,
-          care_level: newResCare
-        }])
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      // Update local state instantly
-      setResidents((prev) => [...prev, data].sort((a, b) => a.room_number.localeCompare(b.room_number)));
-      
-      // Close and reset
-      setShowAddModal(false);
-      setNewResName('');
-      setNewResRoom('');
-      setNewResDob('');
-      setNewResCare('High');
-      setNewResWingId('');
-    } catch (err: any) {
-      console.error(err);
-      setModalError(err.message || 'Failed to register resident.');
-    } finally {
-      setSubmittingModal(false);
-    }
-  };
 
   if (authLoading || !user || !facility) {
     return (
@@ -448,7 +407,7 @@ export default function MyShift() {
                         Submitted
                       </span>
                     ) : (
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 flex items-center gap-1.5 font-medium">
+                      <span className="text-[10px] text-slate-440 dark:text-slate-500 flex items-center gap-1.5 font-medium">
                         <FileWarning className="w-4 h-4" />
                         Awaiting
                       </span>
@@ -488,30 +447,107 @@ export default function MyShift() {
         )}
       </main>
 
-      {/* Dynamic Resident Registration Modal (Google Premium style) */}
-      <AnimatePresence>
-        {showAddModal && (
+      <AddResidentModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        wings={wings}
+        facilityId={facility.id}
+        theme={theme}
+        onAddSuccess={(newResident) => {
+          setResidents((prev) => [...prev, newResident].sort((a, b) => a.room_number.localeCompare(b.room_number)));
+        }}
+      />
+
+      <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} />
+    </div>
+  );
+}
+
+interface AddResidentModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  wings: Wing[];
+  facilityId: string;
+  theme: string;
+  onAddSuccess: (newResident: Resident) => void;
+}
+
+function AddResidentModal({ isOpen, onClose, wings, facilityId, theme, onAddSuccess }: AddResidentModalProps) {
+  const [newResName, setNewResName] = useState('');
+  const [newResRoom, setNewResRoom] = useState('');
+  const [newResDob, setNewResDob] = useState('');
+  const [newResCare, setNewResCare] = useState('High');
+  const [newResWingId, setNewResWingId] = useState('');
+  const [modalError, setModalError] = useState('');
+  const [submittingModal, setSubmittingModal] = useState(false);
+
+  const handleAddResidentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setModalError('');
+    if (!newResName || !newResRoom || !newResDob) {
+      setModalError('Please fill in all fields.');
+      return;
+    }
+
+    setSubmittingModal(true);
+    try {
+      const { data, error } = await supabase
+        .from('residents')
+        .insert([{
+          facility_id: facilityId,
+          wing_id: newResWingId || null,
+          name: newResName,
+          room_number: newResRoom,
+          dob: newResDob,
+          care_level: newResCare
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      onAddSuccess(data);
+      
+      // Close and reset
+      onClose();
+      setNewResName('');
+      setNewResRoom('');
+      setNewResDob('');
+      setNewResCare('High');
+      setNewResWingId('');
+    } catch (err: any) {
+      console.error(err);
+      setModalError(err.message || 'Failed to register resident.');
+    } finally {
+      setSubmittingModal(false);
+    }
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md px-4"
+        >
           <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md px-4"
+            initial={{ scale: 0.95, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.95, opacity: 0, y: 20 }}
+            className="w-full max-w-[400px] bg-white dark:bg-[#121214] border border-[#e3e3e3] dark:border-[#202024] p-7 rounded-[28px] shadow-2xl relative z-50 flex flex-col"
           >
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0, y: 20 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 20 }}
-              className="w-full max-w-[400px] bg-white dark:bg-[#121214] border border-[#e3e3e3] dark:border-[#202024] p-7 rounded-[28px] shadow-2xl relative z-50 flex flex-col"
-            >
-              
-              {/* Modal Header */}
+            
+            {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-[#e3e3e3] dark:border-[#202024] pb-4.5 mb-6">
               <div>
                 <h3 className="text-lg font-normal tracking-tight text-slate-900 dark:text-white">Register Resident</h3>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Add a new admission profile to this facility.</p>
+                <p className="text-[11px] text-slate-550 dark:text-slate-400 mt-0.5">Add a new admission profile to this facility.</p>
               </div>
               <button
-                onClick={() => setShowAddModal(false)}
+                type="button"
+                onClick={onClose}
                 className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-400 hover:text-slate-650 transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
@@ -535,7 +571,7 @@ export default function MyShift() {
                   placeholder="e.g. Sarah Jenkins"
                   value={newResName}
                   onChange={(e) => setNewResName(e.target.value)}
-                  className="w-full h-11 bg-slate-50 dark:bg-slate-900/60 border border-[#e3e3e3] dark:border-[#202024] rounded-xl px-3.5 text-xs focus:outline-none focus:border-[#1f1f1f] dark:focus:border-[#e3e3e3] text-slate-850 dark:text-slate-100 font-medium"
+                  className="w-full h-11 bg-slate-50 dark:bg-slate-900/60 border border-[#e3e3e3] dark:border-[#202024] rounded-xl px-3.5 text-xs focus:outline-none focus:border-[#1f1f1f] dark:focus:border-[#e3e3e3] text-slate-800 dark:text-slate-100 font-medium"
                 />
               </div>
 
@@ -547,7 +583,7 @@ export default function MyShift() {
                     placeholder="e.g. 204"
                     value={newResRoom}
                     onChange={(e) => setNewResRoom(e.target.value)}
-                    className="w-full h-11 bg-slate-50 dark:bg-slate-900/60 border border-[#e3e3e3] dark:border-[#202024] rounded-xl px-3.5 text-xs focus:outline-none focus:border-[#1f1f1f] dark:focus:border-[#e3e3e3] text-slate-850 dark:text-slate-100 font-bold"
+                    className="w-full h-11 bg-slate-50 dark:bg-slate-900/60 border border-[#e3e3e3] dark:border-[#202024] rounded-xl px-3.5 text-xs focus:outline-none focus:border-[#1f1f1f] dark:focus:border-[#e3e3e3] text-slate-800 dark:text-slate-100 font-bold"
                   />
                 </div>
                 <div>
@@ -566,7 +602,7 @@ export default function MyShift() {
                 <select
                   value={newResCare}
                   onChange={(e) => setNewResCare(e.target.value)}
-                  className="w-full h-11 bg-slate-50 dark:bg-slate-900/60 border border-[#e3e3e3] dark:border-[#202024] rounded-xl px-3.5 text-xs focus:outline-none text-slate-700 dark:text-slate-350"
+                  className="w-full h-11 bg-slate-50 dark:bg-slate-900/60 border border-[#e3e3e3] dark:border-[#202024] rounded-xl px-3.5 text-xs focus:outline-none text-slate-700 dark:text-slate-300"
                 >
                   <option value="High">High Care</option>
                   <option value="Low">Low Care</option>
@@ -579,7 +615,7 @@ export default function MyShift() {
                 <select
                   value={newResWingId}
                   onChange={(e) => setNewResWingId(e.target.value)}
-                  className="w-full h-11 bg-slate-50 dark:bg-slate-900/60 border border-[#e3e3e3] dark:border-[#202024] rounded-xl px-3.5 text-xs focus:outline-none text-slate-700 dark:text-slate-350"
+                  className="w-full h-11 bg-slate-50 dark:bg-slate-900/60 border border-[#e3e3e3] dark:border-[#202024] rounded-xl px-3.5 text-xs focus:outline-none text-slate-700 dark:text-slate-300"
                 >
                   <option value="">No Wing (Unassigned)</option>
                   {wings.map((w) => (
@@ -592,7 +628,7 @@ export default function MyShift() {
               <div className="flex gap-3 pt-5 border-t border-[#e3e3e3] dark:border-[#202024] mt-6">
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={onClose}
                   className="flex-1 h-11 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-[#1c1c21] dark:hover:bg-[#25252b] text-slate-700 dark:text-slate-250 text-xs font-semibold tracking-wider uppercase transition-all duration-150 cursor-pointer"
                 >
                   Cancel
@@ -614,11 +650,9 @@ export default function MyShift() {
                 </button>
               </div>
             </form>
-            </motion.div>
           </motion.div>
-        )}
-      </AnimatePresence>
-      <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} />
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

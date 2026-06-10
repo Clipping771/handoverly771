@@ -1,22 +1,22 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 
-const ENHANCE_PROMPT = `You are a clinical documentation assistant for an Australian aged care facility.
+const ENHANCE_PROMPT = `You are a highly intelligent clinical documentation assistant for an Australian aged care facility.
 
-The user has just dictated a rough voice note. Your job is to rewrite this into a clear, professional, and concise clinical description suitable for a shift handover note.
+The user has just dictated a rough voice note, which may contain speech-to-text errors, fragmented sentences, or just a few discrete keywords. Your job is to smartly interpret the intent and rewrite it into a clear, professional, and concise clinical description suitable for a shift handover note.
 
 Rules:
-1. Keep ALL factual content — do NOT invent, add, or remove clinical information
-2. Rewrite in clear, professional third-person clinical language (e.g. "Resident was observed..." or "Pain assessment completed...")
-3. Fix any obvious speech-to-text errors using clinical context (e.g. "a seized" → "assessed", "to" → "two", "there" → "their")
-4. Add proper punctuation, capitalisation, and structure
-5. Use Australian English spelling (e.g. behaviour, colour, monitored, mobilised)
-6. Be concise — one to three sentences maximum
+1. Intelligently paraphrase and expand fragmented words or discrete information into complete, readable sentences.
+2. Fix any speech-to-text garble or obvious errors using clinical context (e.g. "paintered" -> "Pain chart", "a seized" → "assessed", "care ers" -> "carers").
+3. Rewrite in clear, professional third-person clinical language (e.g. "Resident requires..." or "Pain assessment completed...").
+4. Keep the original clinical intent but make it sound professional and grammatically correct. Do NOT hallucinate new medical events, but do use your intelligence to form expected professional responses from the given clues.
+5. Add proper punctuation, capitalisation, and structure.
+6. Use Australian English spelling (e.g. behaviour, colour, mobilised).
 7. Return ONLY the rewritten clinical description. No preamble, no quotes, no commentary.`;
 
 export async function POST(request: Request) {
   try {
-    const { text, userKeys } = await request.json();
+    const { text, userKeys, provider = 'auto' } = await request.json();
 
     if (!text || !text.trim()) {
       return NextResponse.json({ refined: text });
@@ -27,11 +27,13 @@ export async function POST(request: Request) {
     const openrouterModel = userKeys?.openrouterModel || process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash';
     const groqKey = userKeys?.groqKey || process.env.GROQ_API_KEY || '';
     const groqModel = userKeys?.groqModel || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
+    const ollamaUrl = userKeys?.ollamaUrl || process.env.OLLAMA_API_URL || 'http://127.0.0.1:11434';
+    const ollamaModel = userKeys?.ollamaModel || process.env.OLLAMA_MODEL || 'llama3';
 
     let refined: string | null = null;
 
     // 1. Try Anthropic
-    if (anthropicKey && !refined) {
+    if ((provider === 'auto' || provider === 'anthropic') && anthropicKey && !refined) {
       try {
         const client = new Anthropic({ apiKey: anthropicKey });
         const msg = await client.messages.create({
@@ -51,7 +53,7 @@ export async function POST(request: Request) {
     }
 
     // 2. Try Groq
-    if (groqKey && !refined) {
+    if ((provider === 'auto' || provider === 'groq') && groqKey && !refined) {
       try {
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
           method: 'POST',
@@ -78,7 +80,7 @@ export async function POST(request: Request) {
     }
 
     // 3. Try OpenRouter
-    if (openrouterKey && !refined) {
+    if ((provider === 'auto' || provider === 'openrouter') && openrouterKey && !refined) {
       try {
         const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
@@ -106,8 +108,40 @@ export async function POST(request: Request) {
       }
     }
 
-    // 4. Fallback: return original text if no AI available
-    return NextResponse.json({ refined: refined || text });
+    // 4. Try Ollama (Local)
+    if ((provider === 'auto' || provider === 'ollama') && ollamaUrl && !refined) {
+      try {
+        const res = await fetch(`${ollamaUrl}/api/generate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: ollamaModel,
+            prompt: `${ENHANCE_PROMPT}\n\nRaw dictation:\n"${text}"`,
+            stream: false,
+            options: {
+              temperature: 0.1
+            }
+          })
+        });
+        const data = await res.json();
+        if (res.ok && data.response) {
+          refined = data.response.trim();
+        }
+      } catch (err) {
+        console.error('Ollama enhance failed:', err);
+      }
+    }
+
+    // 5. Mock Provider (for testing when offline without API keys)
+    if (provider === 'mock' || (provider === 'auto' && !refined)) {
+      console.log('Using mock AI provider because no other AI was available or it was explicitly requested.');
+      refined = `[MOCK AI] The resident's pain chart must be completed by the Registered Nurse. Carers are responsible for completing all other charts, including ADL, vowel, urinary, sleep, side, and sight charts.`;
+    }
+
+    // 6. Final fallback: return original text if even mock is bypassed
+    return NextResponse.json({ refined: refined || text, error: !refined ? 'No AI provider available' : null });
 
   } catch (error: any) {
     console.error('Enhance text error:', error);

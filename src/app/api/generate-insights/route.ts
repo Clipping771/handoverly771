@@ -38,8 +38,10 @@ export async function POST(request: Request) {
 
     if (!handovers || handovers.length === 0) {
       return NextResponse.json({ 
-        insights: 'No recent handovers available to generate insights.',
-        flags: []
+        summary: 'No recent handovers available to generate insights.',
+        trends: [],
+        recommendations: [],
+        risk_level: 'Low'
       });
     }
 

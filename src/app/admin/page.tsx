@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { ShieldCheck, Plus, Trash2, Building, Users, AlertCircle, RefreshCw, Sun, Moon, Search, ChevronDown, LogOut, UserPlus, Edit3, Save, X } from 'lucide-react';
+import { ShieldCheck, Plus, Trash2, Building, Users, AlertCircle, RefreshCw, Sun, Moon, Search, ChevronDown, LogOut, UserPlus, Edit3, Save, X, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 
 interface Staff {
@@ -55,6 +55,7 @@ export default function AdminSetup() {
   const [staffName, setStaffName] = useState('');
   const [staffRole, setStaffRole] = useState<'rn' | 'carer' | 'admin'>('carer');
   const [staffPin, setStaffPin] = useState('');
+  const [showStaffPin, setShowStaffPin] = useState(false);
   const [staffEmployeeId, setStaffEmployeeId] = useState('');
   const [staffEmail, setStaffEmail] = useState('');
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
@@ -580,7 +581,16 @@ export default function AdminSetup() {
                 </div>
                 <div>
                   <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block pl-1 mb-2">Password</label>
-                  <input type="password" value={staffPin} onChange={(e) => setStaffPin(e.target.value)} className="w-full h-11 bg-white dark:bg-[#070a14] border border-slate-200/80 dark:border-white/10 rounded-xl px-4 text-sm focus:outline-none focus:border-slate-400 dark:focus:border-slate-500/50" placeholder="Min 6 chars" />
+                  <div className="relative flex items-center">
+                    <input type={showStaffPin ? 'text' : 'password'} value={staffPin} onChange={(e) => setStaffPin(e.target.value)} className="w-full h-11 bg-white dark:bg-[#070a14] border border-slate-200/80 dark:border-white/10 rounded-xl pl-4 pr-10 text-sm focus:outline-none focus:border-slate-400 dark:focus:border-slate-500/50" placeholder="Min 6 chars" />
+                    <button
+                      type="button"
+                      onClick={() => setShowStaffPin(!showStaffPin)}
+                      className="absolute right-3.5 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none transition-colors cursor-pointer"
+                    >
+                      {showStaffPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block pl-1 mb-2">Role</label>

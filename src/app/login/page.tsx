@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ShieldAlert, LogIn, User, Lock, Sun, Moon, Hexagon, UserPlus, Mail, BadgeCent, ChevronDown } from 'lucide-react';
+import { ShieldAlert, LogIn, User, Lock, Sun, Moon, Hexagon, UserPlus, Mail, BadgeCent, ChevronDown, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function Login() {
@@ -15,6 +15,7 @@ export default function Login() {
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [registerName, setRegisterName] = useState('');
@@ -22,6 +23,7 @@ export default function Login() {
   const [registerEmpId, setRegisterEmpId] = useState('');
   const [registerRole, setRegisterRole] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
   const [registerFacility, setRegisterFacility] = useState('');
   
   const [facilities, setFacilities] = useState<{id: string, name: string}[]>([]);
@@ -218,12 +220,19 @@ export default function Login() {
                 <div className="relative flex items-center">
                   <Lock className="absolute left-4 w-4 h-4 text-slate-400 dark:text-slate-500 transition-colors group-focus-within/input:text-indigo-500" />
                   <input
-                    type="password"
+                    type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full h-12 bg-white/50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-2xl pl-11 pr-4 text-sm font-medium tracking-wider text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 dark:focus:border-indigo-500/50 transition-all"
+                    className="w-full h-12 bg-white/50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-2xl pl-11 pr-11 text-sm font-medium tracking-wider text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 dark:focus:border-indigo-500/50 transition-all"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-4 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none transition-colors cursor-pointer"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
 
@@ -280,9 +289,16 @@ export default function Login() {
               </div>
               <div className="space-y-1.5 group/input">
                 <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">Password</label>
-                <div className="relative">
+                <div className="relative flex items-center">
                   <Lock className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400 dark:text-slate-500 transition-colors group-focus-within/input:text-indigo-500" />
-                  <input type="password" placeholder="••••••••" value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)} className="w-full h-11 bg-white/50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-xl pl-10 pr-3 text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
+                  <input type={showRegisterPassword ? 'text' : 'password'} placeholder="••••••••" value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)} className="w-full h-11 bg-white/50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-xl pl-10 pr-10 text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
+                  <button
+                    type="button"
+                    onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                    className="absolute right-3 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none transition-colors cursor-pointer"
+                  >
+                    {showRegisterPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
                 </div>
               </div>
               {facilities.length > 0 && (

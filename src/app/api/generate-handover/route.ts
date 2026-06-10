@@ -52,6 +52,30 @@ export async function POST(request: Request) {
 
     const age = new Date().getFullYear() - new Date(resident.dob).getFullYear();
 
+    // Fetch pending/incomplete tasks for this resident
+    const { data: pendingTasks } = await supabase
+      .from('tasks')
+      .select('title, description, assigned_role, tags')
+      .eq('resident_id', residentId)
+      .eq('is_completed', false);
+
+    const pendingTasksStr = pendingTasks && pendingTasks.length > 0
+      ? pendingTasks.map(t => `- [${t.assigned_role.toUpperCase()}] ${t.title}: ${t.description} (Tags: ${t.tags?.join(', ') || 'none'})`).join('\n')
+      : 'None';
+
+    // Fetch recently declined/refused tasks in the last 24 hours
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: declinedEvents } = await supabase
+      .from('activity_timeline')
+      .select('description, created_at')
+      .eq('resident_id', residentId)
+      .eq('action_type', 'task_declined')
+      .gte('created_at', oneDayAgo);
+
+    const declinedTasksStr = declinedEvents && declinedEvents.length > 0
+      ? declinedEvents.map(e => `- ${e.description} (at ${new Date(e.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`).join('\n')
+      : 'None';
+
     // System prompt
     const systemPrompt = `You are a clinical handover assistant for Australian residential aged care facilities. Your role is to convert informal nursing notes into two structured outputs.
     
@@ -61,9 +85,12 @@ S - Situation: What is happening right now
 B - Background: Relevant history, ongoing conditions
 A - Assessment: Clinical interpretation
 R - Recommendation: What the incoming RN should watch for or action
+NOTE: If there are any "Recently Declined/Refused Tasks" listed in the user prompt, you MUST mention them in the Recommendation or Situation section so the incoming staff are flagged (e.g. noting that the resident refused a shower or medication).
 
 OUTPUT 2 — SHIFT TASKS (Actionable task list):
 Generate tasks for both Registered Nurses (clinical actions, medication, review) and Carers (hygiene, mobility, comfort).
+NOTE: If there are any "Incomplete Tasks Carrying Forward" listed in the user prompt, you MUST carry them forward into the "shift_tasks" output list for this shift unless they are explicitly marked as completed or no longer needed in the notes.
+NOTE: If there are any "Recently Declined/Refused Tasks" listed in the user prompt, you MUST create a follow-up/retry task in the "shift_tasks" list to attempt the care activity again during this shift (especially for critical ADLs like showers, hygiene, medication, or fluid restriction).
 
 RISK FLAGS — Always check for:
 fall | injury | refused medication | medication error | aggression | hospital transfer | rapid deterioration
@@ -98,6 +125,12 @@ Name: ${resident.name}
 Room: ${resident.room_number}
 Age: ${age}
 Care Level: ${resident.care_level}
+
+Incomplete Tasks Carrying Forward from Previous Shifts:
+${pendingTasksStr}
+
+Recently Declined/Refused Tasks (Last 24 Hours):
+${declinedTasksStr}
 
 Informal Notes:
 "${rawInput}"`;

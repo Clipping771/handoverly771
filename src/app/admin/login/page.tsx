@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useRouter } from 'next/navigation';
-import { ShieldAlert, LogIn, User, Lock, Sun, Moon, Hexagon, ShieldCheck } from 'lucide-react';
+import { ShieldAlert, LogIn, User, Lock, Sun, Moon, Hexagon, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 
 export default function AdminLogin() {
   const { login, user, isLoading, logout } = useAuth();
@@ -13,6 +13,7 @@ export default function AdminLogin() {
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -124,12 +125,19 @@ export default function AdminLogin() {
               <div className="relative flex items-center">
                 <Lock className="absolute left-4 w-4 h-4 text-slate-400 group-focus-within/input:text-indigo-600 dark:group-focus-within/input:text-indigo-400 transition-all" />
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full h-11 bg-slate-50 dark:bg-[#080b16] border border-slate-200 dark:border-indigo-900/30 rounded-xl pl-11 pr-4 text-xs font-semibold tracking-wider text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 dark:focus:ring-indigo-400/10 focus:border-indigo-500 dark:focus:border-indigo-500 transition-all shadow-inner"
+                  className="w-full h-11 bg-slate-50 dark:bg-[#080b16] border border-slate-200 dark:border-indigo-900/30 rounded-xl pl-11 pr-11 text-xs font-semibold tracking-wider text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 dark:focus:ring-indigo-400/10 focus:border-indigo-500 dark:focus:border-indigo-500 transition-all shadow-inner"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none transition-colors cursor-pointer"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
             </div>
 

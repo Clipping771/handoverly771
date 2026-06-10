@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Mic, MicOff, ChevronLeft, Sparkles, AlertCircle, Sun, Moon, Settings, Plus, Trash2, Save } from 'lucide-react';
+import { Mic, MicOff, ChevronLeft, Sparkles, AlertCircle, Sun, Moon, Settings, Plus, Trash2, Save, Clock } from 'lucide-react';
 import Link from 'next/link';
 import { saveDraft, getDraft, clearDraft } from '@/lib/db';
 
@@ -35,11 +35,13 @@ export default function ResidentInput() {
   const [tasks, setTasks] = useState<TaskNode[]>([
     { id: Date.now().toString(), tag: '', description: '' }
   ]);
+  const [pendingTasks, setPendingTasks] = useState<any[]>([]);
   const [activeMicNodeId, setActiveMicNodeId] = useState<string | null>(null);
   const [interimText, setInterimText] = useState('');
   const [recognitionError, setRecognitionError] = useState('');
   const [enhancingNodeId, setEnhancingNodeId] = useState<string | null>(null);
   const [aiProvider, setAiProvider] = useState<'auto' | 'anthropic' | 'openrouter' | 'groq' | 'ollama' | 'mock'>('auto');
+  const [dbUserKeys, setDbUserKeys] = useState<any>(null);
 
   const recognitionRef = useRef<any>(null);
   const activeMicRef = useRef<string | null>(null);
@@ -49,6 +51,26 @@ export default function ResidentInput() {
   const [isUsingFallback, setIsUsingFallback] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [lastSaved, setLastSaved] = useState<number | null>(null);
+
+  // Fetch incomplete tasks for carryover reference
+  useEffect(() => {
+    if (!residentId) return;
+    const fetchPendingTasks = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('tasks')
+          .select('id, title, description, tags, assigned_role')
+          .eq('resident_id', residentId)
+          .eq('is_completed', false);
+        if (!error && data) {
+          setPendingTasks(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch pending tasks:', err);
+      }
+    };
+    fetchPendingTasks();
+  }, [residentId]);
 
   // Load draft on mount
   useEffect(() => {
@@ -95,7 +117,22 @@ export default function ResidentInput() {
         setAiProvider(active as any);
       }
     }
-  }, []);
+    
+    if (facility) {
+      const fetchAiConfig = async () => {
+        try {
+          const { data } = await supabase.from('facilities').select('ai_config').eq('id', facility.id).single();
+          if (data?.ai_config) {
+            if (data.ai_config.keys) setDbUserKeys(data.ai_config.keys);
+            if (data.ai_config.activeProvider) setAiProvider(data.ai_config.activeProvider);
+          }
+        } catch (e) {
+          console.error('Failed to fetch facility AI config', e);
+        }
+      };
+      fetchAiConfig();
+    }
+  }, [facility]);
 
   useEffect(() => {
     activeMicRef.current = activeMicNodeId;
@@ -189,6 +226,10 @@ export default function ResidentInput() {
 
         rec.onend = () => {
           if (!isUsingFallback) {
+            const currentMic = activeMicRef.current;
+            if (currentMic) {
+              enhanceNodeText(currentMic);
+            }
             setActiveMicNodeId(null);
             setInterimText('');
           }
@@ -207,18 +248,20 @@ export default function ResidentInput() {
 
     setEnhancingNodeId(nodeId);
     try {
-      const userKeys = {
+      const userKeys = dbUserKeys || {
         anthropicKey: typeof window !== 'undefined' ? localStorage.getItem('user_anthropic_key') || '' : '',
         openrouterKey: typeof window !== 'undefined' ? localStorage.getItem('user_openrouter_key') || '' : '',
         openrouterModel: typeof window !== 'undefined' ? localStorage.getItem('user_openrouter_model') || 'google/gemini-2.5-flash' : 'google/gemini-2.5-flash',
         groqKey: typeof window !== 'undefined' ? localStorage.getItem('user_groq_key') || '' : '',
         groqModel: typeof window !== 'undefined' ? localStorage.getItem('user_groq_model') || 'llama-3.3-70b-versatile' : 'llama-3.3-70b-versatile',
+        ollamaUrl: typeof window !== 'undefined' ? localStorage.getItem('user_ollama_url') || '' : '',
+        ollamaModel: typeof window !== 'undefined' ? localStorage.getItem('user_ollama_model') || '' : '',
       };
 
       const res = await fetch('/api/enhance-text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: task.description, userKeys })
+        body: JSON.stringify({ text: task.description, userKeys, provider: aiProvider })
       });
 
       const data = await res.json();
@@ -315,7 +358,16 @@ export default function ResidentInput() {
         }
       } else {
         try {
-          recognitionRef.current.start();
+          // Abort any active session first to prevent InvalidStateError
+          recognitionRef.current.abort();
+          
+          setTimeout(() => {
+            try {
+              recognitionRef.current.start();
+            } catch (startErr: any) {
+              console.warn('Speech recognition start retry:', startErr.message);
+            }
+          }, 150);
         } catch (err) {
           console.error('Failed to start speech recognition:', err);
           setIsUsingFallback(true);
@@ -441,6 +493,26 @@ export default function ResidentInput() {
               <AlertCircle className="w-4.5 h-4.5 shrink-0 text-rose-600 dark:text-rose-450" />
               <span className="font-semibold">{recognitionError}</span>
             </div>
+          </div>
+        )}
+
+        {/* Pending Tasks Carryover Alert */}
+        {pendingTasks.length > 0 && (
+          <div className="mb-6 p-5 rounded-[24px] border border-amber-200 bg-amber-50/30 dark:border-amber-900/30 dark:bg-amber-950/10">
+            <h4 className="text-xs font-bold text-amber-800 dark:text-amber-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 font-sans">
+              <Clock className="w-4 h-4" />
+              Incomplete Tasks Carrying Forward:
+            </h4>
+            <ul className="space-y-2">
+              {pendingTasks.map((t) => (
+                <li key={t.id} className="text-xs text-slate-600 dark:text-slate-350 flex items-start gap-2">
+                  <span className="text-amber-500 mt-0.5">•</span>
+                  <div>
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">{t.title}</span> - {t.description}
+                  </div>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 
