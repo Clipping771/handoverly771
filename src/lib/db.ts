@@ -48,76 +48,85 @@ export function getDB() {
   return dbPromise;
 }
 
+// Robust IndexedDB transaction wrapper with automatic connection recovery
+async function withDB<T>(operation: (db: IDBPDatabase<HandoverlyDB>) => Promise<T>): Promise<T | null> {
+  const db = await getDB();
+  if (!db) return null;
+  try {
+    return await operation(db);
+  } catch (err: any) {
+    console.warn('IndexedDB operation failed. Resetting connection and retrying...', err);
+    dbPromise = null; // Reset connection promise
+    const retryDb = await getDB();
+    if (!retryDb) return null;
+    try {
+      return await operation(retryDb);
+    } catch (retryErr) {
+      console.error('IndexedDB operation failed after reconnect:', retryErr);
+      throw retryErr;
+    }
+  }
+}
+
 // Draft Operations
 export async function saveDraft(resident_id: string, tasks: any[]) {
-  const db = await getDB();
-  if (!db) return;
-  await db.put('drafts', {
+  await withDB(db => db.put('drafts', {
     resident_id,
     tasks,
     last_modified: Date.now(),
     sync_status: 'draft',
-  });
+  }));
 }
 
 export async function getDraft(resident_id: string) {
-  const db = await getDB();
-  if (!db) return null;
-  return db.get('drafts', resident_id);
+  return withDB(db => db.get('drafts', resident_id));
 }
 
 export async function clearDraft(resident_id: string) {
-  const db = await getDB();
-  if (!db) return;
-  await db.delete('drafts', resident_id);
+  await withDB(db => db.delete('drafts', resident_id));
 }
 
 // Queue Operations
 export async function addToQueue(item: Omit<SubmissionQueueItem, 'status' | 'retry_count' | 'created_at'>) {
-  const db = await getDB();
-  if (!db) return;
   const fullItem: SubmissionQueueItem = {
     ...item,
     created_at: Date.now(),
     retry_count: 0,
     status: 'pending',
   };
-  await db.put('submission_queue', fullItem);
+  await withDB(db => db.put('submission_queue', fullItem));
   return fullItem;
 }
 
 export async function getPendingQueue() {
-  const db = await getDB();
-  if (!db) return [];
-  const tx = db.transaction('submission_queue', 'readonly');
-  const index = tx.store.index('by-status');
-  const pending = await index.getAll('pending');
-  const failed = await index.getAll('failed');
-  return [...pending, ...failed].sort((a, b) => a.created_at - b.created_at);
+  const res = await withDB(async (db) => {
+    const tx = db.transaction('submission_queue', 'readonly');
+    const index = tx.store.index('by-status');
+    const pending = await index.getAll('pending');
+    const failed = await index.getAll('failed');
+    return [...pending, ...failed].sort((a, b) => a.created_at - b.created_at);
+  });
+  return res || [];
 }
 
 export async function updateQueueItemStatus(id: string, status: SubmissionQueueItem['status'], incrementRetry = false) {
-  const db = await getDB();
-  if (!db) return;
-  const item = await db.get('submission_queue', id);
-  if (item) {
-    item.status = status;
-    if (incrementRetry) {
-      item.retry_count += 1;
+  await withDB(async (db) => {
+    const item = await db.get('submission_queue', id);
+    if (item) {
+      item.status = status;
+      if (incrementRetry) {
+        item.retry_count += 1;
+      }
+      await db.put('submission_queue', item);
     }
-    await db.put('submission_queue', item);
-  }
+  });
 }
 
 export async function removeQueueItem(id: string) {
-  const db = await getDB();
-  if (!db) return;
-  await db.delete('submission_queue', id);
+  await withDB(db => db.delete('submission_queue', id));
 }
 
 export async function getQueueCount() {
-  const db = await getDB();
-  if (!db) return 0;
   const items = await getPendingQueue();
   return items.length;
 }
