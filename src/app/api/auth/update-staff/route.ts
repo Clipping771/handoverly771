@@ -1,10 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_ROLE_KEY || ''
-);
+import { supabase } from '@/lib/supabase';
 
 export async function POST(request: Request) {
   try {
@@ -17,7 +12,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const { error } = await supabaseAdmin
+    const { error } = await supabase
       .from('staff')
       .update({
         name: name.trim(),

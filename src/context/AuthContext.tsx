@@ -7,7 +7,7 @@ export interface Staff {
   id: string;
   facility_id: string;
   name: string;
-  role: 'rn' | 'carer' | 'admin';
+  role: string;
   is_active: boolean;
   created_at: string;
 }
@@ -31,6 +31,9 @@ interface AuthContextType {
   isLoading: boolean;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
+  isCarer: boolean;
+  isRN: boolean;
+  isAdmin: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -103,8 +106,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     router.push('/login');
   };
 
+  // Smart Role / Access Permission Mapping
+  const getRoleAccess = (role?: string) => {
+    if (!role) return { isCarer: false, isRN: false, isAdmin: false };
+    const r = role.toLowerCase().trim();
+    
+    const isAdmin = r === 'admin' || r.includes('admin') || r.includes('manager') || r.includes('coordinator');
+    const isCarer = r === 'carer' || r.includes('carer') || r.includes('assistant') || r.includes('helper') || r.includes('aide') || r.includes('support');
+    const isRN = r === 'rn' || r.includes('rn') || r.includes('nurse') || r.includes('clinical') || (!isAdmin && !isCarer);
+    
+    return { isCarer, isRN, isAdmin };
+  };
+
+  const { isCarer, isRN, isAdmin } = getRoleAccess(user?.role);
+
   return (
-    <AuthContext.Provider value={{ user, facility, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ user, facility, isLoading, login, logout, isCarer, isRN, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );

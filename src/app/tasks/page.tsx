@@ -24,7 +24,7 @@ interface Task {
 }
 
 export default function TasksPage() {
-  const { user, facility, isLoading: authLoading } = useAuth();
+  const { user, facility, isLoading: authLoading, isCarer, isRN, isAdmin } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
 
@@ -47,7 +47,9 @@ export default function TasksPage() {
     if (!facility) return;
     try {
       setLoading(true);
-      const todayStr = new Date().toISOString().split('T')[0];
+      const localMidnight = new Date();
+      localMidnight.setHours(0, 0, 0, 0);
+      const todayStr = localMidnight.toISOString();
       
       const { data, error } = await supabase
         .from('tasks')
@@ -123,11 +125,20 @@ export default function TasksPage() {
     const task = tasks.find(t => t.id === taskId);
     if (!task || !user) return;
 
-    // Allow matching roles, admins, or 'all'.
-    const isMatchingRole = user.role === 'admin' || task.assigned_role === 'all' || task.assigned_role === user.role;
+    // Allow matching roles dynamically
+    const taskRole = task.assigned_role;
+    let isMatchingRole = false;
+    
+    if (isAdmin || isRN) {
+      isMatchingRole = true;
+    } else if (taskRole === 'all' || taskRole === 'carer') {
+      isMatchingRole = isCarer;
+    } else {
+      isMatchingRole = taskRole === user.role;
+    }
     
     if (!isMatchingRole) {
-      toast.error(`Only ${task.assigned_role === 'rn' ? 'RNs' : 'Carers'} can modify this task.`);
+      toast.error(`Only RNs, Admins, or Carers can modify this task.`);
       return;
     }
 
@@ -228,15 +239,19 @@ export default function TasksPage() {
     return tasks.filter(t => {
       if (filterTab === 'my_tasks') {
         if (!user) return false;
-        if (user.role === 'admin') return true;
+        if (isAdmin) return true;
 
         // RN should see all declined tasks under My Tasks
         const isDeclined = completions[t.id]?.status === 'declined';
-        if (user.role === 'rn' && isDeclined) {
+        if (isRN && isDeclined) {
           return true;
         }
 
-        return t.assigned_role === user.role || t.assigned_role === 'all';
+        const taskRole = t.assigned_role;
+        return taskRole === 'all' || 
+               (taskRole === 'rn' && isRN) || 
+               (taskRole === 'carer' && isCarer) || 
+               taskRole === user.role;
       }
       return true;
     });
@@ -247,22 +262,24 @@ export default function TasksPage() {
   const declinedTasks = useMemo(() => filteredTasks.filter(t => completions[t.id]?.status === 'declined'), [filteredTasks, completions]);
 
   // Group tasks by resident room
-  const groupTasksByRoom = (taskList: Task[]) => {
-    const groups: Record<string, { residentName: string, tasks: Task[] }> = {};
+  // Group tasks by resident ID to handle shared rooms properly
+  const groupTasksByResident = (taskList: Task[]) => {
+    const groups: Record<string, { residentName: string; room: string; tasks: Task[] }> = {};
     taskList.forEach(task => {
+      const residentId = task.resident_id || 'Unknown';
       const room = task.resident?.room_number || 'Unknown';
       const name = task.resident?.name || 'Unknown Resident';
-      if (!groups[room]) {
-        groups[room] = { residentName: name, tasks: [] };
+      if (!groups[residentId]) {
+        groups[residentId] = { residentName: name, room, tasks: [] };
       }
-      groups[room].tasks.push(task);
+      groups[residentId].tasks.push(task);
     });
-    return Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+    return Object.entries(groups).sort((a, b) => a[1].room.localeCompare(b[1].room));
   };
 
-  const groupedPending = useMemo(() => groupTasksByRoom(pendingTasks), [pendingTasks]);
-  const groupedCompleted = useMemo(() => groupTasksByRoom(completedTasks), [completedTasks]);
-  const groupedDeclined = useMemo(() => groupTasksByRoom(declinedTasks), [declinedTasks]);
+  const groupedPending = useMemo(() => groupTasksByResident(pendingTasks), [pendingTasks]);
+  const groupedCompleted = useMemo(() => groupTasksByResident(completedTasks), [completedTasks]);
+  const groupedDeclined = useMemo(() => groupTasksByResident(declinedTasks), [declinedTasks]);
 
   if (authLoading || !user || !facility) {
     return (
@@ -298,27 +315,27 @@ export default function TasksPage() {
   };
 
   const renderGroupedTasksList = (
-    grouped: [string, { residentName: string; tasks: Task[]; }][],
+    grouped: [string, { residentName: string; room: string; tasks: Task[]; }][],
     listType: 'pending' | 'completed' | 'declined'
   ) => {
     return (
       <div className="space-y-6 mt-6">
         <AnimatePresence initial={false}>
-          {grouped.map(([room, { residentName, tasks }]) => {
-            const isRoomExpanded = expandedRooms[room] !== undefined 
-              ? expandedRooms[room] 
+          {grouped.map(([residentId, { residentName, room, tasks }]) => {
+            const isRoomExpanded = expandedRooms[residentId] !== undefined 
+              ? expandedRooms[residentId] 
               : listType === 'pending'; // Expanded by default only for pending list
 
             return (
               <motion.div 
-                key={room}
+                key={residentId}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 className="border border-slate-200/80 dark:border-white/5 rounded-3xl overflow-hidden bg-slate-50/20 dark:bg-black/5"
               >
                 {/* Collapsible Room Header */}
                 <div 
-                  onClick={() => setExpandedRooms(prev => ({ ...prev, [room]: !isRoomExpanded }))}
+                  onClick={() => setExpandedRooms(prev => ({ ...prev, [residentId]: !isRoomExpanded }))}
                   className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-white/5 transition-colors select-none"
                 >
                   <div className="flex items-center gap-3">
@@ -363,19 +380,15 @@ export default function TasksPage() {
                                 }}
                                 disabled={
                                   !user || 
-                                  (user.role !== 'admin' && (
+                                  (!isAdmin && !isRN && (
                                     // Carers cannot check off RN tasks
-                                    (user.role === 'carer' && task.assigned_role === 'rn') ||
-                                    // RNs cannot check off Carer tasks
-                                    (user.role === 'rn' && task.assigned_role === 'carer')
+                                    (isCarer && task.assigned_role === 'rn')
                                   ))
                                 }
                                 className="mt-1 shrink-0 transition-transform active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed"
                                 title={
-                                  !user || (user.role !== 'admin' && user.role === 'rn' && task.assigned_role === 'carer')
-                                    ? "Only Carers can complete Carer tasks."
-                                    : user.role === 'carer' && task.assigned_role === 'rn'
-                                    ? "Only RNs can complete RN tasks."
+                                  !user || (!isAdmin && !isRN && isCarer && task.assigned_role === 'rn')
+                                    ? "Only RNs and Admins can complete RN tasks."
                                     : "Toggle status"
                                 }
                               >
@@ -389,22 +402,26 @@ export default function TasksPage() {
                               </button>
         
                               {!task.is_completed && !isDeclined && (
-                                <button
-                                  onClick={() => {
-                                    const reason = prompt("Enter reason for resident decline (e.g. Refused, Asleep):", "Resident declined");
-                                    if (reason !== null) {
-                                      toggleTaskStatus(task.id, false, 'declined', reason);
+                                  <button
+                                    onClick={() => {
+                                      const reason = prompt("Enter reason for resident decline (e.g. Refused, Asleep):", "Resident declined");
+                                      if (reason !== null) {
+                                        toggleTaskStatus(task.id, false, 'declined', reason);
+                                      }
+                                    }}
+                                    disabled={
+                                      !user || 
+                                      (!isAdmin && !isRN && (
+                                        // Carers cannot decline RN tasks
+                                        (isCarer && task.assigned_role === 'rn')
+                                      ))
                                     }
-                                  }}
-                                  disabled={
-                                    !user || 
-                                    (user.role !== 'admin' && (
-                                      // Carers cannot decline RN tasks
-                                      (user.role === 'carer' && task.assigned_role === 'rn')
-                                    ))
-                                  }
                                   className="mt-1 shrink-0 p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                                  title="Mark as Resident Declined"
+                                  title={
+                                    !user || (!isAdmin && !isRN && isCarer && task.assigned_role === 'rn')
+                                      ? "Only RNs and Admins can decline RN tasks"
+                                      : "Mark as Resident Declined"
+                                  }
                                 >
                                   <XCircle className="w-5.5 h-5.5" />
                                 </button>
@@ -499,7 +516,7 @@ export default function TasksPage() {
       <header className="sticky top-0 z-40 bg-[#f8fafc]/80 dark:bg-[#0b0b0d]/80 backdrop-blur-md border-b border-[#e3e3e3] dark:border-[#202024] px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href={user && user.role === 'carer' ? "/" : "/shift"} className="p-2 -ml-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+            <Link href={user && isCarer ? "/" : "/shift"} className="p-2 -ml-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
               <ArrowLeft className="w-5 h-5 text-slate-600 dark:text-slate-300" />
             </Link>
             <h1 className="font-bold text-xl tracking-tight">Shift Tasks</h1>

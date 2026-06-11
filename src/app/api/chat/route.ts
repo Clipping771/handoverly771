@@ -32,49 +32,94 @@ export async function POST(request: Request) {
       .from('handovers')
       .select(`
         shift_date, shift_type, urgency, risk_flags, rn_summary, carer_tasks,
-        resident:residents (name, room_number)
+        resident:residents!inner (name, room_number, is_active)
       `)
       .eq('facility_id', facilityId)
+      .eq('residents.is_active', true)
       .gte('shift_date', fourteenDaysAgo.toISOString().split('T')[0])
       .order('shift_date', { ascending: false });
 
     // 2. Fetch Active Residents for the facility
     const { data: residents } = await supabase
       .from('residents')
-      .select('id, name, room_number, care_level')
+      .select('id, name, room_number, care_level, dob, wing_id, wings(name)')
       .eq('facility_id', facilityId)
       .eq('is_active', true);
+
+    // 3. Fetch Active/Pending Tasks
+    const { data: activeTasks } = await supabase
+      .from('tasks')
+      .select('title, description, assigned_role, resident_id')
+      .eq('facility_id', facilityId)
+      .eq('is_completed', false);
+
+    // 4. Fetch Recent Activity Logs (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const { data: timeline } = await supabase
+      .from('activity_timeline')
+      .select('action_type, description, created_at, resident_id')
+      .eq('facility_id', facilityId)
+      .gte('created_at', sevenDaysAgo.toISOString())
+      .order('created_at', { ascending: false });
 
     let contextStr = 'No handovers found in the last 14 days.';
     if (handovers && handovers.length > 0) {
       contextStr = handovers.slice(0, 50).map((h: any) => {
-        const carerTasksStr = h.carer_tasks && h.carer_tasks.length > 0
-          ? h.carer_tasks.map((t: any) => `- ${t.title || t}: ${t.description || ''}`).join('\n')
+        const tasksStr = h.carer_tasks && h.carer_tasks.length > 0
+          ? h.carer_tasks.map((t: any) => `- [Assigned Role: ${t.assigned_role || 'carer'}]: ${t.title || t} (${t.description || ''})`).join('\n')
           : 'None';
         return `Resident: ${h.resident?.name} (Room ${h.resident?.room_number})
 Date: ${h.shift_date} (${h.shift_type})
 Urgency: ${h.urgency}
 Flags: ${h.risk_flags?.join(', ') || 'None'}
 RN Handover Summary: ${h.rn_summary?.situation || ''} ${h.rn_summary?.assessment || ''}
-Carer Tasks:
-${carerTasksStr}`;
+Tasks for this shift:
+${tasksStr}`;
       }).join('\n\n---\n\n');
     }
 
     let residentsStr = 'No active residents.';
     if (residents && residents.length > 0) {
-      residentsStr = residents.map((r: any) => 
-        `- ${r.name} (Room ${r.room_number}, ID: ${r.id})`
-      ).join('\n');
+      residentsStr = residents.map((r: any) => {
+        const age = r.dob ? new Date().getFullYear() - new Date(r.dob).getFullYear() : 'N/A';
+        const wingName = r.wings?.name || 'Unassigned';
+        
+        // Find tasks for this resident
+        const resTasks = (activeTasks || []).filter((t: any) => t.resident_id === r.id);
+        const tasksStr = resTasks.length > 0 
+          ? resTasks.map((t: any) => `- [${t.assigned_role.toUpperCase()}]: ${t.title} (${t.description})`).join('\n')
+          : 'No pending tasks';
+
+        // Find timeline logs for this resident
+        const resLogs = (timeline || []).filter((l: any) => l.resident_id === r.id);
+        const logsStr = resLogs.length > 0
+          ? resLogs.map((l: any) => `- ${new Date(l.created_at).toLocaleDateString()}: ${l.description}`).join('\n')
+          : 'No recent activity logs';
+
+        return `Resident Profile:
+- Name: ${r.name}
+- Room: ${r.room_number}
+- DOB: ${r.dob || 'N/A'} (Age: ${age})
+- Care Level: ${r.care_level}
+- Wing: ${wingName}
+- Database ID: ${r.id}
+
+Pending Tasks:
+${tasksStr}
+
+Recent Activity Logs:
+${logsStr}`;
+      }).join('\n\n====================\n\n');
     }
 
     const systemPrompt = `You are an Action-Oriented AI Clinical Assistant for an aged care facility.
-Staff will ask you questions about residents, and you can perform tasks on their behalf.
+Staff will ask you questions about residents, and you can perform tasks or log events/observations on their behalf.
 
 USER ROLE: ${userRole?.toUpperCase() || 'UNKNOWN'}
 You must respect Role-Based Access Control (RBAC). 
-- 'RN' and 'MANAGER' can perform all actions.
-- 'CARER' has restricted access and cannot approve/create handovers.
+- 'RN' and 'MANAGER' can perform all actions including creating tasks and logging observations.
+- 'CARER' has restricted access and cannot approve handovers.
 If the user's role prohibits an action, politely refuse.
 
 FACILITY RESIDENTS DIRECTORY (Live):
@@ -84,7 +129,7 @@ RECENT HANDOVERS (Last 14 days):
 ${contextStr}
 
 ACTION PROTOCOL:
-If the user explicitly asks you to perform an action (e.g. create a task, assign a reminder), you MUST output a JSON block wrapped in <action> tags at the very end of your response.
+If the user explicitly asks you to perform an action (e.g. create a task, log a fall or clinical incident, record blood pressure, update observations), you MUST output a JSON block wrapped in <action> tags at the very end of your response.
 
 Example to create a task:
 <action>
@@ -96,7 +141,21 @@ Example to create a task:
 }
 </action>
 
+Example to log an observation or timeline event:
+<action>
+{
+  "type": "LOG_OBSERVATION",
+  "resident_id": "uuid-from-directory",
+  "action_type": "clinical_observation",
+  "description": "Detailed incident or observation report logged in timeline"
+}
+</action>
+
 Answer the user's query accurately based ONLY on the provided history. Be concise, professional, and directly address the question.
+
+ROLE-SPECIFIC TASK QUERIES: If the user asks specifically for "Carer Tasks" or "RN Tasks" for a resident or shift, strictly filter the tasks to only include those matching the requested role (e.g. tasks with "[Assigned Role: carer]" or "[Assigned Role: all]" for carer tasks, and "[Assigned Role: rn]" for RN tasks). Do NOT list clinical RN tasks if the user asks for carer tasks, and vice versa.
+
+CRITICAL: Do NOT expose the database ID/UUID to the user in your text, lists, or tables. The Database ID is strictly for your reference when constructing <action> blocks. For user-facing tables or lists, display friendly fields like Name, Room Number, Age, and Care Level.
 
 CRITICAL: If you generate a table, you MUST use proper markdown format with explicit NEWLINES separating every single row, and you MUST include a delimiter row immediately after the headers (e.g. \`|---|---|---|\`).`;
 
@@ -104,7 +163,7 @@ CRITICAL: If you generate a table, you MUST use proper markdown format with expl
     const targetProvider = provider || 'auto';
     const errors: string[] = [];
 
-    // --- Provider Logic (Unchanged) ---
+    // --- Provider Logic ---
     const anthropicKey = userKeys?.anthropicKey || process.env.ANTHROPIC_API_KEY || '';
     if ((targetProvider === 'auto' || targetProvider === 'anthropic') && anthropicKey && !answerStr) {
       try {
@@ -245,6 +304,21 @@ CRITICAL: If you generate a table, you MUST use proper markdown format with expl
             executedActions.push(actionPayload);
           } else {
             console.error('Task Action Error:', error);
+          }
+        } else if (actionPayload.type === 'LOG_OBSERVATION') {
+          const { error } = await supabase.from('activity_timeline').insert({
+            facility_id: facilityId,
+            resident_id: actionPayload.resident_id,
+            staff_id: userId,
+            action_type: actionPayload.action_type || 'clinical_observation',
+            description: actionPayload.description,
+            metadata: actionPayload.metadata || {}
+          });
+          
+          if (!error) {
+            executedActions.push(actionPayload);
+          } else {
+            console.error('Observation Action Error:', error);
           }
         }
         

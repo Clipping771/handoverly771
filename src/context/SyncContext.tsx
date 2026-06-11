@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import { getPendingQueue, updateQueueItemStatus, removeQueueItem, getQueueCount } from '@/lib/db';
 import toast from 'react-hot-toast';
 
@@ -24,6 +24,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isOnline, setIsOnline] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
   const [syncInProgress, setSyncInProgress] = useState(false);
+  const syncInProgressRef = useRef(false);
 
   const checkQueueCount = useCallback(async () => {
     const count = await getQueueCount();
@@ -31,13 +32,15 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const triggerSync = useCallback(async () => {
-    if (!navigator.onLine || syncInProgress) return;
+    if (!navigator.onLine || syncInProgressRef.current) return;
 
     try {
+      syncInProgressRef.current = true;
       setSyncInProgress(true);
       const pendingItems = await getPendingQueue();
       
       if (pendingItems.length === 0) {
+        syncInProgressRef.current = false;
         setSyncInProgress(false);
         return;
       }
@@ -78,9 +81,10 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
     } finally {
+      syncInProgressRef.current = false;
       setSyncInProgress(false);
     }
-  }, [syncInProgress, checkQueueCount]);
+  }, [checkQueueCount]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {

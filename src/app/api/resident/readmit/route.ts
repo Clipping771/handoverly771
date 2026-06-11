@@ -6,7 +6,7 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 export async function POST(request: Request) {
   try {
-    const { id, reason } = await request.json();
+    const { id } = await request.json();
 
     if (!id) {
       return NextResponse.json({ error: 'Resident ID is required' }, { status: 400 });
@@ -22,8 +22,8 @@ export async function POST(request: Request) {
     const { error } = await supabaseAdmin
       .from('residents')
       .update({ 
-        is_active: false,
-        status_reason: reason || 'Discharged'
+        is_active: true,
+        status_reason: null
       })
       .eq('id', id);
 
@@ -31,17 +31,11 @@ export async function POST(request: Request) {
       throw error;
     }
 
-    // Also delete any tasks associated with this soft-deleted resident to clean up dashboard/tasks lists
-    await supabaseAdmin
-      .from('tasks')
-      .delete()
-      .eq('resident_id', id);
-
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('Error deleting resident:', error);
+    console.error('Error readmitting resident:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to delete resident' },
+      { error: error.message || 'Failed to readmit resident' },
       { status: 500 }
     );
   }

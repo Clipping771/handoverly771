@@ -25,7 +25,7 @@ interface HandoverWithDetails {
 }
 
 export default function Dashboard() {
-  const { user, facility, logout, isLoading: authLoading } = useAuth();
+  const { user, facility, logout, isLoading: authLoading, isCarer } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
 
@@ -33,7 +33,14 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [filterRole, setFilterRole] = useState<'rn' | 'carer'>('carer');
   const [urgencyFilter, setUrgencyFilter] = useState<'all' | 'critical' | 'attention' | 'routine'>('all');
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    const now = new Date();
+    const localHour = now.getHours();
+    if (localHour >= 0 && localHour < 12) {
+      now.setDate(now.getDate() - 1);
+    }
+    return now;
+  });
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -101,9 +108,9 @@ export default function Dashboard() {
     if (!authLoading && !user) {
       router.push('/login');
     } else if (user) {
-      setFilterRole(user.role === 'carer' ? 'carer' : 'rn');
+      setFilterRole(isCarer ? 'carer' : 'rn');
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, isCarer]);
 
   const fetchAvailableDates = async () => {
     if (!facility) return;
@@ -246,7 +253,7 @@ export default function Dashboard() {
               {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
             </button>
 
-            {user.role === 'carer' ? (
+            {isCarer ? (
               <Link
                 id="tour-shift-action"
                 href="/tasks"

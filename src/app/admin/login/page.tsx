@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { ShieldAlert, LogIn, User, Lock, Sun, Moon, Hexagon, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 
 export default function AdminLogin() {
-  const { login, user, isLoading, logout } = useAuth();
+  const { login, user, isLoading, logout, isAdmin } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
 
@@ -20,7 +20,7 @@ export default function AdminLogin() {
 
   useEffect(() => {
     if (!isLoading && user) {
-      if (user.role === 'admin') {
+      if (isAdmin) {
         router.push('/admin');
       } else {
         // If a non-admin accidentally logged in here, sign them out and show error.
@@ -28,7 +28,7 @@ export default function AdminLogin() {
         setError('Unauthorized: This portal is for Administrators only.');
       }
     }
-  }, [user, isLoading, router, logout]);
+  }, [user, isLoading, router, logout, isAdmin]);
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

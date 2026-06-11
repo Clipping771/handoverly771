@@ -9,7 +9,7 @@ import { ShieldAlert, LogIn, User, Lock, Sun, Moon, Hexagon, UserPlus, Mail, Bad
 import { supabase } from '@/lib/supabase';
 
 export default function Login() {
-  const { login, user, isLoading } = useAuth();
+  const { login, user, isLoading, isCarer, isAdmin } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
 
@@ -54,15 +54,15 @@ export default function Login() {
 
   useEffect(() => {
     if (!isLoading && user) {
-      if (user.role === 'carer') {
+      if (isCarer) {
         router.push('/');
-      } else if (user.role === 'admin') {
+      } else if (isAdmin) {
         router.push('/admin');
       } else {
         router.push('/shift');
       }
     }
-  }, [user, isLoading, router]);
+  }, [user, isLoading, router, isCarer, isAdmin]);
 
   // No facilities fetch needed for login
 

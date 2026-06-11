@@ -1,22 +1,23 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 
-const ENHANCE_PROMPT = `You are a highly intelligent clinical documentation assistant for an Australian aged care facility.
-
-The user has just dictated a rough voice note, which may contain speech-to-text errors, fragmented sentences, or just a few discrete keywords. Your job is to smartly interpret the intent and rewrite it into a clear, professional, and concise clinical description suitable for a shift handover note.
+const ENHANCE_PROMPT = `You are an exceptionally advanced clinical documentation assistant for an Australian aged care facility.
+Your goal is to take a very brief, informal, or fragmented note and rewrite/paraphrase it into a highly professional, clinical, precise, and extremely concise entry for a shift handover.
 
 Rules:
-1. Intelligently paraphrase and expand fragmented words or discrete information into complete, readable sentences.
-2. Fix any speech-to-text garble or obvious errors using clinical context (e.g. "paintered" -> "Pain chart", "a seized" → "assessed", "care ers" -> "carers").
-3. Rewrite in clear, professional third-person clinical language (e.g. "Resident requires..." or "Pain assessment completed...").
-4. Keep the original clinical intent but make it sound professional and grammatically correct. Do NOT hallucinate new medical events, but do use your intelligence to form expected professional responses from the given clues.
-5. Add proper punctuation, capitalisation, and structure.
-6. Use Australian English spelling (e.g. behaviour, colour, mobilised).
-7. Return ONLY the rewritten clinical description. No preamble, no quotes, no commentary.`;
+1. Keep the rewrite extremely concise, direct, and to the point. Do NOT add unnecessary filler, boilerplate, or extra sentences. Ideally, return 1-2 short clinical sentences.
+2. Incorporate the Resident's name where clinically appropriate (e.g., "Resident [Name] reported..." or "Assessed [Name]...").
+3. Use the tagline/focus (if provided) as the clinical domain to guide the terminology, but do not write generic descriptions of that domain.
+4. Correct speech-to-text or typing errors using clinical context.
+5. Keep it objective, professional, and in third-person clinical language.
+6. Do NOT hallucinate, invent, or assume any new medical symptoms, actions taken, or care outcomes. Only rewrite the exact facts provided in the raw note into professional clinical phrasing.
+7. Preserve assignments and future tenses: If the note indicates that a specific role (e.g., 'RN', 'Carer') needs to perform an action (e.g., 'will do', 'to do'), keep it as an active/future task for that role. Do NOT rewrite future tasks as completed actions (e.g., do NOT rewrite 'RN to complete pain chart' into 'Pain chart completed' or 'Assessed pain').
+8. Use Australian English spelling (e.g., behaviour, colour, mobilised).
+9. Return ONLY the rewritten clinical description. No preamble, no quotes, no conversational filler.`;
 
 export async function POST(request: Request) {
   try {
-    const { text, userKeys, provider = 'auto' } = await request.json();
+    const { text, tag, resident, otherTasks, userKeys, provider = 'auto' } = await request.json();
 
     if (!text || !text.trim()) {
       return NextResponse.json({ refined: text });
@@ -30,6 +31,23 @@ export async function POST(request: Request) {
     const ollamaUrl = userKeys?.ollamaUrl || process.env.OLLAMA_API_URL || 'http://127.0.0.1:11434';
     const ollamaModel = userKeys?.ollamaModel || process.env.OLLAMA_MODEL || 'llama3';
 
+    // Build rich context prompt
+    let contextPrompt = `${ENHANCE_PROMPT}\n\n`;
+    if (resident) {
+      contextPrompt += `RESIDENT CONTEXT:\n- Name: ${resident.name}\n- Room: ${resident.room_number}\n- Care Level: ${resident.care_level || 'Not Specified'}\n\n`;
+    }
+    if (tag) {
+      contextPrompt += `TASK FOCUS/TAG: ${tag}\n\n`;
+    }
+    if (otherTasks && Array.isArray(otherTasks) && otherTasks.length > 0) {
+      contextPrompt += `OTHER NOTES LOGGED IN THIS SESSION (for broader context):\n`;
+      otherTasks.forEach((t: any, idx: number) => {
+        contextPrompt += `- [${t.tag || 'General'}]: ${t.description || ''}\n`;
+      });
+      contextPrompt += `\n`;
+    }
+    contextPrompt += `Raw note to paraphrase/rewrite clinically:\n"${text}"`;
+
     let refined: string | null = null;
 
     // 1. Try Anthropic
@@ -40,7 +58,7 @@ export async function POST(request: Request) {
           model: 'claude-3-5-haiku-20241022',
           max_tokens: 1024,
           messages: [
-            { role: 'user', content: `${ENHANCE_PROMPT}\n\nRaw dictation:\n"${text}"` }
+            { role: 'user', content: contextPrompt }
           ]
         });
         const content = msg.content[0];
@@ -64,7 +82,7 @@ export async function POST(request: Request) {
           body: JSON.stringify({
             model: groqModel,
             messages: [
-              { role: 'user', content: `${ENHANCE_PROMPT}\n\nRaw dictation:\n"${text}"` }
+              { role: 'user', content: contextPrompt }
             ],
             temperature: 0.1,
             max_tokens: 1024
@@ -93,7 +111,7 @@ export async function POST(request: Request) {
           body: JSON.stringify({
             model: openrouterModel,
             messages: [
-              { role: 'user', content: `${ENHANCE_PROMPT}\n\nRaw dictation:\n"${text}"` }
+              { role: 'user', content: contextPrompt }
             ],
             temperature: 0.1,
             max_tokens: 1024
@@ -118,7 +136,7 @@ export async function POST(request: Request) {
           },
           body: JSON.stringify({
             model: ollamaModel,
-            prompt: `${ENHANCE_PROMPT}\n\nRaw dictation:\n"${text}"`,
+            prompt: contextPrompt,
             stream: false,
             options: {
               temperature: 0.1
@@ -137,7 +155,9 @@ export async function POST(request: Request) {
     // 5. Mock Provider (for testing when offline without API keys)
     if (provider === 'mock' || (provider === 'auto' && !refined)) {
       console.log('Using mock AI provider because no other AI was available or it was explicitly requested.');
-      refined = `[MOCK AI] The resident's pain chart must be completed by the Registered Nurse. Carers are responsible for completing all other charts, including ADL, vowel, urinary, sleep, side, and sight charts.`;
+      const resName = resident?.name || 'Resident';
+      const tagStr = tag ? `[${tag}] ` : '';
+      refined = `[MOCK AI] Under the tagline of "${tag || 'General Care'}", resident ${resName} (Room ${resident?.room_number || 'N/A'}) was noted for the following: "${text}". Rewritten in clinical style: The resident required clinical attention for ${text.toLowerCase()}.`;
     }
 
     // 6. Final fallback: return original text if even mock is bypassed

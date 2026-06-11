@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Mic, MicOff, ChevronLeft, Sparkles, AlertCircle, Sun, Moon, Settings, Plus, Trash2, Save, Clock } from 'lucide-react';
+import { Mic, MicOff, ChevronLeft, Sparkles, AlertCircle, Sun, Moon, Settings, Plus, Trash2, Save, Clock, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { saveDraft, getDraft, clearDraft } from '@/lib/db';
 
@@ -23,7 +23,7 @@ interface TaskNode {
 }
 
 export default function ResidentInput() {
-  const { user, facility, isLoading: authLoading } = useAuth();
+  const { user, facility, isLoading: authLoading, isCarer } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const params = useParams();
@@ -145,10 +145,10 @@ export default function ResidentInput() {
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/login');
-    } else if (user && user.role === 'carer') {
+    } else if (user && isCarer) {
       router.push('/shift');
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, isCarer]);
 
   useEffect(() => {
     if (!residentId) return;
@@ -216,6 +216,10 @@ export default function ResidentInput() {
           console.error('Speech recognition error:', event.error);
           if (event.error === 'not-allowed') {
             setRecognitionError('Microphone access denied. Please check your browser permissions.');
+          } else if (event.error === 'no-speech') {
+            // Keep Web Speech API active, don't fallback to cloud transcript
+            setRecognitionError('No speech detected. Please speak clearly into your microphone.');
+            setTimeout(() => setRecognitionError(''), 4000);
           } else {
             console.log('Falling back to robust cloud transcription...');
             setIsUsingFallback(true);
@@ -243,7 +247,7 @@ export default function ResidentInput() {
   }, []);
 
   const enhanceNodeText = async (nodeId: string) => {
-    const task = tasksRef.current.find(t => t.id === nodeId);
+    const task = tasks.find(t => t.id === nodeId);
     if (!task || !task.description.trim()) return;
 
     setEnhancingNodeId(nodeId);
@@ -258,10 +262,19 @@ export default function ResidentInput() {
         ollamaModel: typeof window !== 'undefined' ? localStorage.getItem('user_ollama_model') || '' : '',
       };
 
+      const otherTasks = tasks.filter(t => t.id !== nodeId && (t.tag.trim() || t.description.trim()));
+
       const res = await fetch('/api/enhance-text', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: task.description, userKeys, provider: aiProvider })
+        body: JSON.stringify({ 
+          text: task.description, 
+          tag: task.tag,
+          resident,
+          otherTasks,
+          userKeys, 
+          provider: aiProvider 
+        })
       });
 
       const data = await res.json();
@@ -547,6 +560,17 @@ export default function ResidentInput() {
                       }`}
                     >
                       {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                    </button>
+
+                    {/* AI Clinical Rewrite Button */}
+                    <button
+                      type="button"
+                      onClick={() => enhanceNodeText(task.id)}
+                      disabled={enhancingNodeId === task.id || !task.description.trim()}
+                      className="w-10 h-10 shrink-0 rounded-full flex items-center justify-center bg-indigo-55 hover:bg-indigo-100/80 text-indigo-600 dark:bg-indigo-950/45 dark:text-indigo-400 dark:hover:bg-indigo-900/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                      title="AI Clinical Rewrite & Paraphrase"
+                    >
+                      {enhancingNodeId === task.id ? <Loader2 className="w-4 h-4 animate-spin text-indigo-500" /> : <Sparkles className="w-4 h-4" />}
                     </button>
 
                     {/* Delete Node Button */}
