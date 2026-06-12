@@ -5,14 +5,13 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Settings, FileCheck, Users, Search, Plus, X, Sun, Moon, LogOut, ArrowRight, Activity, Trash2, ShieldAlert, FileWarning, AlertCircle, ListTodo, Clock, RotateCcw, Pencil } from 'lucide-react';
+import { Settings, FileCheck, Users, Search, Plus, X, Sun, Moon, LogOut, ArrowRight, Activity, Trash2, ShieldAlert, FileWarning, AlertCircle, ListTodo, Clock, RotateCcw, Pencil, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Maximize, PanelLeft, Columns, Square, LayoutTemplate, LayoutGrid } from 'lucide-react';
 import Link from 'next/link';
 import SettingsModal from '@/components/SettingsModal';
 import OnboardingTour from '@/components/OnboardingTour';
 import { motion, AnimatePresence } from 'framer-motion';
 import SentinelBadge from '@/components/SentinelBadge';
 import toast from 'react-hot-toast';
-import AriaFloatingButton from '@/components/AriaFloatingButton';
 import { Check } from 'lucide-react';
 import { getPendingQueue } from '@/lib/db';
 import gsap from 'gsap';
@@ -63,6 +62,11 @@ export default function MyShift() {
   const [selectedResidentTasks, setSelectedResidentTasks] = useState<any[]>([]);
   const [selectedResidentTimeline, setSelectedResidentTimeline] = useState<any[]>([]);
   const [loadingRightPane, setLoadingRightPane] = useState(false);
+  const [isVitalsOpen, setIsVitalsOpen] = useState(true);
+  const [isTimelineOpen, setIsTimelineOpen] = useState(true);
+  const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
+  const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
+  const [isPulseOpen, setIsPulseOpen] = useState(false);
 
   useEffect(() => {
     if (!selectedResidentId) {
@@ -204,7 +208,14 @@ export default function MyShift() {
 
   const handleReadmitResident = async (res: Resident) => {
     try {
-      const confirmReadmit = window.confirm(`Are you sure you want to readmit ${res.name} to Room ${res.room_number}?`);
+      const isDeceased = res.status_reason?.toLowerCase() === 'passed away' || res.status_reason?.toLowerCase() === 'deceased';
+      
+      let confirmMessage = `Are you sure you want to readmit ${res.name} to Room ${res.room_number}?`;
+      if (isDeceased) {
+        confirmMessage = `WARNING: ${res.name} is marked as "PASSED AWAY".\n\nAre you sure you want to readmit them? (Only do this if they were archived as deceased by mistake)`;
+      }
+
+      const confirmReadmit = window.confirm(confirmMessage);
       if (!confirmReadmit) return;
 
       const response = await fetch('/api/resident/readmit', {
@@ -574,21 +585,30 @@ function formatHandoverTime(dateStr?: string) {
       <OnboardingTour />
       
       {/* 1. Left Sidebar - Desktop (w-64) */}
-      <aside className="hidden lg:flex w-64 apple-card flex-col justify-between p-6 shrink-0 z-20 m-4 rounded-[32px]">
+      <aside className={`${isLeftSidebarOpen ? 'hidden lg:flex' : 'hidden'} w-64 apple-card flex-col justify-between p-6 shrink-0 z-20 m-4 rounded-[32px]`}>
         <div className="space-y-8">
-          {/* Brand Logo */}
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center font-bold text-lg text-primary border border-primary/20">
-              H
+          {/* Brand Logo & Hide Button */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center font-bold text-lg text-primary border border-primary/20">
+                H
+              </div>
+              <div>
+                <span className="font-bold text-[18px] tracking-tight text-text-primary block">
+                  Handoverly
+                </span>
+                <span className="text-[10px] text-text-secondary uppercase tracking-widest font-mono font-bold">
+                  Clinical Suite
+                </span>
+              </div>
             </div>
-            <div>
-              <span className="font-bold text-[18px] tracking-tight text-text-primary block">
-                Handoverly
-              </span>
-              <span className="text-[10px] text-text-secondary uppercase tracking-widest font-mono font-bold">
-                Clinical Suite
-              </span>
-            </div>
+            <button 
+              onClick={() => setIsLeftSidebarOpen(false)}
+              className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-205 transition-colors cursor-pointer lg:block hidden border border-slate-200/60 dark:border-slate-700/60"
+              title="Hide Sidebar"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
           </div>
 
           {/* Navigation Links */}
@@ -706,33 +726,54 @@ function formatHandoverTime(dateStr?: string) {
             
             {/* Header Area */}
             <div className="flex justify-between items-end mb-8">
-              <div>
-                <h2 className="text-3xl font-bold tracking-tight text-text-primary font-sans">Shift Registry</h2>
-                <p className="text-sm font-medium text-text-secondary mt-1">Manage and record handovers for all residents</p>
+              <div className="flex items-center gap-4">
+                {!isLeftSidebarOpen && (
+                  <button 
+                    onClick={() => setIsLeftSidebarOpen(true)}
+                    className="p-2.5 rounded-2xl bg-white dark:bg-slate-800 text-slate-500 hover:text-primary hover:shadow-md transition-all duration-300 border border-slate-200/50 dark:border-white/5 cursor-pointer hidden lg:flex items-center justify-center"
+                    title="Unhide Sidebar"
+                  >
+                    <ChevronRight className="w-5 h-5 animate-pulse" />
+                  </button>
+                )}
+                <div>
+                  <h2 className="text-3xl font-bold tracking-tight text-text-primary font-sans">Shift Registry</h2>
+                  <p className="text-sm font-medium text-text-secondary mt-1">Manage and record handovers for all residents</p>
+                </div>
               </div>
-              <button
-                id="tour-register-resident"
-                onClick={() => setShowAddModal(true)}
-                className="px-6 py-3 rounded-full bg-white dark:bg-slate-800 text-primary font-bold text-xs tracking-widest uppercase transition-all duration-300 cursor-pointer flex items-center gap-2 shadow-md border border-white/50 hover:shadow-lg"
-              >
-                <Plus className="w-4 h-4" />
-                Register Resident
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  id="tour-register-resident"
+                  onClick={() => setShowAddModal(true)}
+                  className="px-6 py-3 rounded-full bg-white dark:bg-slate-800 text-primary font-bold text-xs tracking-widest uppercase transition-all duration-300 cursor-pointer flex items-center gap-2 shadow-md border border-white/50 hover:shadow-lg whitespace-nowrap shrink-0"
+                >
+                  <Plus className="w-4 h-4 shrink-0" />
+                  <span>Register Resident</span>
+                </button>
+              </div>
             </div>
 
             {/* Facility Pulse / Clinical Notice Board */}
             <div className="mb-8 apple-card rounded-[24px] p-6 flex flex-col gap-5">
-              <div className="flex justify-between items-center border-b border-border pb-4">
+              <div 
+                className={`flex justify-between items-center cursor-pointer transition-colors ${isPulseOpen ? 'border-b border-border pb-4' : ''}`}
+                onClick={() => setIsPulseOpen(!isPulseOpen)}
+              >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-teal-accent/10 flex items-center justify-center text-teal-accent">
                     <Activity className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-text-primary uppercase tracking-widest">Facility Pulse & Trends</h2>
+                    <h2 className="text-sm font-bold text-text-primary uppercase tracking-widest flex items-center gap-2">
+                      Facility Pulse & Trends
+                      <div className="p-1 rounded-full bg-slate-100 dark:bg-slate-800 ml-1">
+                        {isPulseOpen ? <ChevronUp className="w-3.5 h-3.5 text-slate-500" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-500" />}
+                      </div>
+                    </h2>
                     <p className="text-[11px] text-text-secondary mt-0.5">Real-time clinical intelligence (Last 7 days)</p>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 items-center">
                   {(() => {
                     const emergingCount = facilityProactiveAlerts.filter(a => a.severity === 'critical' || a.severity === 'warning').length;
                     return emergingCount > 0 ? (
@@ -750,8 +791,16 @@ function formatHandoverTime(dateStr?: string) {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Trend 1: Falls */}
+              <AnimatePresence>
+                {isPulseOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-1">
+                      {/* Trend 1: Falls */}
                 <div className="apple-card-inner rounded-xl p-4 shadow-sm">
                   <h3 className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-3">Fall Incidents (7 Days)</h3>
                   <div className="flex items-end gap-1.5 h-10 mb-3 px-1">
@@ -834,6 +883,9 @@ function formatHandoverTime(dateStr?: string) {
                   </div>
                 </div>
               </div>
+            </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -847,12 +899,8 @@ function formatHandoverTime(dateStr?: string) {
                 return (
                   <div
                     key={res.id}
-                    onClick={() => { setSelectedResidentId(res.id); }}
-                    className={`resident-card group relative overflow-hidden rounded-[24px] p-5 cursor-pointer transition-all duration-300 border backdrop-blur-md ${
-                      selectedResidentId === res.id 
-                        ? 'border-teal-accent bg-teal-accent/5 shadow-[0_0_20px_rgba(45,212,191,0.15)] ring-1 ring-teal-accent/20' 
-                        : 'bg-surface border-border hover:border-teal-accent/40 hover:bg-surface-hover shadow-sm'
-                    }`}
+                    onClick={() => { router.push(`/resident/${res.id}`); }}
+                    className="resident-card group relative overflow-hidden rounded-[24px] p-5 cursor-pointer transition-all duration-300 border backdrop-blur-md bg-surface border-border hover:border-teal-accent/40 hover:bg-surface-hover shadow-sm"
                   >
                     {/* Top Section: Room, Badges, and Trash */}
                     <div className="flex items-start justify-between mb-3 gap-2">
@@ -964,14 +1012,46 @@ function formatHandoverTime(dateStr?: string) {
               {showArchive && (
                 <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                   {archivedResidents.map((res) => (
-                    <div key={res.id} className="border border-[#e3e3e3] dark:border-[#202024] bg-white dark:bg-[#121214] rounded-[20px] p-5 opacity-75">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-[#1c1c21] text-slate-700 dark:text-slate-300">RM {res.room_number}</span>
-                        <span className="text-[9px] uppercase tracking-wider font-semibold text-rose-500">{res.status_reason || 'Discharged'}</span>
+                    <div key={res.id} className="border border-[#e3e3e3] dark:border-[#202024] bg-white dark:bg-[#121214] rounded-[20px] p-5 opacity-85 hover:opacity-100 transition-opacity duration-200">
+                      <div className="flex justify-between items-center mb-3">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-[#1c1c21] text-slate-700 dark:text-slate-300">RM {res.room_number}</span>
+                          <span className="text-[9px] uppercase tracking-wider font-semibold text-rose-500">{res.status_reason || 'Discharged'}</span>
+                        </div>
+                        {user?.role !== 'carer' && (
+                          <div className="flex gap-1 shrink-0">
+                            <button
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                setEditingResident(res);
+                                setShowEditModal(true);
+                              }}
+                              className="p-1 rounded-lg text-slate-400 hover:text-primary hover:bg-primary/10 transition-all cursor-pointer"
+                              title={`Edit ${res.name}`}
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={(e) => { 
+                                e.stopPropagation(); 
+                                setPermanentDeletingResident(res);
+                                setShowPermanentDeleteModal(true); 
+                              }}
+                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-500/10 transition-all cursor-pointer"
+                              title={`Delete ${res.name}`}
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        )}
                       </div>
                       <h3 className="text-[15px] font-semibold text-[#1f1f1f] dark:text-[#ffffff]">{res.name}</h3>
                       <div className="mt-4 flex gap-2">
-                        <button onClick={() => handleReadmitResident(res)} className="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-[#1c1c21] dark:hover:bg-[#25252b] text-slate-800 dark:text-slate-200 rounded-md font-semibold cursor-pointer">Re-admit</button>
+                        {res.status_reason?.toLowerCase() === 'passed away' || res.status_reason?.toLowerCase() === 'deceased' ? (
+                          <button onClick={() => handleReadmitResident(res)} className="text-[11px] px-2.5 py-1.5 bg-rose-50/50 hover:bg-rose-100/60 dark:bg-rose-950/20 dark:hover:bg-rose-900/30 text-rose-650 dark:text-rose-400 border border-rose-200/50 dark:border-rose-900/30 rounded-md font-semibold cursor-pointer">Re-admit (Undo mistake)</button>
+                        ) : (
+                          <button onClick={() => handleReadmitResident(res)} className="text-xs px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-[#1c1c21] dark:hover:bg-[#25252b] text-slate-800 dark:text-slate-200 rounded-md font-semibold cursor-pointer">Re-admit</button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -980,104 +1060,10 @@ function formatHandoverTime(dateStr?: string) {
             </div>
           </div>
 
-          {/* Right Pane: Details & Timeline */}
-          <div className="hidden lg:flex flex-col w-[380px] xl:w-[420px] bg-white/40 dark:bg-[#0f172a]/40 backdrop-blur-3xl rounded-[32px] border border-white/60 dark:border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.04)] overflow-y-auto shrink-0 relative z-10 custom-scrollbar">
-            {selectedResidentId ? (
-              <div className="p-6">
-                {loadingRightPane ? (
-                  <div className="flex justify-center py-10">
-                    <div className="w-8 h-8 border-[3px] border-primary border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                ) : (
-                  <div className="space-y-6">
-                    {/* Header */}
-                    <div>
-                      <h2 className="text-xl font-bold text-[#1f1f1f] dark:text-white tracking-tight">
-                        {residents.find(r => r.id === selectedResidentId)?.name}
-                      </h2>
-                      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                        Room {residents.find(r => r.id === selectedResidentId)?.room_number}
-                      </p>
-                    </div>
-
-                    {/* Vitals Summary */}
-                    <div className="bg-white/70 dark:bg-slate-800/60 backdrop-blur-md rounded-[24px] p-6 shadow-sm border border-white/80 dark:border-white/5">
-                      <h3 className="text-[11px] font-bold uppercase tracking-widest text-text-secondary mb-5">Latest Vitals</h3>
-                      <div className="grid grid-cols-2 gap-y-6 gap-x-4">
-                        {(() => {
-                           const status = handovers[selectedResidentId];
-                           const v = parseVitalsFromHandover(status);
-                           return (
-                             <>
-                               <div>
-                                 <div className="text-[10px] text-text-secondary uppercase tracking-widest font-bold mb-1">Temp</div>
-                                 <div className={`font-mono text-2xl font-bold ${v.temp && v.temp > 38 ? 'text-red-500' : 'text-text-primary'}`}>{v.temp ? `${v.temp}°C` : '--'}</div>
-                               </div>
-                               <div>
-                                 <div className="text-[10px] text-text-secondary uppercase tracking-widest font-bold mb-1">BP</div>
-                                 <div className={`font-mono text-2xl font-bold ${(v.systolic && v.systolic > 140) ? 'text-red-500' : 'text-text-primary'}`}>{v.systolic ? `${v.systolic}/${v.diastolic}` : '--'}</div>
-                               </div>
-                               <div>
-                                 <div className="text-[10px] text-text-secondary uppercase tracking-widest font-bold mb-1">HR</div>
-                                 <div className="font-mono text-2xl font-bold text-text-primary">{v.hr ? `${v.hr} bpm` : '--'}</div>
-                               </div>
-                               <div>
-                                 <div className="text-[10px] text-text-secondary uppercase tracking-widest font-bold mb-1">SpO2</div>
-                                 <div className={`font-mono text-2xl font-bold ${(v.spo2 && v.spo2 < 92) ? 'text-amber-500' : 'text-text-primary'}`}>{v.spo2 ? `${v.spo2}%` : '--'}</div>
-                               </div>
-                             </>
-                           );
-                        })()}
-                      </div>
-                    </div>
-
-                    {/* Timeline */}
-                    <div className="bg-white/70 dark:bg-slate-800/60 backdrop-blur-md rounded-[24px] p-6 shadow-sm border border-white/80 dark:border-white/5">
-                      <h3 className="text-[11px] font-bold uppercase tracking-widest text-text-secondary mb-5">Clinical Timeline</h3>
-                      {selectedResidentTimeline.length === 0 ? (
-                        <p className="text-xs text-text-secondary">No recent activity.</p>
-                      ) : (
-                        <div className="pt-2">
-                          {selectedResidentTimeline.map((item, index) => (
-                            <div key={item.id} className="flex gap-4 text-sm relative pb-6">
-                              {/* Solid Branch Line */}
-                              {index !== selectedResidentTimeline.length - 1 && (
-                                <div className="absolute left-[5px] top-4 bottom-0 w-[2px] bg-primary/20 dark:bg-primary/30 rounded-full"></div>
-                              )}
-                              
-                              {/* Timeline Node */}
-                              <div className="relative z-10 w-3 h-3 mt-1 rounded-full border-[2.5px] border-primary bg-white dark:bg-slate-800 shrink-0 shadow-[0_0_8px_rgba(13,148,136,0.3)]"></div>
-                              
-                              {/* Content */}
-                              <div className="flex-1 -mt-0.5">
-                                <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-medium">{item.description}</p>
-                                <p className="font-mono text-[10.5px] text-slate-500 dark:text-slate-400 mt-1.5 uppercase tracking-wider">{new Date(item.created_at).toLocaleTimeString()}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-500">
-                <Activity className="w-12 h-12 mb-4 opacity-20" />
-                <p className="font-medium text-sm text-slate-600 dark:text-slate-400">Select a resident</p>
-                <p className="text-xs mt-1">View vitals, timeline, and handover details.</p>
-              </div>
-            )}
-          </div>
+          {/* Right Pane removed as per user request */}
         </main>
       </div>
 
-      <AriaFloatingButton 
-        selectedResidentId={selectedResidentId} 
-        residents={residents.map(r => ({ id: r.id, name: r.name }))}
-        facilityId={facility.id}
-        onVitalsRecorded={() => fetchData()}
-      />
 
       <AddResidentModal
         isOpen={showAddModal}
@@ -1149,6 +1135,7 @@ function EditResidentModal({ isOpen, onClose, resident, wings, theme, onEditSucc
   const [careLevel, setCareLevel] = useState('High');
   const [wingId, setWingId] = useState('');
   const [error, setError] = useState('');
+  const [statusReason, setStatusReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -1158,6 +1145,7 @@ function EditResidentModal({ isOpen, onClose, resident, wings, theme, onEditSucc
       setDob(resident.dob || '');
       setCareLevel(resident.care_level || 'High');
       setWingId(resident.wing_id || '');
+      setStatusReason(resident.status_reason || '');
       setError('');
     }
   }, [resident, isOpen]);
@@ -1172,15 +1160,21 @@ function EditResidentModal({ isOpen, onClose, resident, wings, theme, onEditSucc
     setError('');
     setSubmitting(true);
     try {
+      const updateData: any = {
+        name: name.trim(),
+        room_number: roomNumber.trim(),
+        dob: dob || null,
+        care_level: careLevel,
+        wing_id: wingId || null
+      };
+
+      if (!resident.is_active) {
+        updateData.status_reason = statusReason.trim();
+      }
+
       const { data, error: updateError } = await supabase
         .from('residents')
-        .update({
-          name: name.trim(),
-          room_number: roomNumber.trim(),
-          dob: dob || null,
-          care_level: careLevel,
-          wing_id: wingId || null
-        })
+        .update(updateData)
         .eq('id', resident.id)
         .select()
         .single();
@@ -1295,6 +1289,19 @@ function EditResidentModal({ isOpen, onClose, resident, wings, theme, onEditSucc
                       <option key={w.id} value={w.id}>{w.name}</option>
                     ))}
                   </select>
+                </div>
+              )}
+
+              {!resident.is_active && (
+                <div>
+                  <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block mb-1.5">Archive Status / Reason</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Discharged, Passed Away, Transferred"
+                    value={statusReason}
+                    onChange={e => setStatusReason(e.target.value)}
+                    className="w-full h-11 bg-surface border border-border rounded-xl px-3.5 text-xs focus:outline-none focus:ring-2 focus:ring-teal-accent/20 focus:border-teal-accent text-text-primary font-medium transition-all"
+                  />
                 </div>
               )}
 

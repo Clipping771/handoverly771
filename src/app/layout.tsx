@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Nunito, JetBrains_Mono } from "next/font/google";
+import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
@@ -8,7 +8,7 @@ import SmartSearch from "@/components/SmartSearch";
 import SyncBanner from "@/components/SyncBanner";
 import { Toaster } from "react-hot-toast";
 
-const nunito = Nunito({
+const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-sans",
   subsets: ["latin"],
 });
@@ -30,7 +30,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
-      <body className={`${nunito.variable} ${jetbrainsMono.variable} font-sans h-full antialiased bg-background text-text-primary flex flex-col transition-colors duration-200 relative`} suppressHydrationWarning>
+      <body className={`${plusJakarta.variable} ${jetbrainsMono.variable} font-sans h-full antialiased bg-background text-text-primary flex flex-col transition-colors duration-200 relative`} suppressHydrationWarning>
         {/* Global Mesh Gradient Background */}
         <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
           <div className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] rounded-full bg-purple-200 dark:bg-purple-900/30 blur-[120px] mix-blend-multiply dark:mix-blend-screen opacity-70 animate-[pulse_10s_ease-in-out_infinite]"></div>

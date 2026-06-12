@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { X, Mic, MicOff, Sparkles, Loader2, Keyboard, Play } from 'lucide-react';
 import AriaConfirmationModal from './AriaConfirmationModal';
+import { playSound, speak } from '@/lib/ariaVoice';
 
 interface AriaInputModalProps {
   isOpen: boolean;
@@ -63,6 +64,7 @@ export default function AriaInputModal({
           console.error('Speech recognition error:', event.error);
           setRecognitionError('Speech recognition issue. You can still type the values below.');
           setIsListening(false);
+          playSound('error');
         };
 
         rec.onend = () => {
@@ -81,10 +83,12 @@ export default function AriaInputModal({
     if (isListening) {
       recognitionRef.current?.stop();
       setIsListening(false);
+      playSound('cancel');
     } else {
       setRecognitionError('');
       setParseError('');
       setIsListening(true);
+      playSound('start');
       try {
         recognitionRef.current?.start();
       } catch (err) {
@@ -115,7 +119,19 @@ export default function AriaInputModal({
 
       setParsedVitals(data.vitals);
       setShowConfirmation(true);
+      
+      const speakParts = [];
+      if (data.vitals?.temperature) speakParts.push(`temperature ${data.vitals.temperature} degrees`);
+      if (data.vitals?.systolic && data.vitals?.diastolic) {
+        speakParts.push(`blood pressure ${data.vitals.systolic} over ${data.vitals.diastolic}`);
+      }
+      if (speakParts.length > 0) {
+        speak(`Vitals parsed. ${speakParts.join(' and ')}. Please verify.`);
+      } else {
+        speak("Vitals parsed. Please verify the values.");
+      }
     } catch (err: any) {
+      playSound('error');
       setParseError(err.message || 'Parser error. Please verify keys and connection.');
     } finally {
       setIsParsing(false);
@@ -123,17 +139,16 @@ export default function AriaInputModal({
   };
 
   const handleConfirmVitals = async (vitals: { temperature: number | null; systolic: number | null; diastolic: number | null }) => {
-    // Generate text log
     let vitalsParts = [];
     if (vitals.temperature !== null) vitalsParts.push(`Temp: ${vitals.temperature}°C`);
     if (vitals.systolic !== null && vitals.diastolic !== null) vitalsParts.push(`BP: ${vitals.systolic}/${vitals.diastolic} mmHg`);
     
     const vitalsText = `Vitals recorded: ${vitalsParts.join(', ')}`;
     
-    // Call callback to parent component
+    playSound('success');
+    speak(`Vitals recorded successfully.`);
     onApproveVitals(vitalsText, vitals);
     
-    // Close everything
     setShowConfirmation(false);
     onClose();
   };
@@ -240,7 +255,8 @@ export default function AriaInputModal({
                     <Mic className="w-4.5 h-4.5" />
                     <span>Start Dictation</span>
                   </>
-                )}
+                )
+                }
               </button>
 
               <button

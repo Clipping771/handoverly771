@@ -237,7 +237,7 @@ export default function ResidentProfile() {
             handover:handovers(urgency)
           `)
           .eq('resident_id', residentId)
-          .or('is_completed.is.null,is_completed.eq.false')
+          .is('outcome', null)
           .lt('created_at', twoHoursAgo);
 
         if (!error && data) {

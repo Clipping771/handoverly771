@@ -5,6 +5,7 @@ import { Mic, MicOff, AlertCircle } from 'lucide-react';
 import AriaInputModal from './AriaInputModal';
 import { supabase } from '@/lib/supabase';
 import toast from 'react-hot-toast';
+import { playSound, speak } from '@/lib/ariaVoice';
 
 interface AriaFloatingButtonProps {
   selectedResidentId: string | null;
@@ -31,7 +32,6 @@ export default function AriaFloatingButton({
   const recognitionRef = useRef<any>(null);
   const transcribedTextRef = useRef<string>('');
   
-  // States for confirmation flow after hold-to-record
   const [showDirectConfirmation, setShowDirectConfirmation] = useState(false);
   const [directRawText, setDirectRawText] = useState('');
   const [directParsedVitals, setDirectParsedVitals] = useState<any>(null);
@@ -39,7 +39,6 @@ export default function AriaFloatingButton({
 
   const activeResident = residents.find(r => r.id === selectedResidentId);
 
-  // Initialize Speech Recognition
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -57,6 +56,7 @@ export default function AriaFloatingButton({
 
         rec.onerror = (event: any) => {
           console.error('Speech recognition error during hold:', event.error);
+          playSound('error');
           toast.error('Voice recording issue. Please try typing instead.');
         };
 
@@ -74,16 +74,17 @@ export default function AriaFloatingButton({
   const handleSpeechFinished = async () => {
     const speechText = transcribedTextRef.current.trim();
     if (!speechText) {
+      playSound('cancel');
       toast.error('No speech detected. Please try again.');
       return;
     }
 
     if (!selectedResidentId) {
+      playSound('error');
       toast.error('No resident selected for the recording.');
       return;
     }
 
-    // Trigger immediate clinical parser flow
     setIsParsingDirect(true);
     toast.loading('Parsing vitals...', { id: 'parsing-vitals' });
     try {
@@ -102,10 +103,21 @@ export default function AriaFloatingButton({
       setDirectParsedVitals(data.vitals);
       setShowDirectConfirmation(true);
       toast.success('Vitals parsed successfully.', { id: 'parsing-vitals' });
+      
+      const speakParts = [];
+      if (data.vitals?.temperature) speakParts.push(`temperature ${data.vitals.temperature} degrees`);
+      if (data.vitals?.systolic && data.vitals?.diastolic) {
+        speakParts.push(`blood pressure ${data.vitals.systolic} over ${data.vitals.diastolic}`);
+      }
+      if (speakParts.length > 0) {
+        speak(`Vitals parsed. ${speakParts.join(' and ')}. Please verify and confirm.`);
+      } else {
+        speak("Vitals parsed. Please verify the values.");
+      }
     } catch (err: any) {
       console.error(err);
+      playSound('error');
       toast.error('Clinical parser failed. Opening manual input.', { id: 'parsing-vitals' });
-      // Fallback: Open manual modal with the text we did capture
       setIsInputModalOpen(true);
     } finally {
       setIsParsingDirect(false);
@@ -116,6 +128,7 @@ export default function AriaFloatingButton({
     if (gestureState !== 'IDLE') return;
 
     if (!selectedResidentId) {
+      playSound('error');
       toast.error('Please select a resident first to record vitals.');
       return;
     }
@@ -124,7 +137,6 @@ export default function AriaFloatingButton({
     setGestureState('PRESSING');
     setProgress(0);
 
-    // Visual ring animation: 500ms total
     const startTime = Date.now();
     progressIntervalRef.current = setInterval(() => {
       const elapsed = Date.now() - startTime;
@@ -136,13 +148,13 @@ export default function AriaFloatingButton({
     }, 16);
 
     pressTimerRef.current = setTimeout(() => {
-      // 500ms completed -> enter recording mode!
       if (navigator.vibrate) {
-        navigator.vibrate(50); // Haptic activation
+        navigator.vibrate(50);
       }
       setGestureState('RECORDING');
       transcribedTextRef.current = '';
       try {
+        playSound('start');
         recognitionRef.current?.start();
         toast.success(`Recording vitals for ${activeResident?.name}...`, { icon: '🎙️', duration: 3000 });
       } catch (err) {
@@ -178,21 +190,19 @@ export default function AriaFloatingButton({
     const distance = Math.sqrt(dx * dx + dy * dy);
 
     if (distance > 10) {
-      // Exceeded threshold -> cancel hold gesture
       cancelPress();
       setGestureState('IDLE');
+      playSound('cancel');
       toast.error('Gesture cancelled (moved too far)');
     }
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLButtonElement>) => {
     if (gestureState === 'PRESSING') {
-      // Released before 500ms -> treat as Tap
       cancelPress();
       setGestureState('IDLE');
       setIsInputModalOpen(true);
     } else if (gestureState === 'RECORDING') {
-      // Stop recording
       try {
         recognitionRef.current?.stop();
       } catch (err) {
@@ -207,11 +217,8 @@ export default function AriaFloatingButton({
     try {
       const { data: userSession } = await supabase.auth.getSession();
       const staffId = userSession?.session?.user?.id;
-
-      // 1. Fetch current active shift date
       const todayStr = new Date().toISOString().split('T')[0];
 
-      // 2. Insert vitals into the database (handovers table is where shift vitals/logs reside)
       const { error } = await supabase
         .from('handovers')
         .insert({
@@ -235,20 +242,41 @@ export default function AriaFloatingButton({
 
       if (error) throw error;
 
+      playSound('success');
+      speak(`Vitals recorded successfully for ${activeResident?.name || 'resident'}`);
       toast.success('Vitals recorded successfully!');
       if (onVitalsRecorded) onVitalsRecorded();
     } catch (e: any) {
       console.error(e);
+      playSound('error');
       toast.error('Failed to save vitals: ' + e.message);
     }
   };
 
   return (
     <>
+      <style>{`
+        @keyframes waveform-bar {
+          0%, 100% { transform: scaleY(0.35); }
+          50% { transform: scaleY(1); }
+        }
+        .animate-waveform-bar-1 { animation: waveform-bar 0.5s ease-in-out infinite; transform-origin: center; }
+        .animate-waveform-bar-2 { animation: waveform-bar 0.5s ease-in-out infinite 0.1s; transform-origin: center; }
+        .animate-waveform-bar-3 { animation: waveform-bar 0.5s ease-in-out infinite 0.2s; transform-origin: center; }
+        .animate-waveform-bar-4 { animation: waveform-bar 0.5s ease-in-out infinite 0.3s; transform-origin: center; }
+        .animate-waveform-bar-5 { animation: waveform-bar 0.5s ease-in-out infinite 0.4s; transform-origin: center; }
+      `}</style>
+
       <div className="fixed bottom-6 right-6 z-40 flex flex-col items-center">
         {gestureState === 'RECORDING' && (
-          <div className="mb-3 bg-red-600 text-white text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1.5 animate-pulse">
-            <span className="w-2 h-2 bg-white rounded-full animate-ping"></span>
+          <div className="mb-3 bg-red-600/90 text-white text-[11px] font-bold uppercase tracking-wider px-4 py-2 rounded-full shadow-lg flex items-center gap-3 animate-pulse">
+            <div className="flex items-center gap-1 h-3.5 w-6">
+              <span className="w-0.5 h-full bg-white rounded-full animate-waveform-bar-1"></span>
+              <span className="w-0.5 h-full bg-white rounded-full animate-waveform-bar-2"></span>
+              <span className="w-0.5 h-full bg-white rounded-full animate-waveform-bar-3"></span>
+              <span className="w-0.5 h-full bg-white rounded-full animate-waveform-bar-4"></span>
+              <span className="w-0.5 h-full bg-white rounded-full animate-waveform-bar-5"></span>
+            </div>
             <span>Recording Voice...</span>
           </div>
         )}
@@ -267,7 +295,6 @@ export default function AriaFloatingButton({
           title="Aria Voice Assistant (Tap to type, Hold to speak)"
           type="button"
         >
-          {/* Progress Ring wrapping the button */}
           {gestureState === 'PRESSING' && (
             <svg className="absolute inset-0 w-full h-full -rotate-90">
               <circle
@@ -285,14 +312,13 @@ export default function AriaFloatingButton({
           )}
 
           {gestureState === 'RECORDING' ? (
-            <MicOff className="w-6 h-6 animate-bounce" />
+            <MicOff className="w-6 h-6" />
           ) : (
             <Mic className="w-6 h-6" />
           )}
         </button>
       </div>
 
-      {/* Manual Input Modal */}
       {isInputModalOpen && selectedResidentId && activeResident && (
         <AriaInputModal
           isOpen={isInputModalOpen}
@@ -307,7 +333,6 @@ export default function AriaFloatingButton({
         />
       )}
 
-      {/* Confirmation Modal for hold gesture */}
       {showDirectConfirmation && activeResident && (
         <AriaInputModal
           isOpen={showDirectConfirmation}

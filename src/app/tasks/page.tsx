@@ -109,7 +109,7 @@ export default function TasksPage() {
         `)
         .eq('facility_id', facility.id)
         .eq('resident.is_active', true)
-        .or(`created_at.gte.${todayStr},carry_until_date.gte.${todayStr.split('T')[0]}`)
+        .or(`outcome.is.null,created_at.gte.${todayStr},carry_until_date.gte.${todayStr.split('T')[0]}`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
