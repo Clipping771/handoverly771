@@ -646,7 +646,7 @@ export default function ResidentInput() {
                 whileHover={{ scale: 1.04, y: -1 }}
                 whileTap={{ scale: 0.96 }}
                 onClick={() => setIsAriaModalOpen(true)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-primary to-[#00C9A7] hover:opacity-95 text-white rounded-full text-xs font-semibold tracking-wide transition-all shadow-sm cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
+                className="flex items-center gap-1.5 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-xs font-semibold tracking-wide transition-all shadow-sm cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
               >
                 <Mic className="w-4 h-4 text-white" />
                 <span>Aria Vitals</span>
