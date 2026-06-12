@@ -148,11 +148,11 @@ export default function Login() {
         {/* Clean Circular Handover Logo */}
         <div className="flex justify-center mb-10">
            <div className="w-20 h-20 rounded-[24px] bg-white dark:bg-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white/80 dark:border-white/10 flex items-center justify-center transform transition-transform hover:scale-105 duration-300 z-10">
-              <HeartPulse className="w-9 h-9 text-primary" strokeWidth={1.5} />
+              <HeartPulse className="w-9 h-9 text-slate-700 dark:text-slate-300" strokeWidth={1.5} />
            </div>
         </div>
 
-        <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/60 dark:border-white/10 p-6 sm:p-8 rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.04)]">
+        <div className="bg-white/80 dark:bg-slate-900/60 backdrop-blur-3xl border border-white/60 dark:border-white/10 p-6 sm:p-8 rounded-3xl shadow-[0_8px_32px_rgba(0,0,0,0.04)]">
           
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold tracking-tight text-text-primary mb-1.5">
@@ -169,7 +169,7 @@ export default function Login() {
               onClick={() => { setIsLoginMode(true); setError(''); }}
               className={`flex-1 py-2 text-xs font-bold rounded-full transition-all duration-300 tracking-widest uppercase focus:outline-none ${
                 isLoginMode
-                  ? 'bg-white dark:bg-slate-800 text-primary shadow-sm border border-white/50'
+                  ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 shadow-sm border border-white/50'
                   : 'text-text-secondary hover:text-text-primary hover:bg-white/50'
               }`}
             >
@@ -179,7 +179,7 @@ export default function Login() {
               onClick={() => { setIsLoginMode(false); setError(''); }}
               className={`flex-1 py-2 text-xs font-bold rounded-full transition-all duration-300 tracking-widest uppercase focus:outline-none ${
                 !isLoginMode
-                  ? 'bg-white dark:bg-slate-800 text-primary shadow-sm border border-white/50'
+                  ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 shadow-sm border border-white/50'
                   : 'text-text-secondary hover:text-text-primary hover:bg-white/50'
               }`}
             >
@@ -194,7 +194,7 @@ export default function Login() {
                   Employee ID / Email
                 </label>
                 <div className="relative flex items-center">
-                  <User className="absolute left-4 w-4 h-4 text-slate-400 group-focus-within/input:text-primary transition-colors z-10" />
+                  <User className="absolute left-4 w-4 h-4 text-slate-400 group-focus-within/input:text-slate-700 dark:group-focus-within/input:text-slate-300 transition-colors z-10" />
                   <input
                     type="text"
                     placeholder="e.g. EMP1001"
@@ -210,7 +210,7 @@ export default function Login() {
                   Password
                 </label>
                 <div className="relative flex items-center">
-                  <Lock className="absolute left-4 w-4 h-4 text-slate-400 group-focus-within/input:text-primary transition-colors z-10" />
+                  <Lock className="absolute left-4 w-4 h-4 text-slate-400 group-focus-within/input:text-slate-700 dark:group-focus-within/input:text-slate-300 transition-colors z-10" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
@@ -254,7 +254,7 @@ export default function Login() {
               <div className="space-y-1.5 group/input">
                 <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">Full Name</label>
                 <div className="relative">
-                  <User className="absolute left-4 top-4 w-4 h-4 text-slate-400 transition-colors group-focus-within/input:text-primary" />
+                  <User className="absolute left-4 top-4 w-4 h-4 text-slate-400 transition-colors group-focus-within/input:text-slate-700 dark:group-focus-within/input:text-slate-300" />
                   <input type="text" placeholder="Jane Doe" value={registerName} onChange={(e) => setRegisterName(e.target.value)} className="w-full h-12 bg-[#F5F5F7] dark:bg-[#2C2C2E] rounded-[14px] pl-11 pr-4 text-sm font-medium text-text-primary placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all border-none" />
                 </div>
               </div>
@@ -275,14 +275,14 @@ export default function Login() {
               <div className="space-y-1.5 group/input">
                 <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">Email</label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-4 w-4 h-4 text-slate-400 transition-colors group-focus-within/input:text-primary" />
+                  <Mail className="absolute left-4 top-4 w-4 h-4 text-slate-400 transition-colors group-focus-within/input:text-slate-700 dark:group-focus-within/input:text-slate-300" />
                   <input type="email" placeholder="jane@facility.com" value={registerEmail} onChange={(e) => setRegisterEmail(e.target.value)} className="w-full h-12 bg-[#F5F5F7] dark:bg-[#2C2C2E] rounded-[14px] pl-11 pr-4 text-sm font-medium text-text-primary placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all border-none" />
                 </div>
               </div>
               <div className="space-y-1.5 group/input">
                 <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">Password</label>
                 <div className="relative flex items-center">
-                  <Lock className="absolute left-4 top-4 w-4 h-4 text-slate-400 transition-colors group-focus-within/input:text-primary" />
+                  <Lock className="absolute left-4 top-4 w-4 h-4 text-slate-400 transition-colors group-focus-within/input:text-slate-700 dark:group-focus-within/input:text-slate-300" />
                   <input type={showRegisterPassword ? 'text' : 'password'} placeholder="••••••••" value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)} className="w-full h-12 bg-[#F5F5F7] dark:bg-[#2C2C2E] rounded-[14px] pl-11 pr-11 text-sm font-medium text-text-primary placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all border-none" />
                   <button
                     type="button"
@@ -326,14 +326,14 @@ export default function Login() {
         {/* Footer info */}
         <div className="mt-8 text-center flex items-center justify-center gap-3">
           <div className="px-3 py-1.5 rounded-full bg-white/40 dark:bg-black/40 backdrop-blur-md border border-black/5 dark:border-white/5 text-[9px] font-bold text-text-secondary tracking-[0.2em] uppercase flex items-center gap-2">
-            <Lock className="w-3 h-3 text-primary" />
+            <Lock className="w-3 h-3 text-slate-500 dark:text-slate-400" />
             AES-256
           </div>
           <div className="px-3 py-1.5 rounded-full bg-white/40 dark:bg-black/40 backdrop-blur-md border border-black/5 dark:border-white/5 text-[9px] font-bold text-text-secondary tracking-[0.2em] uppercase flex items-center gap-2">
-            <ShieldAlert className="w-3 h-3 text-green-500" />
+            <ShieldAlert className="w-3 h-3 text-slate-500 dark:text-slate-400" />
             RLS Active
           </div>
-          <Link href="/system-admin" className="px-3 py-1.5 rounded-full bg-white/40 dark:bg-black/40 backdrop-blur-md border border-black/5 dark:border-white/5 text-[9px] font-bold text-primary tracking-[0.2em] uppercase hover:bg-white/60 dark:hover:bg-white/10 transition-colors">
+          <Link href="/system-admin" className="px-3 py-1.5 rounded-full bg-white/40 dark:bg-black/40 backdrop-blur-md border border-black/5 dark:border-white/5 text-[9px] font-bold text-slate-600 dark:text-slate-400 tracking-[0.2em] uppercase hover:bg-white/60 dark:hover:bg-white/10 transition-colors">
             Setup
           </Link>
         </div>

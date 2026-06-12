@@ -55,7 +55,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         animate={{ y: 0, opacity: 1, scale: 1 }}
         exit={{ y: 15, opacity: 0, scale: 0.98 }}
         transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-        className="w-full max-w-[840px] apple-card hover:transform-none p-7 rounded-[32px] relative z-50 flex flex-col transition-all duration-300"
+        className="w-full max-w-[840px] apple-card hover:transform-none !bg-white/92 dark:!bg-[#0c1220]/88 p-7 rounded-[32px] relative z-50 flex flex-col transition-all duration-300"
       >
         
         {/* Header */}

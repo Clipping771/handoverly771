@@ -184,7 +184,7 @@ export default function CustomModelSelector({
   ];
 
   return (
-    <div className="w-full space-y-3.5 apple-card hover:transform-none p-4 rounded-2xl">
+    <div className="w-full space-y-3.5 apple-card hover:transform-none !bg-white/80 dark:!bg-[#0c1220]/40 p-4 rounded-2xl">
       <div className="text-[9.5px] font-sans font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1 flex items-center gap-1.5">
         <Cpu className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
         <span>{provider === 'openrouter' ? 'OpenRouter Active Engine' : 'Groq Active Engine'}</span>
@@ -212,7 +212,7 @@ export default function CustomModelSelector({
           className={`w-full text-left p-3.5 rounded-2xl border text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
             value === 'google/gemini-2.5-flash' || value === 'llama-3.3-70b-versatile' || value === 'auto'
               ? 'border-primary bg-primary/5 text-primary'
-              : 'border-slate-200/40 dark:border-white/5 bg-white/20 dark:bg-slate-900/20 text-text-secondary hover:bg-white/35 dark:hover:bg-slate-900/35'
+              : 'border-slate-200/40 dark:border-white/5 bg-white/50 dark:bg-slate-900/20 text-text-secondary hover:bg-white/65 dark:hover:bg-slate-900/35'
           }`}
         >
           <div className="flex items-center gap-2">
@@ -233,7 +233,7 @@ export default function CustomModelSelector({
           const Icon = cat.icon;
 
           return (
-            <div key={cat.id} className="border border-slate-200/40 dark:border-white/5 rounded-2xl overflow-hidden bg-white/25 dark:bg-slate-900/25">
+            <div key={cat.id} className="border border-slate-200/40 dark:border-white/5 rounded-2xl overflow-hidden bg-white/60 dark:bg-slate-900/25">
               {/* Category Header */}
               <button
                 type="button"
