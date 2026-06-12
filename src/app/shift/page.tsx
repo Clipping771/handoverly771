@@ -648,7 +648,7 @@ function formatHandoverTime(dateStr?: string) {
           </div>
           <button
             onClick={handleLogout}
-            className="w-full h-10 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-500 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer border border-red-500/25"
+            className="w-full h-10 rounded-xl bg-blue-500/10 backdrop-blur-xl hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer border border-blue-500/30 shadow-[0_4px_12px_rgba(59,130,246,0.1)]"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Logout</span>
@@ -684,7 +684,7 @@ function formatHandoverTime(dateStr?: string) {
 
         <button
           onClick={handleLogout}
-          className="w-12 h-12 rounded-full glass-pill hover:bg-red-50 text-text-secondary hover:text-red-500 transition-colors cursor-pointer flex items-center justify-center"
+          className="w-12 h-12 rounded-full bg-blue-500/10 backdrop-blur-xl hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 transition-colors cursor-pointer flex items-center justify-center border border-blue-500/30 shadow-[0_4px_12px_rgba(59,130,246,0.1)]"
           title="Logout"
         >
           <LogOut className="w-5 h-5" />

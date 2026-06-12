@@ -415,7 +415,7 @@ export default function Dashboard() {
 
             <button
               onClick={handleLogout}
-              className="p-2 rounded-lg border border-transparent hover:border-red-500/20 bg-surface-solid/50 hover:bg-red-500/10 text-text-secondary hover:text-red-500 transition-all duration-200 shadow-sm"
+              className="p-2 rounded-lg bg-blue-500/10 backdrop-blur-xl hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 border border-blue-500/30 transition-all duration-200 shadow-[0_4px_12px_rgba(59,130,246,0.1)]"
               title="Logout"
             >
               <LogOut className="w-4 h-4" />

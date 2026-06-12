@@ -641,16 +641,41 @@ export default function ResidentInput() {
 
           <div className="flex gap-2">
             {ariaEnabled && (
-              <motion.button
-                type="button"
-                whileHover={{ scale: 1.04, y: -1 }}
-                whileTap={{ scale: 0.96 }}
-                onClick={() => setIsAriaModalOpen(true)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full text-xs font-semibold tracking-wide transition-all shadow-sm cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
-              >
-                <Mic className="w-4 h-4 text-white" />
-                <span>Aria Vitals</span>
-              </motion.button>
+              <motion.div className="relative flex items-center justify-center">
+                {/* Continuous Glowing Aura */}
+                <motion.div
+                  className="absolute inset-0 rounded-full bg-blue-500 blur-md"
+                  animate={{
+                    scale: [1, 1.25, 1],
+                    opacity: [0.2, 0.5, 0.2],
+                  }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                />
+                
+                {/* Main Premium Button */}
+                <motion.button
+                  type="button"
+                  whileHover={{ scale: 1.05, y: -2 }}
+                  whileTap={{ scale: 0.96 }}
+                  onClick={() => setIsAriaModalOpen(true)}
+                  className="relative flex items-center gap-2 px-5 py-2.5 bg-blue-500 text-white rounded-full text-[11px] font-sans font-medium tracking-wide shadow-[0_4px_15px_rgba(59,130,246,0.4)] hover:shadow-[0_8px_25px_rgba(59,130,246,0.6)] hover:bg-blue-600 transition-all cursor-pointer border border-blue-400/40 outline-none focus:outline-none"
+                  style={{
+                    boxShadow: "inset 0 1px 2px rgba(255, 255, 255, 0.4), 0 4px 15px rgba(59,130,246,0.4)"
+                  }}
+                >
+                  <motion.div
+                    animate={{ rotate: [0, -6, 6, -6, 0], scale: [1, 1.1, 1] }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                  >
+                    <Mic className="w-3.5 h-3.5 text-white drop-shadow-sm" />
+                  </motion.div>
+                  <span className="relative z-10 text-white/95 drop-shadow-sm">Aria Vitals</span>
+                </motion.button>
+              </motion.div>
             )}
             <motion.button
               type="button"
