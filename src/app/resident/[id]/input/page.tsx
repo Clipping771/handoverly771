@@ -11,6 +11,7 @@ import { saveDraft, getDraft, clearDraft } from '@/lib/db';
 import { getAdelaideTodayStr } from '@/lib/taskUtils';
 import AriaInputModal from '@/components/AriaInputModal';
 import toast from 'react-hot-toast';
+import { motion } from 'framer-motion';
 
 interface Resident {
   id: string;
@@ -640,23 +641,27 @@ export default function ResidentInput() {
 
           <div className="flex gap-2">
             {ariaEnabled && (
-              <button
+              <motion.button
                 type="button"
+                whileHover={{ scale: 1.04, y: -1 }}
+                whileTap={{ scale: 0.96 }}
                 onClick={() => setIsAriaModalOpen(true)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-violet-600 to-indigo-650 hover:from-violet-700 hover:to-indigo-700 text-white rounded-full text-xs font-semibold tracking-wide transition-all shadow-sm cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-primary to-[#00C9A7] hover:opacity-95 text-white rounded-full text-xs font-semibold tracking-wide transition-all shadow-sm cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
               >
                 <Mic className="w-4 h-4 text-white" />
                 <span>Aria Vitals</span>
-              </button>
+              </motion.button>
             )}
-            <button
+            <motion.button
               type="button"
+              whileHover={{ scale: 1.04, y: -1 }}
+              whileTap={{ scale: 0.96 }}
               onClick={addTaskNode}
-              className="flex items-center gap-1.5 px-4 py-2 bg-text-primary hover:bg-slate-700 text-white rounded-full text-xs font-semibold tracking-wide transition-colors shadow-sm cursor-pointer"
+              className="flex items-center gap-1.5 px-4 py-2 bg-text-primary hover:bg-slate-700 text-white rounded-full text-xs font-semibold tracking-wide transition-all shadow-sm cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
             >
               <Plus className="w-4 h-4" />
               Add Task
-            </button>
+            </motion.button>
           </div>
         </div>
 
