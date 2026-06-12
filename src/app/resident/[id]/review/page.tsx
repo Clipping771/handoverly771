@@ -10,6 +10,11 @@ import Link from 'next/link';
 import { addToQueue, clearDraft } from '@/lib/db';
 import { useSync } from '@/context/SyncContext';
 import toast from 'react-hot-toast';
+import { parseUntilDate } from '@/lib/taskUtils';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 
 interface Resident {
   id: string;
@@ -30,6 +35,9 @@ interface ShiftTask {
   description: string;
   tags: string[];
   assigned_role?: string;
+  clinical_purpose?: string;
+  outcome?: string;
+  carry_until_date?: string;
 }
 
 const AVAILABLE_TAGS = ['incidents', 'medication', 'hygiene', 'mobility', 'nutrition', 'general'];
@@ -61,6 +69,8 @@ export default function ReviewHandover() {
   const [shiftTasks, setShiftTasks] = useState<ShiftTask[]>([]);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskText, setNewTaskText] = useState('');
+  const [newTaskPurpose, setNewTaskPurpose] = useState('');
+  const [newTaskCarryDate, setNewTaskCarryDate] = useState('');
   const [urgency, setUrgency] = useState<'critical' | 'attention' | 'routine'>('routine');
   const [riskFlags, setRiskFlags] = useState<string[]>([]);
   const [flagsStatus, setFlagsStatus] = useState<string>('none_detected');
@@ -121,13 +131,15 @@ export default function ReviewHandover() {
       
       const normalizedTasks: ShiftTask[] = (parsed.shift_tasks || parsed.carer_tasks || []).map((t: any) => {
         if (typeof t === 'string') {
-          return { title: 'Action Item', description: t, tags: ['general'], assigned_role: 'carer' };
+          return { title: 'Action Item', description: t, tags: ['general'], assigned_role: 'carer', clinical_purpose: '', carry_until_date: undefined };
         }
         return {
           title: t.title || 'Action Item',
           description: t.description || '',
           tags: Array.isArray(t.tags) ? t.tags : ['general'],
-          assigned_role: t.assigned_role || 'carer'
+          assigned_role: t.assigned_role || 'carer',
+          clinical_purpose: t.clinical_purpose || '',
+          carry_until_date: t.carry_until_date || parseUntilDate(t.description) || parseUntilDate(t.title) || undefined
         };
       });
       setShiftTasks(normalizedTasks);
@@ -153,6 +165,18 @@ export default function ReviewHandover() {
     fetchResident();
   }, [residentId]);
 
+  useGSAP(() => {
+    if (activeTab === 'rn') {
+      const sections = gsap.utils.toArray('.isbar-section');
+      if (sections.length > 0) {
+        gsap.fromTo(sections, 
+          { y: 20, opacity: 0 }, 
+          { y: 0, opacity: 1, duration: 0.4, stagger: 0.1, ease: 'power2.out' }
+        );
+      }
+    }
+  }, { dependencies: [activeTab, resident] });
+
   // ISBAR field editors
   const handleIsbarChange = (field: keyof ISBAR, val: string) => {
     setIsbar((prev) => ({ ...prev, [field]: val }));
@@ -171,6 +195,14 @@ export default function ReviewHandover() {
     setShiftTasks((prev) => {
       const updated = [...prev];
       updated[idx] = { ...updated[idx], description: val };
+      return updated;
+    });
+  };
+
+  const handleTaskPurposeChange = (idx: number, val: string) => {
+    setShiftTasks((prev) => {
+      const updated = [...prev];
+      updated[idx] = { ...updated[idx], clinical_purpose: val };
       return updated;
     });
   };
@@ -196,9 +228,18 @@ export default function ReviewHandover() {
 
   const handleAddTask = () => {
     if (!newTaskTitle.trim() || !newTaskText.trim()) return;
-    setShiftTasks((prev) => [...prev, { title: newTaskTitle.trim(), description: newTaskText.trim(), tags: ['general'], assigned_role: 'carer' }]);
+    setShiftTasks((prev) => [...prev, { 
+      title: newTaskTitle.trim(), 
+      description: newTaskText.trim(), 
+      tags: ['general'], 
+      assigned_role: 'carer', 
+      clinical_purpose: newTaskPurpose.trim(),
+      carry_until_date: newTaskCarryDate || undefined
+    }]);
     setNewTaskTitle('');
     setNewTaskText('');
+    setNewTaskPurpose('');
+    setNewTaskCarryDate('');
   };
 
   const handleRemoveTask = (idx: number) => {
@@ -229,6 +270,8 @@ export default function ReviewHandover() {
       const deviceId = localStorage.getItem('device_id') || `Device-${Math.floor(Math.random() * 1000)}`;
       localStorage.setItem('device_id', deviceId);
 
+      const isUpdateAction = typeof window !== 'undefined' ? sessionStorage.getItem('handover_is_update') === 'true' : false;
+
       const handoverRecord = {
         facility_id: facility.id,
         resident_id: residentId,
@@ -246,7 +289,8 @@ export default function ReviewHandover() {
         shift_type: shiftType,
         input_method: inputMethod,
         device_id: deviceId,
-        version_number: '1.0.0'
+        version_number: '1.0.0',
+        is_update_action: isUpdateAction
       };
 
       await addToQueue({
@@ -263,6 +307,8 @@ export default function ReviewHandover() {
       sessionStorage.removeItem('handover_raw_input');
       sessionStorage.removeItem('handover_input_method');
       sessionStorage.removeItem('handover_api_result');
+      sessionStorage.removeItem('handover_is_update');
+      localStorage.removeItem(`resident_insights_${residentId}`);
 
       // Trigger background sync and wait for it if online
       toast.success('Submitting handover...');
@@ -278,20 +324,17 @@ export default function ReviewHandover() {
 
   if (authLoading || !user || !resident) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-[#080b16] flex flex-col items-center justify-center">
-        <div className="w-10 h-10 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-4 text-slate-500 dark:text-slate-400 font-mono text-xs tracking-widest uppercase">Loading Draft Summaries...</p>
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
+        <div className="w-12 h-12 border-[3px] border-teal-accent border-t-transparent rounded-full animate-spin"></div>
+        <p className="mt-4 text-text-secondary font-medium text-sm tracking-wide">Loading Draft Summaries...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#080b16] text-[#0f172a] dark:text-[#e2e8f0] flex flex-col pb-12 relative transition-colors duration-200">
-      {/* Background grids */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#161b30_1px,transparent_1px),linear-gradient(to_bottom,#161b30_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-20 pointer-events-none"></div>
-
+    <div className="min-h-screen bg-background text-text-primary flex flex-col pb-12 relative transition-colors duration-200">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/90 dark:bg-[#0d1226]/90 backdrop-blur-md border-b border-slate-200 dark:border-[#1e295d] px-4 py-4 transition-colors duration-200">
+      <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur-xl border-b border-border px-4 py-4 transition-colors duration-200 animate-fade-in-up">
         <div className="max-w-xl mx-auto flex items-center justify-between">
           <Link 
             href={`/resident/${residentId}/input`} 
@@ -304,14 +347,14 @@ export default function ReviewHandover() {
             {/* Theme Toggle Button */}
             <button
               onClick={toggleTheme}
-              className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 shadow-sm transition-all duration-100 dark:bg-[#141b3a] dark:hover:bg-[#1a234b] dark:border dark:border-[#1e295d] dark:text-slate-300"
+              className="p-2.5 rounded-xl bg-surface-solid hover:bg-surface-hover text-text-secondary shadow-sm transition-all duration-100"
               title={theme === 'dark' ? "Switch to Day Mode" : "Switch to Night Mode"}
             >
-              {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5 text-blue-600" />}
+              {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-amber-400" /> : <Moon className="w-3.5 h-3.5" />}
             </button>
             <div className="text-right">
-              <h1 className="text-sm font-bold text-slate-800 dark:text-white tracking-wide">{resident.name}</h1>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold mt-0.5">Room {resident.room_number}</p>
+              <h1 className="text-sm font-bold text-text-primary tracking-wide">{resident.name}</h1>
+              <p className="text-[10px] text-text-secondary font-semibold mt-0.5">Room {resident.room_number}</p>
             </div>
           </div>
         </div>
@@ -332,7 +375,7 @@ export default function ReviewHandover() {
         </div>
 
         {/* Risk Flags Indicator */}
-        <div className="mb-6 bg-white border border-slate-200 dark:bg-[#0d1226]/60 dark:border-[#1e295d] p-4 rounded-2xl transition-colors duration-200">
+        <div className="mb-6 apple-card p-4 rounded-2xl animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-[9px] font-mono text-slate-400 dark:text-slate-400 font-bold uppercase tracking-widest">
               Identified Risks:
@@ -356,8 +399,8 @@ export default function ReviewHandover() {
         </div>
 
         {/* Shift Details Selectors */}
-        <div className="mb-6 bg-white border border-slate-200 dark:bg-[#121214] dark:border-[#202024] p-5 rounded-[24px] shadow-sm">
-          <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-900/60 px-4 py-2.5 rounded-xl border border-slate-100 dark:border-[#202024]">
+        <div className="mb-6 apple-card p-5 animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+          <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-1.5 text-[11px] text-text-secondary bg-surface-solid px-4 py-2.5 rounded-xl border border-border">
             <div>
               <span className="font-semibold text-indigo-600 dark:text-indigo-400">🕐 Auto-selected:</span>
               <span className="ml-1 font-bold text-slate-800 dark:text-slate-200 capitalize">{shiftType} Shift</span>
@@ -369,20 +412,20 @@ export default function ReviewHandover() {
 
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
-              <label className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider block mb-1.5">Shift Date</label>
+              <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block mb-1.5">Shift Date</label>
               <input
                 type="date"
                 value={shiftDate}
                 onChange={(e) => setShiftDate(e.target.value)}
-                className="w-full h-11 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-[#202024] rounded-xl px-3.5 text-xs focus:outline-none text-slate-700 dark:text-slate-350"
+                className="w-full h-11 bg-surface-solid border border-border rounded-xl px-3.5 text-xs focus:outline-none text-text-primary"
               />
             </div>
             <div className="flex-1">
-              <label className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider block mb-1.5">Shift Type</label>
+              <label className="text-[10px] font-bold text-text-secondary uppercase tracking-wider block mb-1.5">Shift Type</label>
               <select
                 value={shiftType}
                 onChange={(e) => setShiftType(e.target.value as any)}
-                className="w-full h-11 bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-[#202024] rounded-xl px-3.5 text-xs focus:outline-none text-slate-705 dark:text-slate-350 cursor-pointer"
+                className="w-full h-11 bg-surface-solid border border-border rounded-xl px-3.5 text-xs focus:outline-none text-text-primary cursor-pointer"
               >
                 <option value="morning">Morning Shift</option>
                 <option value="afternoon">Afternoon Shift</option>
@@ -393,13 +436,13 @@ export default function ReviewHandover() {
         </div>
 
         {/* Tab Controls */}
-        <div className="flex bg-slate-200/50 p-1 border border-slate-300 rounded-xl mb-6 dark:bg-[#0b0e22]/80 dark:border-[#1c2759]">
+        <div className="flex bg-surface-solid p-1 border border-border rounded-xl mb-6 animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
           <button
             onClick={() => setActiveTab('rn')}
             className={`flex-1 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-100 flex items-center justify-center gap-1.5 ${
               activeTab === 'rn' 
-                ? 'bg-white text-slate-900 shadow-sm dark:bg-[#1e295d] dark:text-white' 
-                : 'text-slate-500 hover:text-slate-800 dark:text-slate-500 dark:hover:text-slate-300'
+                ? 'bg-surface text-teal-accent shadow-sm' 
+                : 'text-text-secondary hover:text-text-primary'
             }`}
           >
             <Brain className="w-4 h-4" />
@@ -409,8 +452,8 @@ export default function ReviewHandover() {
             onClick={() => setActiveTab('carer')}
             className={`flex-1 py-2.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all duration-100 flex items-center justify-center gap-1.5 ${
               activeTab === 'carer' 
-                ? 'bg-white text-slate-900 shadow-sm dark:bg-[#1e295d] dark:text-white' 
-                : 'text-slate-500 hover:text-slate-800 dark:text-slate-500 dark:hover:text-slate-300'
+                ? 'bg-surface text-teal-accent shadow-sm' 
+                : 'text-text-secondary hover:text-text-primary'
             }`}
           >
             <Sparkles className="w-4 h-4" />
@@ -424,14 +467,14 @@ export default function ReviewHandover() {
             /* ISBAR Editors */
             <div className="space-y-4">
               {(['identify', 'situation', 'background', 'assessment', 'recommendation'] as const).map((field) => (
-                <div key={field} className="space-y-1">
+                <div key={field} className="isbar-section space-y-1 opacity-0">
                   <label className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 block capitalize">
                     {field.slice(0, 1)} — {field}
                   </label>
                   <textarea
                     value={isbar[field] || ''}
                     onChange={(e) => handleIsbarChange(field, e.target.value)}
-                    className="w-full bg-white border border-slate-200 focus:border-blue-500 dark:bg-[#0d1226]/40 dark:border-[#1e295d] rounded-xl p-3 text-sm focus:outline-none dark:text-white leading-relaxed min-h-[90px]"
+                    className="w-full bg-surface-solid border border-border focus:border-teal-accent rounded-xl p-3 text-sm focus:outline-none text-text-primary leading-relaxed min-h-[90px]"
                   />
                 </div>
               ))}
@@ -444,7 +487,7 @@ export default function ReviewHandover() {
                   Action Tasks & Tag Classifications
                 </label>
                 {shiftTasks.map((task, idx) => (
-                  <div key={idx} className="flex flex-col gap-3 bg-white border border-[#e3e3e3] dark:bg-[#121214] dark:border-[#202024] p-5 rounded-[20px] transition-colors duration-200 shadow-sm relative">
+                  <div key={idx} className="flex flex-col gap-3 apple-card p-5 transition-colors duration-200 shadow-sm relative animate-fade-in-up">
                     
                     {/* Top Row: Title/Tagline, Play, Delete */}
                     <div className="flex gap-2.5 items-center justify-between">
@@ -454,7 +497,7 @@ export default function ReviewHandover() {
                           type="text"
                           value={task.title}
                           onChange={(e) => handleTaskTitleChange(idx, e.target.value)}
-                          className="bg-transparent text-sm focus:outline-none text-slate-900 dark:text-white font-bold tracking-tight w-full placeholder-slate-400"
+                          className="bg-transparent text-sm focus:outline-none text-text-primary font-bold tracking-tight w-full placeholder-text-secondary"
                           placeholder="Task Tagline (e.g. Comfort Checks)"
                         />
                       </div>
@@ -484,8 +527,42 @@ export default function ReviewHandover() {
                       <textarea
                         value={task.description}
                         onChange={(e) => handleTaskChange(idx, e.target.value)}
-                        className="w-full bg-transparent text-xs focus:outline-none text-slate-600 dark:text-slate-300 font-medium resize-none min-h-[45px] leading-relaxed border-l-2 border-slate-100 dark:border-slate-800 pl-3"
+                        className="w-full bg-transparent text-xs focus:outline-none text-text-secondary font-medium resize-none min-h-[45px] leading-relaxed border-l-2 border-border pl-3"
                         placeholder="Task Description..."
+                      />
+                    </div>
+
+                    {/* Clinical Rationale (hallucination mitigation) */}
+                    <div className="pl-5">
+                      <div className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                        Clinical Purpose / Rationale (Review required)
+                      </div>
+                      <input
+                        type="text"
+                        value={task.clinical_purpose || ''}
+                        onChange={(e) => handleTaskPurposeChange(idx, e.target.value)}
+                        placeholder="Why is this task needed? (e.g. To prevent dehydration)"
+                        className="w-full bg-surface-solid border border-border rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-indigo-500 text-text-primary font-medium"
+                      />
+                    </div>
+
+                    {/* Carry Until Date */}
+                    <div className="pl-5 mt-2">
+                      <div className="text-[9px] font-bold text-slate-550 dark:text-slate-400 uppercase tracking-wider mb-1">
+                        Carry/Repeat Task Until Date (Optional)
+                      </div>
+                      <input
+                        type="date"
+                        value={task.carry_until_date || ''}
+                        onChange={(e) => {
+                          setShiftTasks(prev => {
+                            const newTasks = [...prev];
+                            newTasks[idx] = { ...newTasks[idx], carry_until_date: e.target.value || undefined };
+                            return newTasks;
+                          });
+                        }}
+                        className="w-full bg-surface-solid border border-border rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-indigo-500 text-text-primary font-medium"
                       />
                     </div>
 
@@ -529,8 +606,8 @@ export default function ReviewHandover() {
               </div>
 
               {/* Add New Task Form */}
-              <div className="bg-slate-50 dark:bg-[#121214] border border-[#e3e3e3] dark:border-[#202024] p-4.5 rounded-[20px] space-y-3">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 block">
+              <div className="bg-surface-solid border border-border p-4.5 rounded-[20px] space-y-3">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-text-secondary block">
                   Add Custom Task Node
                 </span>
                 <input
@@ -540,21 +617,41 @@ export default function ReviewHandover() {
                   onChange={(e) => setNewTaskTitle(e.target.value)}
                   className="w-full h-10 bg-white border border-[#e3e3e3] rounded-xl px-4 text-xs focus:outline-none focus:border-slate-800 dark:focus:border-slate-150 text-slate-900 dark:bg-[#0b0b0d] dark:border-[#202024] dark:text-white font-bold"
                 />
-                <div className="flex gap-2">
-                  <textarea
-                    placeholder="Task Description details..."
-                    value={newTaskText}
-                    onChange={(e) => setNewTaskText(e.target.value)}
-                    className="flex-1 min-h-[50px] bg-white border border-[#e3e3e3] rounded-xl p-3 text-xs focus:outline-none focus:border-slate-800 dark:focus:border-slate-150 text-slate-800 dark:bg-[#0b0b0d] dark:border-[#202024] dark:text-white resize-none"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleAddTask}
-                    className="w-11 h-11 self-end bg-slate-800 hover:bg-slate-700 dark:bg-slate-105 dark:hover:bg-white text-white dark:text-slate-900 rounded-xl flex items-center justify-center transition-colors cursor-pointer shrink-0"
-                    style={{ color: theme === 'dark' ? '#0b0b0d' : '#ffffff' }}
-                  >
-                    <Plus className="w-5 h-5" />
-                  </button>
+                <input
+                  type="text"
+                  placeholder="Clinical Purpose / Rationale..."
+                  value={newTaskPurpose}
+                  onChange={(e) => setNewTaskPurpose(e.target.value)}
+                  className="w-full h-10 bg-white border border-[#e3e3e3] rounded-xl px-4 text-xs focus:outline-none focus:border-slate-800 dark:focus:border-slate-150 text-slate-900 dark:bg-[#0b0b0d] dark:border-[#202024] dark:text-white font-medium"
+                />
+                 <div className="flex gap-2">
+                  <div className="flex-1 flex flex-col gap-2">
+                    <textarea
+                      placeholder="Task Description details..."
+                      value={newTaskText}
+                      onChange={(e) => setNewTaskText(e.target.value)}
+                      className="min-h-[50px] bg-white border border-[#e3e3e3] rounded-xl p-3 text-xs focus:outline-none focus:border-slate-800 dark:focus:border-slate-150 text-slate-800 dark:bg-[#0b0b0d] dark:border-[#202024] dark:text-white resize-none"
+                    />
+                    <div className="flex gap-2">
+                      <div className="flex-1">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase block mb-1">Carry Until Date (Optional)</label>
+                        <input
+                          type="date"
+                          value={newTaskCarryDate}
+                          onChange={(e) => setNewTaskCarryDate(e.target.value)}
+                          className="w-full h-9 bg-white border border-[#e3e3e3] rounded-xl px-3 text-xs focus:outline-none focus:border-slate-800 dark:focus:border-slate-150 text-slate-900 dark:bg-[#0b0b0d] dark:border-[#202024] dark:text-white"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleAddTask}
+                        className="w-11 h-9 self-end bg-slate-800 hover:bg-slate-700 dark:bg-slate-105 dark:hover:bg-white text-white dark:text-slate-900 rounded-xl flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                        style={{ color: theme === 'dark' ? '#0b0b0d' : '#ffffff' }}
+                      >
+                        <Plus className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

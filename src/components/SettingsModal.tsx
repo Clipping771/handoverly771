@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Key, Eye, EyeOff, Server, Cpu } from 'lucide-react';
+import { X, Key, Eye, EyeOff, Server, Cpu, Search, ChevronDown, ChevronUp, Zap, Rocket, Globe, Gem, Check } from 'lucide-react';
+import CustomModelSelector from './CustomModelSelector';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -12,16 +13,21 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [anthropicKey, setAnthropicKey] = useState('');
   const [openrouterKey, setOpenrouterKey] = useState('');
   const [openrouterModel, setOpenrouterModel] = useState('');
+  const [groqKey, setGroqKey] = useState('');
+  const [groqModel, setGroqModel] = useState('');
   const [ollamaUrl, setOllamaUrl] = useState('');
   const [ollamaModel, setOllamaModel] = useState('');
   const [showAnthropic, setShowAnthropic] = useState(false);
   const [showOpenrouter, setShowOpenrouter] = useState(false);
+  const [showGroq, setShowGroq] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setAnthropicKey(localStorage.getItem('user_anthropic_key') || '');
       setOpenrouterKey(localStorage.getItem('user_openrouter_key') || '');
       setOpenrouterModel(localStorage.getItem('user_openrouter_model') || 'anthropic/claude-3.5-sonnet');
+      setGroqKey(localStorage.getItem('user_groq_key') || '');
+      setGroqModel(localStorage.getItem('user_groq_model') || 'llama-3.3-70b-versatile');
       setOllamaUrl(localStorage.getItem('user_ollama_url') || 'http://127.0.0.1:11434');
       setOllamaModel(localStorage.getItem('user_ollama_model') || 'llama3');
     }
@@ -31,6 +37,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     localStorage.setItem('user_anthropic_key', anthropicKey.trim());
     localStorage.setItem('user_openrouter_key', openrouterKey.trim());
     localStorage.setItem('user_openrouter_model', openrouterModel.trim() || 'anthropic/claude-3.5-sonnet');
+    localStorage.setItem('user_groq_key', groqKey.trim());
+    localStorage.setItem('user_groq_model', groqModel.trim() || 'llama-3.3-70b-versatile');
     localStorage.setItem('user_ollama_url', ollamaUrl.trim() || 'http://127.0.0.1:11434');
     localStorage.setItem('user_ollama_model', ollamaModel.trim() || 'llama3');
     onClose();
@@ -108,17 +116,46 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             </div>
           </div>
 
-          {/* OpenRouter Model ID */}
+          {/* OpenRouter Model Selector */}
           <div className="space-y-1.5">
-            <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
-              OpenRouter Model ID
-            </label>
-            <input
-              type="text"
-              placeholder="anthropic/claude-3.5-sonnet"
+            <CustomModelSelector
               value={openrouterModel}
-              onChange={(e) => setOpenrouterModel(e.target.value)}
-              className="w-full h-11 bg-slate-50 dark:bg-[#0b0b0d] border border-[#e3e3e3] dark:border-[#202024] rounded-xl px-4 text-xs focus:outline-none focus:border-slate-800 dark:focus:border-slate-100 text-[#1f1f1f] dark:text-white font-mono"
+              onChange={setOpenrouterModel}
+              apiKey={openrouterKey}
+              provider="openrouter"
+            />
+          </div>
+
+          {/* Groq API Key */}
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 flex items-center gap-1.5">
+              <Key className="w-3.5 h-3.5" /> Groq Key
+            </label>
+            <div className="relative">
+              <input
+                type={showGroq ? 'text' : 'password'}
+                placeholder="gsk_..."
+                value={groqKey}
+                onChange={(e) => setGroqKey(e.target.value)}
+                className="w-full h-11 bg-slate-50 dark:bg-[#0b0b0d] border border-[#e3e3e3] dark:border-[#202024] rounded-xl px-4 pr-10 text-xs focus:outline-none focus:border-slate-800 dark:focus:border-slate-100 text-[#1f1f1f] dark:text-white font-mono"
+              />
+              <button
+                type="button"
+                onClick={() => setShowGroq(!showGroq)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-350 cursor-pointer"
+              >
+                {showGroq ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* Groq Model Selector */}
+          <div className="space-y-1.5">
+            <CustomModelSelector
+              value={groqModel}
+              onChange={setGroqModel}
+              apiKey={groqKey}
+              provider="groq"
             />
           </div>
 

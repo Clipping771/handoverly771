@@ -9,6 +9,9 @@ import { User2, LogOut, Clock, ShieldAlert, Sparkles, Brain, CheckCircle2, Sun, 
 import Link from 'next/link';
 import AdvancedCalendar from '@/components/AdvancedCalendar';
 import OnboardingTour from '@/components/OnboardingTour';
+import AmbientOrb from '@/components/AmbientOrb';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 
 interface HandoverWithDetails {
   id: string;
@@ -215,29 +218,39 @@ export default function Dashboard() {
     logout();
   };
 
+  useGSAP(() => {
+    const targets = gsap.utils.toArray('.critical-indicator');
+    if (targets.length > 0) {
+      gsap.fromTo(targets, 
+        { scale: 1, opacity: 1 }, 
+        { scale: 1.15, opacity: 0.7, duration: 2, repeat: -1, ease: 'sine.inOut', yoyo: true }
+      );
+    }
+  }, { dependencies: [paginatedGroups] });
+
   if (authLoading || !user || !facility) {
     return (
-      <div className="min-h-screen bg-[#f8f9fa] dark:bg-[#121212] flex flex-col items-center justify-center">
-        <div className="w-12 h-12 border-[3px] border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-        <p className="mt-6 text-slate-500 dark:text-slate-400 font-medium text-sm tracking-wide">Syncing Workspace...</p>
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
+        <div className="w-12 h-12 border-[3px] border-teal-accent border-t-transparent rounded-full animate-spin"></div>
+        <p className="mt-6 text-text-secondary font-medium text-sm tracking-wide">Syncing Workspace...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] dark:bg-[#0a0a0c] text-slate-900 dark:text-slate-100 flex flex-col pb-16 font-sans selection:bg-blue-100 dark:selection:bg-blue-900/30 transition-colors duration-300">
+    <div className="min-h-screen bg-background text-text-primary flex flex-col pb-16 font-sans transition-colors duration-300 relative">
       <OnboardingTour />
       {/* Premium Header */}
-      <header className="sticky top-0 z-40 bg-white/80 dark:bg-[#0a0a0c]/80 backdrop-blur-2xl border-b border-slate-200/60 dark:border-white/5 px-6 py-4 transition-colors duration-300">
+      <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur-xl border-b border-border px-6 py-4 transition-colors duration-300">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-11 h-11 rounded-[14px] bg-white dark:bg-[#1a1a1c] border border-slate-200 dark:border-white/10 flex items-center justify-center shadow-sm">
-              <Activity className="w-5 h-5 text-slate-700 dark:text-slate-300 animate-pulse" />
+            <div className="w-11 h-11 rounded-[14px] bg-surface-solid border border-border flex items-center justify-center shadow-sm">
+              <Activity className="w-5 h-5 text-text-primary animate-pulse" />
             </div>
             <div>
-              <h1 className="text-base font-semibold text-slate-900 dark:text-white tracking-tight">{facility.name}</h1>
-              <p className="text-[11px] text-slate-500 dark:text-slate-400 flex items-center gap-1.5 font-medium uppercase tracking-widest mt-0.5">
-                <Clock className="w-3 h-3 text-blue-500" />
+              <h1 className="text-base font-semibold text-text-primary tracking-tight">{facility.name}</h1>
+              <p className="text-[11px] text-text-secondary flex items-center gap-1.5 font-medium uppercase tracking-widest mt-0.5">
+                <Clock className="w-3 h-3 text-teal-accent" />
                 Live Handover
               </p>
             </div>
@@ -282,95 +295,123 @@ export default function Dashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto w-full px-6 mt-12 flex-1 flex flex-col relative z-10">
+      <main className="w-full flex-1 flex flex-col relative z-10 p-6 md:p-8">
         
-        {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
-          <div className="max-w-2xl">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200/60 dark:border-white/10 mb-5">
-              <CheckCircle2 className="w-3 h-3 text-slate-400 dark:text-slate-500" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Synchronized</span>
+        {/* Hourglass Glass Container Wrapper */}
+        <div className="max-w-[1400px] mx-auto w-full bg-white/40 dark:bg-[#0f172a]/40 backdrop-blur-3xl rounded-[40px] border border-white/60 dark:border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.04)] overflow-hidden min-h-[80vh] flex flex-col">
+          
+          {/* Welcome Area (Hourglass Style) */}
+          <div className="p-8 md:p-12 relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-8">
+            <div className="max-w-2xl">
+              <h2 className="text-5xl md:text-6xl font-bold tracking-tight text-text-primary mb-2 font-sans">
+                Welcome
+              </h2>
+              <p className="text-text-secondary text-lg font-medium max-w-lg leading-relaxed">
+                Handoverly Synchronized Engine
+              </p>
             </div>
-            <h2 className="text-4xl font-semibold tracking-tight text-slate-900 dark:text-white mb-3">Shift Handovers</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-sm font-medium">
-              Monitor and review active shift transitions across the facility in real-time.
-            </p>
+
+            {/* Floating Soft Stats Row */}
+            <div className="flex gap-4 self-start md:self-end">
+               <div className="bg-white/70 dark:bg-slate-800/60 backdrop-blur-md rounded-[28px] p-6 min-w-[140px] flex flex-col items-start shadow-sm border border-white/80 dark:border-white/5">
+                 <div className="text-4xl font-bold text-text-primary mb-1">{paginatedGroups.length}</div>
+                 <div className="text-[11px] font-bold uppercase tracking-widest text-text-secondary">Active Rooms</div>
+               </div>
+               <div className="bg-white/70 dark:bg-slate-800/60 backdrop-blur-md rounded-[28px] p-6 min-w-[140px] flex flex-col items-start shadow-sm border border-white/80 dark:border-white/5">
+                 <div className="text-4xl font-bold text-red-500 mb-1 flex items-center gap-2">
+                    <span className="critical-indicator">
+                      {paginatedGroups.filter(g => g.handovers.some(h => h.urgency === 'critical')).length}
+                    </span>
+                 </div>
+                 <div className="text-[11px] font-bold uppercase tracking-widest text-text-secondary">Critical Risks</div>
+               </div>
+            </div>
           </div>
 
-          {/* Role Switcher (Segmented Control) */}
-          <div id="tour-role-switcher" className="flex bg-slate-200/60 p-1.5 rounded-full dark:bg-white/5 border border-slate-200/50 dark:border-white/5 self-start shadow-inner">
-            <button
-              onClick={() => setFilterRole('carer')}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-semibold transition-all duration-300 ${
-                filterRole === 'carer'
-                  ? 'bg-white text-slate-900 shadow-sm dark:bg-[#2a2a2d] dark:text-white dark:shadow-black/20'
-                  : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-              }`}
-            >
-              <Sparkles className="w-4 h-4" />
-              Carer View
-            </button>
-            <button
-              onClick={() => setFilterRole('rn')}
-              className={`flex items-center gap-2 px-6 py-2.5 rounded-full text-xs font-semibold transition-all duration-300 ${
-                filterRole === 'rn'
-                  ? 'bg-white text-slate-900 shadow-sm dark:bg-[#2a2a2d] dark:text-white dark:shadow-black/20'
-                  : 'text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200'
-              }`}
-            >
-              <Brain className="w-4 h-4" />
-              RN View
-            </button>
-          </div>
-        </div>
-
-        {/* Advanced Calendar Date Selector */}
-        <div id="tour-calendar" className="mb-8">
-          <AdvancedCalendar
-            selectedDate={selectedDate}
-            onChange={setSelectedDate}
-            datesWithHandovers={datesWithHandovers}
-          />
-        </div>
-
-        {/* Toolbar: Urgency, Search, Pagination Limit */}
-        <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center mb-8">
-          {/* Urgency Filter Tabs */}
-          <div id="tour-urgency-filter" className="flex gap-2 overflow-x-auto no-scrollbar w-full md:w-auto">
-            {(['all', 'critical', 'attention', 'routine'] as const).map((tab) => (
+          {/* Content Area Inside Glass Container */}
+          <div className="px-8 md:px-12 pb-12 flex-1 relative z-20">
+          
+          {/* Controls Bar */}
+          <div className="flex flex-col md:flex-row justify-between items-center gap-6 mb-8 apple-card p-4 rounded-[24px]">
+            {/* Role Switcher (Circular Buttons Style) */}
+            <div id="tour-role-switcher" className="flex items-center gap-4 w-full md:w-auto">
               <button
-                key={tab}
-                onClick={() => { setUrgencyFilter(tab); setCurrentPage(1); }}
-                className={`px-5 py-2.5 rounded-full text-[11px] font-bold tracking-wider uppercase transition-all duration-300 shrink-0 ${
-                  urgencyFilter === tab
-                    ? 'bg-white text-slate-900 shadow-sm ring-1 ring-slate-200/80 dark:bg-[#2a2a2d] dark:text-white dark:ring-white/10'
-                    : 'bg-transparent text-slate-500 hover:bg-slate-200/50 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-white/5 dark:hover:text-slate-200'
-                }`}
+                onClick={() => setFilterRole('carer')}
+                className="flex flex-col items-center gap-2 group"
               >
-                {tab}
+                <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 ${
+                  filterRole === 'carer'
+                    ? 'bg-white shadow-md border border-white/50 text-primary dark:bg-slate-800'
+                    : 'glass-pill text-text-secondary group-hover:bg-white/80'
+                }`}>
+                  <Sparkles className="w-6 h-6" />
+                </div>
+                <span className={`text-[10px] font-bold uppercase tracking-widest ${filterRole === 'carer' ? 'text-primary' : 'text-text-secondary'}`}>Carer</span>
               </button>
-            ))}
+              
+              <button
+                onClick={() => setFilterRole('rn')}
+                className="flex flex-col items-center gap-2 group"
+              >
+                <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 ${
+                  filterRole === 'rn'
+                    ? 'bg-white shadow-md border border-white/50 text-primary dark:bg-slate-800'
+                    : 'glass-pill text-text-secondary group-hover:bg-white/80'
+                }`}>
+                  <Brain className="w-6 h-6" />
+                </div>
+                <span className={`text-[10px] font-bold uppercase tracking-widest ${filterRole === 'rn' ? 'text-primary' : 'text-text-secondary'}`}>RN</span>
+              </button>
+            </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-            {/* Search Bar */}
-            <div id="tour-search" className="relative w-full sm:w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Search room or name..."
-                value={searchQuery}
-                onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-                className="w-full bg-white dark:bg-[#1a1a1c] border border-slate-200 dark:border-white/10 rounded-full pl-9 pr-4 py-2 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-blue-500 transition-colors"
-              />
+          {/* Advanced Calendar Date Selector */}
+          <div id="tour-calendar" className="mb-8">
+            <AdvancedCalendar
+              selectedDate={selectedDate}
+              onChange={setSelectedDate}
+              datesWithHandovers={datesWithHandovers}
+            />
+          </div>
+
+          {/* Toolbar: Urgency, Search, Pagination Limit */}
+          <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-center mb-8">
+            {/* Urgency Filter Tabs (Soft Pills) */}
+            <div id="tour-urgency-filter" className="flex gap-3 overflow-x-auto no-scrollbar w-full md:w-auto pb-2 md:pb-0">
+              {(['all', 'critical', 'attention', 'routine'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => { setUrgencyFilter(tab); setCurrentPage(1); }}
+                  className={`px-6 py-3 rounded-full text-xs font-bold tracking-widest uppercase transition-all duration-300 shrink-0 ${
+                    urgencyFilter === tab
+                      ? 'bg-white text-slate-900 shadow-md border border-white/80 dark:bg-slate-800 dark:text-white'
+                      : 'glass-pill text-slate-500 hover:bg-white/80 dark:text-slate-400'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
             </div>
-            
-            {/* Items Per Page */}
-            <select
-              value={itemsPerPage}
-              onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
-              className="w-full sm:w-auto bg-white dark:bg-[#1a1a1c] border border-slate-200 dark:border-white/10 rounded-full px-4 py-2 text-sm text-slate-700 dark:text-slate-300 focus:outline-none focus:border-blue-500 transition-colors"
-            >
+
+            <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+              {/* Search Bar */}
+              <div id="tour-search" className="relative w-full sm:w-64">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search room or name..."
+                  value={searchQuery}
+                  onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+                  className="w-full glass-pill rounded-full pl-11 pr-4 py-3 text-sm font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all border-white/60"
+                />
+              </div>
+              
+              {/* Items Per Page */}
+              <select
+                value={itemsPerPage}
+                onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                className="w-full sm:w-auto glass-pill rounded-full px-5 py-3 text-sm font-bold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all border-white/60"
+              >
               <option value={10}>10 per page</option>
               <option value={20}>20 per page</option>
               <option value={50}>50 per page</option>
@@ -381,15 +422,15 @@ export default function Dashboard() {
         {/* List of handovers */}
         {loading ? (
           <div className="flex-1 flex flex-col items-center justify-center py-20">
-             <div className="w-10 h-10 border-[3px] border-blue-600 border-t-transparent rounded-full animate-spin mb-6"></div>
+             <div className="w-10 h-10 border-[3px] border-teal-accent border-t-transparent rounded-full animate-spin mb-6"></div>
           </div>
         ) : paginatedGroups.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center py-24 px-6 rounded-3xl border border-slate-200/60 bg-white/50 dark:border-white/5 dark:bg-white/[0.02] shadow-sm backdrop-blur-xl">
-            <div className="w-16 h-16 rounded-3xl bg-slate-100 dark:bg-white/5 flex items-center justify-center mb-6 shadow-inner">
-              <Search className="w-8 h-8 text-slate-400 dark:text-slate-500" />
+          <div className="flex-1 flex flex-col items-center justify-center py-24 px-6 rounded-[32px] apple-card animate-fade-in-up">
+            <div className="w-16 h-16 rounded-3xl apple-card-inner flex items-center justify-center mb-6">
+              <Search className="w-8 h-8 text-text-secondary" />
             </div>
-            <h3 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 mb-2">No results found</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 text-center max-w-sm leading-relaxed">
+            <h3 className="text-xl font-semibold tracking-tight text-text-primary mb-2">No results found</h3>
+            <p className="text-sm text-text-secondary text-center max-w-sm leading-relaxed">
               Try adjusting your search query or urgency filter.
             </p>
           </div>
@@ -403,45 +444,46 @@ export default function Dashboard() {
               const hasAttention = group.handovers.some(h => h.urgency === 'attention');
               const groupUrgency = hasCritical ? 'critical' : hasAttention ? 'attention' : 'routine';
               
-              let urgencyBorder = 'border-slate-200/80 bg-white dark:border-white/10 dark:bg-[#151518]';
-              let urgencyIndicator = 'bg-slate-400 dark:bg-slate-500';
+              let urgencyBorder = 'bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-white dark:border-white/5 shadow-sm hover:shadow-md';
+              let urgencyIndicator = 'bg-slate-300 dark:bg-slate-600';
               if (groupUrgency === 'critical') {
-                urgencyBorder = 'border-red-200/80 bg-white dark:border-red-500/25 dark:bg-[#1a1213]';
-                urgencyIndicator = 'bg-red-500 shadow-[0_0_12px_rgba(239,68,68,0.5)]';
+                urgencyBorder = 'bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-red-500/30 shadow-[0_4px_24px_rgba(255,59,48,0.12)] hover:shadow-[0_8px_32px_rgba(255,59,48,0.2)]';
+                urgencyIndicator = 'bg-red-500 critical-indicator';
               } else if (groupUrgency === 'attention') {
-                urgencyBorder = 'border-amber-200/80 bg-white dark:border-amber-500/25 dark:bg-[#1a1712]';
-                urgencyIndicator = 'bg-amber-500 shadow-[0_0_12px_rgba(245,158,11,0.5)]';
+                urgencyBorder = 'bg-white/80 dark:bg-slate-800/80 backdrop-blur-md border border-amber-500/30 shadow-sm hover:shadow-md';
+                urgencyIndicator = 'bg-amber-500';
               } else if (groupUrgency === 'routine') {
-                urgencyBorder = 'border-emerald-200/80 bg-white dark:border-emerald-500/25 dark:bg-[#121a15]';
-                urgencyIndicator = 'bg-emerald-500 shadow-[0_0_12px_rgba(16,185,129,0.5)]';
+                urgencyIndicator = 'bg-green-500';
               }
 
               return (
                 <div 
                   key={residentKey}
-                  className={`relative border rounded-[28px] shadow-sm overflow-hidden transition-all duration-300 ${urgencyBorder}`}
+                  className={`relative rounded-[32px] overflow-hidden transition-all duration-300 animate-fade-in-up ${urgencyBorder}`}
                 >
-                  <div className={`absolute top-0 left-0 w-full h-1 opacity-50 ${urgencyIndicator.split(' ')[0]}`}></div>
+                  <div className={`absolute top-0 left-0 w-2 h-full ${urgencyIndicator.split(' ')[0]}`}></div>
                   
                   {/* Resident Header (Mother row) */}
                   <div 
                     onClick={() => toggleResidentExpand(residentKey)}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 cursor-pointer hover:bg-slate-50/50 dark:hover:bg-white/[0.02] transition-colors select-none"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 md:p-8 cursor-pointer hover:bg-white/40 dark:hover:bg-white/5 transition-colors select-none pl-10"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-500 dark:text-slate-400 shrink-0 transition-transform duration-300">
+                    <div className="flex items-center gap-6">
+                      <div className="w-12 h-12 rounded-full glass-pill flex items-center justify-center text-text-secondary shrink-0 transition-transform duration-300">
                         {isResidentExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
                       </div>
                       <div>
-                        <div className="flex items-center gap-3 mb-1">
-                          <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-white">{group.residentName}</h3>
-                          <div className={`w-2.5 h-2.5 rounded-full ${urgencyIndicator}`}></div>
+                        <div className="flex items-center gap-4 mb-1">
+                          <h3 className="text-2xl font-bold tracking-tight text-text-primary">{group.residentName}</h3>
+                          <div className={`w-3 h-3 rounded-full ${urgencyIndicator}`}></div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-slate-350">
+                        <div className="flex items-center gap-3 mt-2">
+                          <span className="text-[11px] font-bold px-3 py-1.5 rounded-full glass-pill text-text-secondary border-none">
                             Room {group.roomNumber}
                           </span>
-                          <span className="text-xs text-slate-500 dark:text-slate-400 font-bold">Care Level: {group.careLevel}</span>
+                          <span className="text-[11px] font-bold px-3 py-1.5 rounded-full glass-pill text-text-secondary border-none uppercase tracking-widest">
+                            Level {group.careLevel}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -666,7 +708,8 @@ export default function Dashboard() {
             </div>
           </div>
         )}
-
+        </div>
+        </div>
       </main>
     </div>
   );

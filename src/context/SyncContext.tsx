@@ -60,7 +60,15 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
             body: JSON.stringify(item.payload.body || item.payload),
           });
 
-          if (!res.ok) throw new Error('API Sync Failed');
+          if (!res.ok) {
+            if (res.status >= 400 && res.status < 500) {
+              console.error(`Unrecoverable sync failure (status ${res.status}) for item ${item.id}. Removing from queue.`);
+              await removeQueueItem(item.id);
+              failCount++;
+              continue;
+            }
+            throw new Error(`API Sync Failed with status ${res.status}`);
+          }
 
           // If successful, remove from queue
           await removeQueueItem(item.id);

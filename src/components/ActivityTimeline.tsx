@@ -50,17 +50,17 @@ export default function ActivityTimeline({ residentId }: { residentId: string })
         return (
           <div key={activity.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
             {/* Icon */}
-            <div className="flex items-center justify-center w-5 h-5 rounded-full border border-white bg-slate-200 text-slate-500 dark:bg-[#1a234b] dark:text-slate-400 dark:border-[#080b16] shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow">
+            <div className="flex items-center justify-center w-5 h-5 rounded-full border border-white/40 bg-white/80 text-primary dark:bg-slate-800 dark:text-primary dark:border-white/10 shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-sm">
               <Clock className="w-3 h-3" />
             </div>
             
             {/* Content */}
-            <div className="w-[calc(100%-2rem)] md:w-[calc(50%-1.5rem)] p-3 rounded-xl border border-slate-200 bg-white dark:bg-[#121214] dark:border-[#202024] shadow-sm">
+            <div className="w-[calc(100%-2rem)] md:w-[calc(50%-1.5rem)] p-3 rounded-xl border border-white/50 bg-white/40 dark:bg-white/5 dark:border-white/5 backdrop-blur-md shadow-sm">
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">{activity.action_type.replace(/_/g, ' ')}</span>
-                <time className="text-[10px] text-slate-400">{dateString} {timeString}</time>
+                <span className="text-[10px] font-bold text-primary dark:text-primary uppercase tracking-wider">{activity.action_type.replace(/_/g, ' ')}</span>
+                <time className="text-[10px] text-text-secondary">{dateString} {timeString}</time>
               </div>
-              <p className="text-xs text-slate-700 dark:text-slate-300">{activity.description}</p>
+              <p className="text-xs text-text-primary">{activity.description}</p>
             </div>
           </div>
         );

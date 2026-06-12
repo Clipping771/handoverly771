@@ -9,6 +9,9 @@ import { CheckCircle2, Circle, Clock, Sun, Moon, ArrowLeft, Stethoscope, User, H
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
+import { getAdelaideMidnightISO } from '@/lib/taskUtils';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 
 interface Task {
   id: string;
@@ -21,6 +24,26 @@ interface Task {
   resident: { name: string; room_number: string };
   created_at: string;
   handover?: { shift_type: string; approved_at: string };
+  clinical_purpose?: string;
+  outcome?: string;
+  carry_until_date?: string;
+}
+
+function getPresetsForTask(task: Task) {
+  const tags = task.tags || [];
+  if (tags.includes('medication')) {
+    return ['Taken successfully', 'Refused', 'Spit out / Wasted', 'Slept through'];
+  }
+  if (tags.includes('hygiene')) {
+    return ['Routine shower completed', 'Wash in bed / Assisted', 'Refused wash', 'Skin check completed'];
+  }
+  if (tags.includes('nutrition')) {
+    return ['All consumed', 'Partial intake', 'Refused food/drink', 'Encouraged fluids'];
+  }
+  if (tags.includes('mobility') || tags.includes('incidents')) {
+    return ['Stable / No issues', 'Refused activity', 'Assisted transfer', 'Pain cues noted'];
+  }
+  return ['Done / Routine', 'Refused care', 'Completed with assistance', 'Distressed during care'];
 }
 
 export default function TasksPage() {
@@ -36,6 +59,7 @@ export default function TasksPage() {
   const [declinedExpanded, setDeclinedExpanded] = useState(false);
   const [expandedRooms, setExpandedRooms] = useState<Record<string, boolean>>({});
   const [completions, setCompletions] = useState<Record<string, { completedAt: string; completedBy: string; status: 'completed' | 'declined'; reason?: string }>>({});
+  const [activeLoggingTaskId, setActiveLoggingTaskId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -43,40 +67,70 @@ export default function TasksPage() {
     }
   }, [user, authLoading, router]);
 
+  useGSAP(() => {
+    const cards = gsap.utils.toArray('.apple-card');
+    cards.forEach((card: any) => {
+      const enter = () => gsap.to(card, { boxShadow: '0 10px 40px -10px rgba(15,118,110,0.08)', y: -2, duration: 0.25 });
+      const leave = () => gsap.to(card, { boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 10px 30px -10px rgba(0, 0, 0, 0.02)', y: 0, duration: 0.25 });
+      
+      card.addEventListener('mouseenter', enter);
+      card.addEventListener('mouseleave', leave);
+      return () => {
+        card.removeEventListener('mouseenter', enter);
+        card.removeEventListener('mouseleave', leave);
+      };
+    });
+  }, { dependencies: [tasks, filterTab, pendingExpanded, completedExpanded, declinedExpanded, expandedRooms] });
+
+  const handleGsapTaskCompletion = (taskId: string, e: React.MouseEvent) => {
+    const target = e.currentTarget as HTMLElement;
+    const icon = target.querySelector('svg');
+    
+    // Give satisfying feedback on the icon, then show the outcome input
+    gsap.timeline()
+      .to(icon, { scale: 1.3, duration: 0.15, color: '#0F766E' })
+      .to(icon, { scale: 1, duration: 0.15, onComplete: () => {
+        setActiveLoggingTaskId(taskId);
+      } });
+  };
+
   const fetchTasks = async () => {
     if (!facility) return;
     try {
       setLoading(true);
-      const localMidnight = new Date();
-      localMidnight.setHours(0, 0, 0, 0);
-      const todayStr = localMidnight.toISOString();
+      const todayStr = getAdelaideMidnightISO();
       
       const { data, error } = await supabase
         .from('tasks')
         .select(`
-          id, title, description, tags, is_completed, assigned_role, created_at, resident_id,
+          id, title, description, tags, is_completed, assigned_role, created_at, resident_id, clinical_purpose, outcome, carry_until_date,
           resident:residents!inner(name, room_number, is_active),
           handover:handovers(shift_type, approved_at)
         `)
         .eq('facility_id', facility.id)
         .eq('resident.is_active', true)
-        .gte('created_at', todayStr)
+        .or(`created_at.gte.${todayStr},carry_until_date.gte.${todayStr.split('T')[0]}`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
       setTasks(data as any || []);
 
-      // Fetch completions, declines, and reopenings from activity timeline
+      // Fetch completions, declines, and reopenings from activity timeline for today
       const { data: timelineData } = await supabase
         .from('activity_timeline')
         .select('created_at, metadata, description, action_type')
         .eq('facility_id', facility.id)
         .in('action_type', ['task_completed', 'task_declined', 'task_reopened'])
+        .gte('created_at', todayStr)
         .order('created_at', { ascending: true });
 
       const compMap: Record<string, { completedAt: string; completedBy: string; status: 'completed' | 'declined'; reason?: string }> = {};
       (timelineData || []).forEach((item: any) => {
-        const taskId = item.metadata?.task_id;
+        let meta = item.metadata;
+        if (typeof meta === 'string') {
+          try { meta = JSON.parse(meta); } catch(e) { meta = {}; }
+        }
+        const taskId = meta?.task_id;
         if (taskId) {
           if (item.action_type === 'task_reopened') {
             delete compMap[taskId];
@@ -120,7 +174,7 @@ export default function TasksPage() {
     taskId: string, 
     currentStatus: boolean, 
     customStatus: 'completed' | 'declined' | 'reopened' = 'completed', 
-    declineReason?: string
+    outcomeText?: string
   ) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task || !user) return;
@@ -171,7 +225,7 @@ export default function TasksPage() {
             completedAt: new Date().toISOString(),
             completedBy: user?.name || 'Staff',
             status: 'declined',
-            reason: declineReason
+            reason: outcomeText || 'Resident declined'
           }
         }));
       } else {
@@ -184,10 +238,19 @@ export default function TasksPage() {
 
       const { error } = await supabase
         .from('tasks')
-        .update({ is_completed: newStatus })
+        .update({ 
+          is_completed: newStatus,
+          outcome: customStatus === 'reopened' ? null : outcomeText || (customStatus === 'declined' ? 'Resident declined' : 'Completed')
+        })
         .eq('id', taskId);
 
       if (error) throw error;
+      
+      // Update local task state outcome dynamically
+      setTasks(prev => prev.map(t => t.id === taskId ? { 
+        ...t, 
+        outcome: customStatus === 'reopened' ? undefined : outcomeText || (customStatus === 'declined' ? 'Resident declined' : 'Completed')
+      } : t));
 
       // Log in activity timeline
       if (task && facility && user) {
@@ -196,13 +259,13 @@ export default function TasksPage() {
 
         if (customStatus === 'completed' && newStatus) {
           actionType = 'task_completed';
-          description = `Task "${task.title}" completed by ${user.name}`;
+          description = `Task "${task.title}" completed by ${user.name}${outcomeText ? ` (Outcome: ${outcomeText})` : ''}`;
         } else if (customStatus === 'declined') {
           actionType = 'task_declined';
-          description = `Task "${task.title}" declined: ${declineReason || 'Resident declined'} (recorded by ${user.name})`;
+          description = `Task "${task.title}" declined: ${outcomeText || 'Resident declined'} (recorded by ${user.name})`;
         }
 
-        await supabase.from('activity_timeline').insert([
+        const { error: timelineError } = await supabase.from('activity_timeline').insert([
           {
             resident_id: task.resident_id,
             staff_id: user.id,
@@ -215,6 +278,11 @@ export default function TasksPage() {
             }
           }
         ]);
+        if (timelineError) {
+          console.error("Activity timeline insert error:", timelineError);
+          // Don't throw here to avoid reverting the task completion entirely just because the log failed, 
+          // but we should fix the root cause if it is failing.
+        }
       }
     } catch (err) {
       console.error('Failed to update task:', err);
@@ -239,7 +307,6 @@ export default function TasksPage() {
     return tasks.filter(t => {
       if (filterTab === 'my_tasks') {
         if (!user) return false;
-        if (isAdmin) return true;
 
         // RN should see all declined tasks under My Tasks
         const isDeclined = completions[t.id]?.status === 'declined';
@@ -255,10 +322,18 @@ export default function TasksPage() {
       }
       return true;
     });
-  }, [tasks, filterTab, user, completions]);
+  }, [tasks, filterTab, user, completions, isRN, isCarer]);
 
-  const pendingTasks = useMemo(() => filteredTasks.filter(t => !t.is_completed && completions[t.id]?.status !== 'declined'), [filteredTasks, completions]);
-  const completedTasks = useMemo(() => filteredTasks.filter(t => t.is_completed && completions[t.id]?.status !== 'declined'), [filteredTasks, completions]);
+  const pendingTasks = useMemo(() => filteredTasks.filter(t => {
+    const isCompleted = t.carry_until_date ? (completions[t.id]?.status === 'completed') : t.is_completed;
+    return !isCompleted && completions[t.id]?.status !== 'declined';
+  }), [filteredTasks, completions]);
+
+  const completedTasks = useMemo(() => filteredTasks.filter(t => {
+    const isCompleted = t.carry_until_date ? (completions[t.id]?.status === 'completed') : t.is_completed;
+    return isCompleted && completions[t.id]?.status !== 'declined';
+  }), [filteredTasks, completions]);
+
   const declinedTasks = useMemo(() => filteredTasks.filter(t => completions[t.id]?.status === 'declined'), [filteredTasks, completions]);
 
   // Group tasks by resident room
@@ -283,8 +358,9 @@ export default function TasksPage() {
 
   if (authLoading || !user || !facility) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-[#080b16] flex flex-col items-center justify-center">
-        <div className="w-10 h-10 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
+        <div className="w-12 h-12 border-[3px] border-teal-accent border-t-transparent rounded-full animate-spin"></div>
+        <p className="mt-6 text-text-secondary font-medium text-sm tracking-wide">Syncing Workspace...</p>
       </div>
     );
   }
@@ -331,53 +407,56 @@ export default function TasksPage() {
                 key={residentId}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="border border-slate-200/80 dark:border-white/5 rounded-3xl overflow-hidden bg-slate-50/20 dark:bg-black/5"
+                className="border border-border rounded-3xl overflow-hidden bg-surface-solid"
               >
                 {/* Collapsible Room Header */}
                 <div 
                   onClick={() => setExpandedRooms(prev => ({ ...prev, [residentId]: !isRoomExpanded }))}
-                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-100/50 dark:hover:bg-white/5 transition-colors select-none"
+                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-surface-hover transition-colors select-none"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center text-slate-500">
+                    <div className="w-7 h-7 rounded-full bg-surface flex items-center justify-center text-text-secondary">
                       {isRoomExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </div>
-                    <span className="text-sm font-bold uppercase tracking-wider text-slate-750 dark:text-slate-200">
-                      Room {room} — <span className="text-slate-500 dark:text-slate-400 font-semibold">{residentName}</span>
+                    <span className="text-sm font-bold uppercase tracking-wider text-text-primary">
+                      Room {room} — <span className="text-text-secondary font-semibold">{residentName}</span>
                     </span>
                   </div>
-                  <span className="text-xs font-bold text-slate-400 dark:text-slate-500">
+                  <span className="text-xs font-bold text-text-secondary">
                     ({tasks.length} {tasks.length === 1 ? 'task' : 'tasks'})
                   </span>
                 </div>
                 
                 {isRoomExpanded && (
-                  <div className="p-4 pt-0 border-t border-slate-100 dark:border-white/5 bg-white dark:bg-[#0d0d0f]">
+                  <div className="p-4 pt-0 border-t border-border bg-surface">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                       {tasks.map(task => {
                         const isDeclined = completions[task.id]?.status === 'declined';
+                        const isCompleted = task.carry_until_date 
+                          ? (completions[task.id]?.status === 'completed')
+                          : (task.is_completed || completions[task.id]?.status === 'completed');
                         return (
                           <motion.div 
                             key={task.id} 
                             layout
-                            className={`bg-white dark:bg-[#121214] border ${
+                            className={`task-row-container apple-card ${
                               isDeclined
-                                ? 'border-rose-200 dark:border-rose-900/30 bg-rose-50/20 dark:bg-[#121214]'
-                                : task.is_completed
-                                ? 'border-emerald-200 dark:border-emerald-900/30 bg-emerald-50/30 dark:bg-[#121214]'
-                                : 'border-slate-200 dark:border-[#202024]'
+                                ? 'border-rose-200 dark:border-rose-900/30'
+                                : isCompleted
+                                ? 'border-emerald-200 dark:border-emerald-900/30'
+                                : ''
                             } rounded-[24px] p-5 flex items-start gap-4 shadow-sm hover:shadow-md transition-all group relative overflow-hidden`}
                           >
                             {/* Status Toggle */}
                             <div className="flex items-center gap-1">
-                              <button
-                                onClick={() => {
-                                  if (isDeclined) {
-                                    toggleTaskStatus(task.id, false, 'reopened');
-                                  } else {
-                                    toggleTaskStatus(task.id, task.is_completed, 'completed');
-                                  }
-                                }}
+                                <button
+                                  onClick={(e) => {
+                                    if (isDeclined || isCompleted) {
+                                      toggleTaskStatus(task.id, false, 'reopened');
+                                    } else {
+                                      handleGsapTaskCompletion(task.id, e);
+                                    }
+                                  }}
                                 disabled={
                                   !user || 
                                   (!isAdmin && !isRN && (
@@ -394,20 +473,17 @@ export default function TasksPage() {
                               >
                                 {isDeclined ? (
                                   <XCircle className="w-7 h-7 text-rose-500" />
-                                ) : task.is_completed ? (
+                                ) : isCompleted ? (
                                   <CheckCircle2 className="w-7 h-7 text-emerald-500" />
                                 ) : (
                                   <Circle className="w-7 h-7 text-slate-300 dark:text-slate-600 group-hover:text-indigo-400 transition-colors" />
                                 )}
                               </button>
         
-                              {!task.is_completed && !isDeclined && (
+                              {!isCompleted && !isDeclined && (
                                   <button
                                     onClick={() => {
-                                      const reason = prompt("Enter reason for resident decline (e.g. Refused, Asleep):", "Resident declined");
-                                      if (reason !== null) {
-                                        toggleTaskStatus(task.id, false, 'declined', reason);
-                                      }
+                                      setActiveLoggingTaskId(task.id);
                                     }}
                                     disabled={
                                       !user || 
@@ -430,22 +506,91 @@ export default function TasksPage() {
                             
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between mb-2 gap-2">
-                                <h3 className={`font-bold text-[15px] leading-snug ${task.is_completed ? 'text-slate-400 line-through' : 'text-slate-900 dark:text-white'}`}>
+                                <h3 className={`font-bold text-[15px] leading-snug ${isCompleted ? 'text-text-secondary line-through' : 'text-text-primary'}`}>
                                   {task.title}
+                                  {task.carry_until_date && (
+                                    <span className="text-[10px] font-bold text-amber-700 bg-amber-100 dark:bg-amber-950/45 dark:text-amber-400 px-2.5 py-0.5 rounded-md ml-2 inline-block leading-none align-middle">
+                                      until {new Date(task.carry_until_date + 'T00:00:00').toLocaleDateString([], { day: 'numeric', month: 'short' })}
+                                    </span>
+                                  )}
                                 </h3>
                                 <div className="shrink-0 mt-0.5">
                                   {renderRoleBadge(task.assigned_role)}
                                 </div>
                               </div>
                               
-                              <p className={`text-sm leading-relaxed mb-4 ${task.is_completed ? 'text-slate-400' : 'text-slate-600 dark:text-slate-300'}`}>
+                              <p className={`text-sm leading-relaxed ${isCompleted ? 'text-text-secondary' : 'text-text-secondary'}`}>
                                 {task.description}
                               </p>
                               
-                              <div className="flex items-center justify-between mt-auto">
+                              {task.clinical_purpose && (
+                                <p className="text-[11px] font-medium text-indigo-650 dark:text-indigo-400 mt-2 bg-indigo-50/45 dark:bg-indigo-950/25 px-3 py-1.5 rounded-xl border border-indigo-100/40 dark:border-indigo-900/30">
+                                  <strong>Why:</strong> {task.clinical_purpose}
+                                </p>
+                              )}
+                              
+                              {/* Context-aware inline Outcome presets */}
+                              {activeLoggingTaskId === task.id && (
+                                <div className="mt-4 p-4 border-t border-border bg-surface-solid rounded-2xl space-y-3">
+                                  <div className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Record Care Outcome (Quick Select)</div>
+                                  <div className="flex flex-wrap gap-2">
+                                    {getPresetsForTask(task).map(preset => (
+                                      <button
+                                        key={preset}
+                                        onClick={() => {
+                                          const isDeclinedVal = preset.toLowerCase().includes('refused') || preset.toLowerCase().includes('declined') || preset.toLowerCase().includes('slept through');
+                                          toggleTaskStatus(task.id, isCompleted, isDeclinedVal ? 'declined' : 'completed', preset);
+                                          setActiveLoggingTaskId(null);
+                                        }}
+                                        className="px-3 py-1.5 bg-surface hover:bg-slate-50 border border-border hover:border-indigo-300 rounded-xl text-xs font-semibold text-text-primary transition-all cursor-pointer"
+                                      >
+                                        {preset}
+                                      </button>
+                                    ))}
+                                  </div>
+                                  <div className="flex flex-col gap-2.5 w-full">
+                                    <input
+                                      type="text"
+                                      id={`custom-outcome-${task.id}`}
+                                      placeholder="Or type custom outcome note..."
+                                      className="w-full h-10 bg-white dark:bg-[#070708] border border-[#e3e3e3] dark:border-[#202024] rounded-xl px-4 text-[13px] focus:outline-none focus:border-indigo-400 dark:focus:border-indigo-500 text-text-primary shadow-sm transition-all"
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter') {
+                                          const val = (e.currentTarget as HTMLInputElement).value;
+                                          const isDeclinedVal = val.toLowerCase().includes('refused') || val.toLowerCase().includes('declined');
+                                          toggleTaskStatus(task.id, isCompleted, isDeclinedVal ? 'declined' : 'completed', val || 'Completed');
+                                          setActiveLoggingTaskId(null);
+                                        }
+                                      }}
+                                    />
+                                    <div className="flex gap-2 h-10 w-full">
+                                      <button
+                                        onClick={() => {
+                                          const el = document.getElementById(`custom-outcome-${task.id}`) as HTMLInputElement;
+                                          const val = el?.value || 'Completed';
+                                          const isDeclinedVal = val.toLowerCase().includes('refused') || val.toLowerCase().includes('declined');
+                                          toggleTaskStatus(task.id, isCompleted, isDeclinedVal ? 'declined' : 'completed', val);
+                                          setActiveLoggingTaskId(null);
+                                        }}
+                                        className="flex-1 px-5 bg-[#1f1f1f] dark:bg-white hover:bg-black dark:hover:bg-slate-200 text-white dark:text-[#1f1f1f] rounded-xl text-[13px] font-bold shadow-sm transition-all cursor-pointer"
+                                      >
+                                        Save
+                                      </button>
+                                      <button
+                                        onClick={() => setActiveLoggingTaskId(null)}
+                                        className="flex-1 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-[#1a1a1c] dark:hover:bg-[#252528] text-slate-700 dark:text-slate-300 rounded-xl text-[13px] font-semibold transition-all cursor-pointer"
+                                      >
+                                        Cancel
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                              
+                              <div className="flex items-center justify-between mt-4">
                                 <div className="flex flex-wrap gap-2">
                                   {task.tags.map(tag => (
-                                    <span key={tag} className={`text-[10px] font-bold uppercase tracking-widest ${task.is_completed ? 'text-slate-300 dark:text-slate-600' : 'text-indigo-500/80 dark:text-indigo-400/60'} bg-slate-50 dark:bg-slate-800/50 px-2 py-0.5 rounded-md`}>
+                                    <span key={tag} className={`text-[10px] font-bold uppercase tracking-widest ${task.is_completed ? 'text-slate-300' : 'text-indigo-500/80'} bg-surface-solid px-2 py-0.5 rounded-md`}>
                                       #{tag}
                                     </span>
                                   ))}
@@ -453,13 +598,13 @@ export default function TasksPage() {
                               </div>
                               
                               {isDeclined ? (
-                                <div className="mt-4 pt-3 border-t border-rose-100 dark:border-rose-950/20 text-rose-750 dark:text-rose-400 text-[10px] flex flex-wrap gap-x-4 gap-y-1 items-center font-medium">
-                                  <span className="text-rose-600 dark:text-rose-400 font-bold uppercase tracking-wider">
+                                <div className="mt-4 pt-3 border-t border-rose-100 text-rose-750 text-[10px] flex flex-wrap gap-x-4 gap-y-1 items-center font-medium">
+                                  <span className="text-rose-600 font-bold uppercase tracking-wider">
                                     DECLINED
                                   </span>
                                   <span>•</span>
                                   <span>
-                                    Reason: <strong className="text-rose-650 dark:text-rose-300">{completions[task.id]?.reason || 'Resident declined'}</strong>
+                                    Reason: <strong className="text-rose-650">{completions[task.id]?.reason || 'Resident declined'}</strong>
                                   </span>
                                   <span>•</span>
                                   <span>
@@ -471,7 +616,7 @@ export default function TasksPage() {
                                   </span>
                                 </div>
                               ) : task.is_completed ? (
-                                <div className="mt-4 pt-3 border-t border-emerald-100 dark:border-emerald-950/20 text-emerald-750 dark:text-emerald-400 text-[10px] flex flex-wrap gap-x-4 gap-y-1 items-center font-medium">
+                                <div className="mt-4 pt-3 border-t border-emerald-100 text-emerald-750 text-[10px] flex flex-wrap gap-x-4 gap-y-1 items-center font-medium">
                                   <span>
                                     Shift: <strong className="capitalize">{task.handover?.shift_type || 'routine'}</strong>
                                   </span>
@@ -483,9 +628,14 @@ export default function TasksPage() {
                                   <span>
                                     By: <strong>{completions[task.id]?.completedBy || 'Staff'}</strong>
                                   </span>
+                                  {task.outcome && (
+                                    <div className="mt-2 text-[11px] font-semibold text-emerald-800 bg-emerald-50/50 p-2.5 rounded-xl border border-emerald-100/45">
+                                      Outcome: {task.outcome}
+                                    </div>
+                                  )}
                                 </div>
                               ) : (
-                                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/60 text-[10px] text-slate-500 dark:text-slate-400 flex flex-wrap gap-x-4 gap-y-1 items-center font-medium">
+                                <div className="mt-4 pt-3 border-t border-border text-[10px] text-text-secondary flex flex-wrap gap-x-4 gap-y-1 items-center font-medium">
                                   <span>
                                     Created: <strong className="capitalize">{task.handover?.shift_type || 'routine'} Shift</strong>
                                   </span>
@@ -511,22 +661,22 @@ export default function TasksPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#0b0b0d] text-[#1f1f1f] dark:text-[#e3e3e3] flex flex-col pb-24 transition-colors duration-300 font-sans">
+    <div className="min-h-screen bg-background text-text-primary flex flex-col pb-24 transition-colors duration-300 font-sans">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-[#f8fafc]/80 dark:bg-[#0b0b0d]/80 backdrop-blur-md border-b border-[#e3e3e3] dark:border-[#202024] px-6 py-4">
+      <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur-xl border-b border-border px-6 py-4 animate-fade-in-up">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Link href={user && isCarer ? "/" : "/shift"} className="p-2 -ml-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
-              <ArrowLeft className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+            <Link href={user && isCarer ? "/" : "/shift"} className="p-2 -ml-2 rounded-full hover:bg-surface-hover transition-colors">
+              <ArrowLeft className="w-5 h-5 text-text-secondary" />
             </Link>
             <h1 className="font-bold text-xl tracking-tight">Shift Tasks</h1>
           </div>
           
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-colors"
+            className="p-2 rounded-full hover:bg-surface-hover text-text-secondary transition-colors"
           >
-            {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-[#1f1f1f]" />}
+            {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4" />}
           </button>
         </div>
       </header>
@@ -534,23 +684,23 @@ export default function TasksPage() {
       <main className="max-w-4xl mx-auto w-full px-6 mt-8 flex-1 flex flex-col">
         
         {/* Toggle Tabs */}
-        <div className="flex bg-slate-200 dark:bg-[#121214] p-1.5 rounded-2xl mb-8 self-center sm:self-start border border-slate-300/50 dark:border-[#202024]">
+        <div className="flex bg-surface-solid p-1.5 rounded-2xl mb-8 self-center sm:self-start border border-border animate-fade-in-up">
           <button
             onClick={() => setFilterTab('my_tasks')}
-            className={`px-8 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
-              filterTab === 'my_tasks' 
-                ? 'bg-white dark:bg-[#1c1c21] shadow-sm text-indigo-600 dark:text-indigo-400' 
-                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-[12px] text-xs font-semibold transition-all duration-300 ${
+              filterTab === 'my_tasks'
+                ? 'bg-surface shadow-sm text-teal-accent' 
+                : 'text-text-secondary hover:text-text-primary'
             }`}
           >
             My Tasks
           </button>
           <button
             onClick={() => setFilterTab('all_tasks')}
-            className={`px-8 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all ${
-              filterTab === 'all_tasks' 
-                ? 'bg-white dark:bg-[#1c1c21] shadow-sm text-indigo-600 dark:text-indigo-400' 
-                : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'
+            className={`flex items-center gap-2 px-6 py-2.5 rounded-[12px] text-xs font-semibold transition-all duration-300 ${
+              filterTab === 'all_tasks'
+                ? 'bg-surface shadow-sm text-teal-accent' 
+                : 'text-text-secondary hover:text-text-primary'
             }`}
           >
             All Tasks
@@ -564,28 +714,28 @@ export default function TasksPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Collapsible Pending Tasks */}
-            <div className="border border-slate-200 dark:border-[#202024] rounded-3xl bg-white dark:bg-[#0d0d0f] overflow-hidden shadow-sm">
+            {/* Pending Tasks */}
+            <div className="apple-card animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
               <button
                 onClick={() => setPendingExpanded(p => !p)}
-                className="w-full flex items-center justify-between px-6 py-5 bg-slate-50/50 dark:bg-[#121214]/50 border-b border-slate-200 dark:border-[#202024] text-left hover:bg-slate-100/30 dark:hover:bg-[#1c1c21]/30 transition-colors"
+                className="w-full flex items-center justify-between px-6 py-5 bg-surface-solid border-b border-border text-left hover:bg-surface-hover transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <Clock className="w-5 h-5 text-indigo-500" />
-                  <span className="font-bold text-sm tracking-wide uppercase text-slate-750 dark:text-slate-200">
+                  <span className="font-bold text-sm tracking-wide uppercase text-text-primary">
                     Pending Actions ({pendingTasks.length})
                   </span>
                 </div>
-                {pendingExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                {pendingExpanded ? <ChevronUp className="w-4 h-4 text-text-secondary" /> : <ChevronDown className="w-4 h-4 text-text-secondary" />}
               </button>
               
               {pendingExpanded && (
                 <div className="p-6">
                   {pendingTasks.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <CheckCircle2 className="w-12 h-12 text-emerald-400 dark:text-emerald-500/50 mb-3 animate-pulse" />
-                      <p className="text-sm font-semibold text-slate-600 dark:text-slate-350">All caught up!</p>
-                      <p className="text-xs text-slate-400 mt-0.5">No pending tasks for this list.</p>
+                      <CheckCircle2 className="w-12 h-12 text-emerald-400 mb-3 animate-pulse" />
+                      <p className="text-sm font-semibold text-text-primary">All caught up!</p>
+                      <p className="text-xs text-text-secondary mt-0.5">No pending tasks for this list.</p>
                     </div>
                   ) : (
                     renderGroupedTasksList(groupedPending, 'pending')
@@ -594,26 +744,26 @@ export default function TasksPage() {
               )}
             </div>
 
-            {/* Collapsible Completed Tasks */}
-            <div className="border border-slate-200 dark:border-[#202024] rounded-3xl bg-white dark:bg-[#0d0d0f] overflow-hidden shadow-sm">
+            {/* Completed Tasks */}
+            <div className="apple-card animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
               <button
                 onClick={() => setCompletedExpanded(c => !c)}
-                className="w-full flex items-center justify-between px-6 py-5 bg-slate-50/50 dark:bg-[#121214]/50 border-b border-slate-200 dark:border-[#202024] text-left hover:bg-slate-100/30 dark:hover:bg-[#1c1c21]/30 transition-colors"
+                className="w-full flex items-center justify-between px-6 py-5 bg-surface-solid border-b border-border text-left hover:bg-surface-hover transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                  <span className="font-bold text-sm tracking-wide uppercase text-slate-750 dark:text-slate-200">
+                  <span className="font-bold text-sm tracking-wide uppercase text-text-primary">
                     Completed Actions ({completedTasks.length})
                   </span>
                 </div>
-                {completedExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+                {completedExpanded ? <ChevronUp className="w-4 h-4 text-text-secondary" /> : <ChevronDown className="w-4 h-4 text-text-secondary" />}
               </button>
               
               {completedExpanded && (
                 <div className="p-6">
                   {completedTasks.length === 0 ? (
                     <div className="text-center py-12">
-                      <p className="text-xs text-slate-400 italic">No tasks completed yet.</p>
+                      <p className="text-xs text-text-secondary italic">No tasks completed yet.</p>
                     </div>
                   ) : (
                     renderGroupedTasksList(groupedCompleted, 'completed')
@@ -622,15 +772,15 @@ export default function TasksPage() {
               )}
             </div>
 
-            {/* Collapsible Declined Tasks */}
-            <div className="border border-slate-200 dark:border-[#202024] rounded-3xl bg-white dark:bg-[#0d0d0f] overflow-hidden shadow-sm">
+            {/* Declined Tasks */}
+            <div className="apple-card animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
               <button
                 onClick={() => setDeclinedExpanded(d => !d)}
-                className="w-full flex items-center justify-between px-6 py-5 bg-slate-50/50 dark:bg-[#121214]/50 border-b border-slate-200 dark:border-[#202024] text-left hover:bg-slate-100/30 dark:hover:bg-[#1c1c21]/30 transition-colors"
+                className="w-full flex items-center justify-between px-6 py-5 bg-surface-solid border-b border-border text-left hover:bg-surface-hover transition-colors"
               >
                 <div className="flex items-center gap-3">
                   <XCircle className="w-5 h-5 text-rose-500" />
-                  <span className="font-bold text-sm tracking-wide uppercase text-slate-750 dark:text-slate-200">
+                  <span className="font-bold text-sm tracking-wide uppercase text-text-primary">
                     Declined Actions ({declinedTasks.length})
                   </span>
                 </div>

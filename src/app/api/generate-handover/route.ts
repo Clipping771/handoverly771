@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { supabase } from '@/lib/supabase';
+import { getAdelaideTodayStr } from '@/lib/taskUtils';
 
 // Initialize Anthropic client (will fallback to mock if key is missing)
 const anthropicKey = process.env.ANTHROPIC_API_KEY || '';
@@ -52,12 +53,13 @@ export async function POST(request: Request) {
 
     const age = new Date().getFullYear() - new Date(resident.dob).getFullYear();
 
-    // Fetch pending/incomplete tasks for this resident
+    // Fetch pending/incomplete/carryover tasks for this resident
+    const todayStr = getAdelaideTodayStr();
     const { data: pendingTasks } = await supabase
       .from('tasks')
-      .select('title, description, assigned_role, tags')
+      .select('title, description, assigned_role, tags, is_completed, carry_until_date')
       .eq('resident_id', residentId)
-      .eq('is_completed', false);
+      .or(`is_completed.eq.false,carry_until_date.gte.${todayStr}`);
 
     const pendingTasksStr = pendingTasks && pendingTasks.length > 0
       ? pendingTasks.map(t => `- [${t.assigned_role.toUpperCase()}] ${t.title}: ${t.description} (Tags: ${t.tags?.join(', ') || 'none'})`).join('\n')
@@ -76,9 +78,18 @@ export async function POST(request: Request) {
       ? declinedEvents.map(e => `- ${e.description} (at ${new Date(e.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})`).join('\n')
       : 'None';
 
+    const currentAdelaideTime = new Date().toLocaleString("en-US", { 
+      timeZone: "Australia/Adelaide",
+      weekday: 'short', year: 'numeric', month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+
     // System prompt
     const systemPrompt = `You are a clinical handover assistant for Australian residential aged care facilities. Your role is to convert informal nursing notes into two structured outputs.
     
+CRITICAL TIME INSTRUCTION: The current date and time is ${currentAdelaideTime}.
+When the informal notes mention relative times like "15 mins ago", "just now", or "earlier today", you MUST calculate and write the ABSOLUTE time (e.g. "at 09:45 PM" or "at 21:45"). NEVER write relative time phrases (like "15 minutes ago", "recently", or "today") in the ISBAR summary. This text will be read hours later, and relative times will become factually incorrect and dangerous for clinical care.
+
 OUTPUT 1 — RN HANDOVER (ISBAR format):
 I - Identify: Resident name, room number, age, care level
 S - Situation: What is happening right now
@@ -89,8 +100,19 @@ NOTE: If there are any "Recently Declined/Refused Tasks" listed in the user prom
 
 OUTPUT 2 — SHIFT TASKS (Actionable task list):
 Generate tasks for both Registered Nurses (clinical actions, medication, review) and Carers (hygiene, mobility, comfort).
-NOTE: If there are any "Incomplete Tasks Carrying Forward" listed in the user prompt, you MUST carry them forward into the "shift_tasks" output list for this shift unless they are explicitly marked as completed or no longer needed in the notes.
+NOTE: The "Incomplete Tasks Carrying Forward" are already tracked in the system. Do NOT include them in your "shift_tasks" output list. Only generate NEW tasks that arise from the new informal notes.
 NOTE: If there are any "Recently Declined/Refused Tasks" listed in the user prompt, you MUST create a follow-up/retry task in the "shift_tasks" list to attempt the care activity again during this shift (especially for critical ADLs like showers, hygiene, medication, or fluid restriction).
+
+RESIDENT ABSENCE & HOSPITAL TRANSFERS GUIDELINES:
+- Carefully evaluate if the resident is currently absent from the facility (e.g. transferred to hospital, out on social leave) or if they have just returned.
+- If the resident is currently in the hospital or absent:
+  1. Do NOT schedule physical care tasks for the current shift (such as comfort checks, shower assistance, hygiene care, physical transfers, or nutrition monitoring) since the resident is not physically present to receive them. Carers should not have to mark these as completed.
+  2. You may schedule coordinator tasks for RNs such as "Contact hospital for condition update".
+  3. Do NOT schedule return-preparation tasks (e.g. "Implement fall prevention measures upon return") for the current shift if they have not returned yet. Only schedule them with a future carry_until_date or hold off entirely until the resident is actually back.
+- If the resident has just returned/arrived back at the facility (e.g. the informal notes say "resident arrived", "resident returned", or "resident is back"):
+  1. Do NOT carry forward any hospital-monitoring or absence-tracking tasks (such as "Monitor for Return from Hospital" or "Contact hospital for condition update") as they are now completed/no longer needed.
+  2. Resume scheduling standard physical care tasks (hygiene, comfort checks, etc.) as the resident is now present.
+- If a note mentions a visitor arriving to see the resident, understand the context: a visitor coming to see an absent resident does NOT mean the resident is back or needs care. Do not trigger physical care tasks based on visitor arrivals.
 
 RISK FLAGS — Always check for:
 fall | injury | refused medication | medication error | aggression | hospital transfer | rapid deterioration
@@ -112,10 +134,12 @@ Return ONLY valid JSON with this exact structure (no surrounding markdown, no ba
       "title": "short concise tagline (e.g., Comfort Check, Vitals Monitoring)",
       "description": "action item description",
       "assigned_role": "rn|carer|all",
-      "tags": ["incidents"|"medication"|"hygiene"|"mobility"|"nutrition"|"clinical_review"|"general"]
+      "tags": ["incidents"|"medication"|"hygiene"|"mobility"|"nutrition"|"clinical_review"|"general"],
+      "clinical_purpose": "brief explanation of why this task is needed for the resident's care outcome (e.g. To prevent dehydration or observe for pain cues)",
+      "carry_until_date": "If the task description or title specifies that the task must be performed until/by/through/to a specific date, parse and set this to that date in YYYY-MM-DD format (e.g., '2026-06-15'). Otherwise, set to null."
     }
   ],
-  "follow_up_questions": ["question 1", "question 2 (Only include if critical safety info is MISSING, max 2. Otherwise empty array)"]
+  "follow_up_questions": ["question 1", "question 2 (Only include if critical safety info is MISSING, max 2. Otherwise empty array. Do NOT repeat or include any questions that have already been asked and answered in the Informal Notes.)"]
 }
 
 Use Australian English (e.g. behaviour, monitored, colour). Do not invent information not explicitly provided or strongly implied by the input notes.`;
@@ -206,7 +230,7 @@ Informal Notes:
           } else {
             console.error(`OpenRouter response error (${currentModel}):`, data);
             lastError = new Error(data.error?.message || `OpenRouter error (${res.status})`);
-            
+
             if (attempts === 1 && currentModel !== 'google/gemini-2.5-flash') {
               console.log('Switching to fallback model google/gemini-2.5-flash...');
               currentModel = 'google/gemini-2.5-flash';
@@ -217,7 +241,7 @@ Informal Notes:
         } catch (orErr: any) {
           console.error(`OpenRouter call failed (${currentModel}):`, orErr);
           lastError = orErr;
-          
+
           if (attempts === 1 && currentModel !== 'google/gemini-2.5-flash') {
             console.log('Switching to fallback model google/gemini-2.5-flash...');
             currentModel = 'google/gemini-2.5-flash';
@@ -331,7 +355,7 @@ Informal Notes:
     // 5. Fallback to Mock AI Engine if all else failed
     if (!resultJson) {
       const hasConfiguredKeys = activeAnthropicKey || openrouterKey || groqKey || userKeys?.ollamaModel;
-      
+
       if (hasConfiguredKeys && errors.length > 0) {
         throw new Error(errors.join(' | '));
       }
@@ -356,7 +380,7 @@ Informal Notes:
 // Mock Engine for robust pilot demonstrations and fallback
 function generateMockHandover(resident: any, age: number, rawInput: string): any {
   const lowercaseInput = rawInput.toLowerCase();
-  
+
   // Detect flags
   const detectedFlags: string[] = [];
   if (lowercaseInput.includes('fall') || lowercaseInput.includes('slip') || lowercaseInput.includes('dropped')) {
@@ -397,7 +421,7 @@ function generateMockHandover(resident: any, age: number, rawInput: string): any
 
   // Build ISBAR
   const identify = `${resident.name}, Room ${resident.room_number}, Age ${age}, Care Level: ${resident.care_level}`;
-  
+
   let situation = 'Resident is stable and resting comfortably in their room.';
   if (detectedFlags.includes('fall')) {
     situation = `Resident had an unwitnessed slip/fall in the dining area. Checked by RN, currently resting in bed under monitoring.`;
@@ -432,44 +456,52 @@ function generateMockHandover(resident: any, age: number, rawInput: string): any
     carerTasks.push({
       title: 'Comfort Checks',
       description: 'Provide regular 2-hourly comfort checks in room.',
-      tags: ['incidents', 'mobility']
+      tags: ['incidents', 'mobility'],
+      clinical_purpose: 'To monitor cognitive status and ensure comfort post-fall.'
     });
     carerTasks.push({
       title: 'Transfer Support',
       description: 'Assist with transfers and ensure walking frame is always in reach.',
-      tags: ['mobility']
+      tags: ['mobility'],
+      clinical_purpose: 'To mitigate high risk of re-falling and support stability.'
     });
     carerTasks.push({
       title: 'Pain Report',
       description: 'Report any complaints of hip or back pain immediately to the RN.',
-      tags: ['incidents']
+      tags: ['incidents'],
+      clinical_purpose: 'To detect late-onset pain or internal injuries from the fall.'
     });
   } else if (detectedFlags.includes('refused medication')) {
     carerTasks.push({
       title: 'Pain Monitoring',
       description: 'Observe resident for any verbal or non-verbal signs of pain.',
-      tags: ['general']
+      tags: ['general'],
+      clinical_purpose: 'To identify signs of discomfort since the resident refused pain medication.'
     });
     carerTasks.push({
       title: 'Hydration & Mobility',
       description: 'Encourage oral fluids and report if resident is reluctant to move.',
-      tags: ['nutrition', 'mobility']
+      tags: ['nutrition', 'mobility'],
+      clinical_purpose: 'To maintain fluid balance and monitor mobility deterioration.'
     });
   } else {
     carerTasks.push({
       title: 'Hygiene Assistance',
       description: 'Assist with routine hygiene and evening grooming care.',
-      tags: ['hygiene']
+      tags: ['hygiene'],
+      clinical_purpose: 'To support personal hygiene and check skin integrity.'
     });
     carerTasks.push({
       title: 'Fluid Intake',
       description: 'Encourage fluids during dinner service.',
-      tags: ['nutrition']
+      tags: ['nutrition'],
+      clinical_purpose: 'To ensure hydration standards are met.'
     });
     carerTasks.push({
       title: 'Safety Check',
       description: 'Ensure call bell is within easy reach before leaving room.',
-      tags: ['general']
+      tags: ['general'],
+      clinical_purpose: 'To ensure resident has access to assistance at all times.'
     });
   }
 

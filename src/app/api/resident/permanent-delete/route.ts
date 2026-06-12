@@ -30,7 +30,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Staff member not found' }, { status: 403 });
     }
 
-    if (!['admin', 'rn'].includes(staffMember.role)) {
+    const role = staffMember.role?.toLowerCase().trim() ?? '';
+    const isAuthorized = role === 'admin' || role.includes('admin') || role.includes('manager') ||
+                         role === 'rn' || role.includes('rn') || role.includes('nurse') || role.includes('clinical');
+
+    if (!isAuthorized) {
       return NextResponse.json({ error: 'Unauthorized: Only RNs and Admins can permanently delete profiles' }, { status: 403 });
     }
 

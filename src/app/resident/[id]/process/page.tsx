@@ -64,9 +64,11 @@ export default function ProcessHandover() {
 
         // Let the animation finish nicely or wait a brief moment
         setTimeout(() => {
-          if (data.data.follow_up_questions && data.data.follow_up_questions.length > 0) {
+          const followupCompleted = sessionStorage.getItem('followup_completed') === 'true';
+          if (data.data.follow_up_questions && data.data.follow_up_questions.length > 0 && !followupCompleted) {
             router.push(`/resident/${residentId}/followup`);
           } else {
+            sessionStorage.removeItem('followup_completed');
             router.push(`/resident/${residentId}/review`);
           }
         }, 800);
@@ -89,7 +91,7 @@ export default function ProcessHandover() {
   }, [residentId, router]);
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#080b16] text-[#0f172a] dark:text-[#e2e8f0] flex flex-col items-center justify-center p-6 relative transition-colors duration-300">
+    <div className="min-h-screen bg-transparent text-[#0f172a] dark:text-[#e2e8f0] flex flex-col items-center justify-center p-6 relative transition-colors duration-300">
       {/* Background gridding */}
       <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#161b30_1px,transparent_1px),linear-gradient(to_bottom,#161b30_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-20 pointer-events-none"></div>
 

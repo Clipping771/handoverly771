@@ -2,10 +2,82 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { Stethoscope, Send, X, Loader2, CheckCircle2, Trash2, Sparkles } from 'lucide-react';
+import { Send, X, Loader2, CheckCircle2, Trash2, Stethoscope } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { supabase } from '@/lib/supabase';
+import mermaid from 'mermaid';
+
+// Custom Mermaid renderer component
+const MermaidChart = ({ chart }: { chart: string }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    if (ref.current && chart) {
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: 'base',
+        themeVariables: {
+          primaryColor: '#2dd4bf',
+          primaryTextColor: '#f8fafc',
+          primaryBorderColor: '#0f172a',
+          lineColor: '#64748b',
+          secondaryColor: '#6366f1',
+          tertiaryColor: '#1e293b',
+          background: 'transparent'
+        }
+      });
+      const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
+      mermaid.render(id, chart).then((result) => {
+        if (ref.current) {
+          ref.current.innerHTML = result.svg;
+        }
+      }).catch(err => {
+        console.error('Mermaid render error', err);
+        if (ref.current) ref.current.innerHTML = `<div class="text-rose-500 text-xs">Failed to render graph</div>`;
+      });
+    }
+  }, [chart]);
+
+  return <div ref={ref} className="w-full flex justify-center my-4 overflow-x-auto bg-slate-900/20 dark:bg-slate-900/50 p-4 rounded-xl border border-border" />;
+};
+
+
+// Custom Premium Nurse Icon (Sleek minimalist clinical glyph matching user reference)
+const NurseIcon = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.8"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    {...props}
+  >
+    {/* Cap (Solid black/current color) */}
+    <path d="M8 7c0-2 1.5-3 4-3s4 1 4 3H8z" fill="currentColor" />
+    {/* Cross on Cap */}
+    <path d="M12 4.5v2M11 5.5h2" stroke="var(--surface-solid)" strokeWidth="1.2" />
+
+    {/* Head Outline (White face inside, black boundary) */}
+    <circle cx="12" cy="11.5" r="3.2" fill="var(--surface-solid)" stroke="currentColor" strokeWidth="1.8" />
+
+    {/* Shoulders (Solid black/current color) */}
+    <path d="M4.5 20c0-2.8 2.2-4.5 5-4.5h5c2.8 0 5 1.7 5 4.5v1h-15v-1z" fill="currentColor" />
+
+    {/* V-neck (White cutout) */}
+    <path d="M10 15.5l2 2.5 2-2.5z" fill="var(--surface-solid)" stroke="none" />
+
+    {/* Stethoscope */}
+    <path d="M8.5 15.5c0 1.5 1.5 2.5 3.5 2.5s3.5-1 3.5-2.5" stroke="var(--surface-solid)" strokeWidth="1.2" />
+    <circle cx="8" cy="15.2" r="0.6" fill="var(--surface-solid)" stroke="none" />
+    <circle cx="16" cy="15.2" r="0.6" fill="var(--surface-solid)" stroke="none" />
+
+    {/* ID Badge on chest */}
+    <rect x="14.5" y="17.8" width="2.5" height="1.8" rx="0.3" fill="var(--surface-solid)" stroke="none" />
+    <line x1="15" y1="17.2" x2="16.5" y2="17.2" stroke="var(--surface-solid)" strokeWidth="0.8" />
+  </svg>
+);
 
 export default function SmartSearch() {
   const { facility, user } = useAuth();
@@ -152,34 +224,53 @@ export default function SmartSearch() {
 
   return (
     <>
-      {/* Premium Clinical Floating Button */}
-      <button
-        onClick={() => setIsOpen(true)}
-        className={`fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-tr from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-full shadow-lg shadow-blue-500/30 flex items-center justify-center transition-all duration-300 transform hover:scale-105 active:scale-95 z-40 ${isOpen ? 'scale-0 pointer-events-none' : 'scale-100'}`}
-        title="Smart Clinical Assistant"
-      >
-        <Stethoscope className="w-6 h-6 text-white animate-pulse" />
-      </button>
+      {/* Floating Action Button - Glassmorphic Orb matching primary color */}
+      <div className={`fixed bottom-6 right-6 z-40 transition-all duration-500 ${isOpen ? 'scale-0 pointer-events-none' : 'scale-100'}`}>
+        {/* Pulsing ring behind the button */}
+        <div className="absolute inset-0 rounded-full bg-primary/30 animate-ping opacity-75"></div>
+        <button
+          onClick={() => setIsOpen(true)}
+          className="group relative w-16 h-16 rounded-full flex items-center justify-center transition-all duration-300 transform hover:scale-110 active:scale-95 shadow-[0_0_20px_rgba(59,130,246,0.4)] hover:shadow-[0_0_30px_rgba(59,130,246,0.7)] cursor-pointer overflow-hidden border border-white/30"
+        >
+          {/* Animated Accent Backplane */}
+          <div className="absolute inset-0 bg-gradient-to-tr from-primary via-indigo-550 to-blue-500 animate-[spin_6s_linear_infinite] opacity-90 group-hover:opacity-100"></div>
+          {/* Glass Overlay */}
+          <div className="absolute inset-[2.5px] bg-slate-50 dark:bg-slate-900 rounded-full backdrop-blur-md flex items-center justify-center">
+            <NurseIcon className="w-7 h-7 text-primary group-hover:scale-110 transition-transform duration-300" />
+          </div>
+        </button>
+      </div>
 
-      {/* Premium Chat Window */}
+
+      {/* Premium Glassmorphic Chat Drawer */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 w-[410px] h-[580px] max-h-[85vh] bg-white dark:bg-[#0f0f12] border border-slate-200 dark:border-zinc-800/80 rounded-3xl shadow-2xl z-50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
+        <div className="fixed bottom-6 right-6 w-[430px] h-[640px] max-h-[85vh] bg-surface border border-border rounded-[32px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.12)] z-50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
           
+          {/* Accent colored top strip */}
+          <div className="h-[3px] w-full bg-gradient-to-r from-primary via-indigo-500 to-primary"></div>
+
+          {/* Background Ambient Glows */}
+          <div className="absolute top-0 left-0 w-48 h-48 bg-primary/5 rounded-full blur-[80px] pointer-events-none -z-10"></div>
+          <div className="absolute bottom-0 right-0 w-48 h-48 bg-indigo-500/5 rounded-full blur-[80px] pointer-events-none -z-10"></div>
+
           {/* Header */}
-          <div className="bg-gradient-to-r from-slate-900 to-slate-950 dark:from-zinc-900 dark:to-zinc-950 px-5 py-4 flex items-center justify-between text-white border-b border-slate-800 dark:border-zinc-850">
+          <div className="px-5 py-4 flex items-center justify-between text-text-primary border-b border-border bg-white/30 dark:bg-black/10 backdrop-blur-md">
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-400">
-                <Stethoscope className="w-5 h-5" />
+              {/* Premium AI Icon representation */}
+              <div className="relative w-10 h-10 rounded-xl bg-gradient-to-tr from-primary to-indigo-500 p-[1.5px] shadow-sm">
+                <div className="w-full h-full rounded-[10px] bg-surface-solid flex items-center justify-center">
+                  <NurseIcon className="w-5 h-5 text-primary" />
+                </div>
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-sm tracking-tight">Smart Clinical Assistant</span>
+                  <span className="font-bold text-sm tracking-tight text-text-primary">Clinical Assistant</span>
                   <span className="flex h-2 w-2 relative">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                   </span>
                 </div>
-                <p className="text-[10px] text-slate-400 dark:text-zinc-500 font-medium">Secured Clinical AI Copilot</p>
+                <p className="text-[9px] font-bold text-text-secondary uppercase tracking-widest mt-0.5">Secured Clinical AI Copilot</p>
               </div>
             </div>
             
@@ -187,7 +278,7 @@ export default function SmartSearch() {
               {messages.length > 0 && (
                 <button 
                   onClick={clearChat} 
-                  className="p-2 hover:bg-white/5 rounded-xl transition-colors text-slate-400 hover:text-white" 
+                  className="p-2 bg-white/40 dark:bg-white/5 hover:bg-white/80 dark:hover:bg-white/10 text-text-secondary hover:text-text-primary rounded-xl transition-all border border-border cursor-pointer" 
                   title="Clear Chat History"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -195,7 +286,7 @@ export default function SmartSearch() {
               )}
               <button 
                 onClick={() => setIsOpen(false)} 
-                className="p-2 hover:bg-white/5 rounded-xl transition-colors text-slate-400 hover:text-white"
+                className="p-2 bg-white/40 dark:bg-white/5 hover:bg-white/80 dark:hover:bg-white/10 text-text-secondary hover:text-text-primary rounded-xl transition-all border border-border cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -203,29 +294,51 @@ export default function SmartSearch() {
           </div>
 
           {/* Messages Area */}
-          <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-slate-50/50 dark:bg-[#09090b]">
+          <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-transparent custom-scrollbar">
             {messages.length === 0 ? (
-              <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-4">
-                <div className="w-12 h-12 rounded-2xl bg-blue-500/10 dark:bg-blue-500/5 flex items-center justify-center text-blue-500 border border-blue-500/20 dark:border-blue-500/10 animate-bounce">
-                  <Stethoscope className="w-6 h-6" />
+              <div className="h-full flex flex-col items-center justify-center text-center p-4 space-y-6">
+                
+                {/* Nurse Orb */}
+                <div className="relative w-24 h-24 flex items-center justify-center">
+                  {/* Glowing auras */}
+                  <div className="absolute inset-0 bg-teal-accent/20 rounded-full blur-2xl opacity-70 animate-pulse"></div>
+                  
+                  {/* Faint Static Core Glow */}
+                  <div className="absolute inset-0 rounded-full border-[1.5px] border-teal-accent/15"></div>
+
+                  {/* Single Planetary Orbit */}
+                  <div className="absolute inset-[-10px] flex items-center justify-center animate-[spin_8s_linear_infinite]">
+                    <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible" style={{ transform: 'rotate(15deg)' }}>
+                      {/* Orbit Path */}
+                      <ellipse cx="50" cy="50" rx="48" ry="15" fill="none" stroke="currentColor" strokeWidth="1.2" className="text-teal-accent/40" />
+                      {/* Orbiting Satellite/Planet */}
+                      <circle cx="2" cy="50" r="2.5" className="fill-teal-accent drop-shadow-[0_0_8px_rgba(45,212,191,0.9)]" />
+                    </svg>
+                  </div>
+                  
+                  {/* Core Glass Sphere */}
+                  <div className="relative w-16 h-16 rounded-full bg-surface-solid border border-border backdrop-blur-xl flex items-center justify-center shadow-[0_0_20px_rgba(45,212,191,0.2)]">
+                    <NurseIcon className="w-8 h-8 text-teal-accent" />
+                  </div>
                 </div>
+
                 <div>
-                  <h3 className="text-sm font-bold text-slate-800 dark:text-zinc-200">How can I assist you today?</h3>
-                  <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1 max-w-[280px] leading-relaxed">
+                  <h3 className="text-sm font-bold text-text-primary tracking-wide">How can I assist you today?</h3>
+                  <p className="text-xs text-text-secondary mt-1.5 max-w-[290px] leading-relaxed">
                     Ask questions about recent handovers, create clinical tasks, or log observations directly into the resident timeline.
                   </p>
                 </div>
                 
                 {/* Suggestions List */}
                 <div className="w-full pt-4 space-y-2">
-                  <p className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider text-left pl-1">Suggested Prompts</p>
+                  <p className="text-[9px] font-bold text-text-secondary uppercase tracking-widest text-left pl-1">Suggested Prompts</p>
                   {suggestions.map((s, idx) => (
                     <button
                       key={idx}
                       onClick={() => handleSuggestionClick(s.text)}
-                      className="w-full text-left p-3 text-xs bg-white dark:bg-[#121215] border border-slate-200 dark:border-zinc-800/80 rounded-2xl hover:border-blue-500/60 dark:hover:border-blue-500/40 text-slate-700 dark:text-zinc-350 hover:bg-blue-50/30 dark:hover:bg-blue-950/10 transition-all font-medium flex items-center gap-2 shadow-sm"
+                      className="w-full text-left p-3.5 text-xs bg-white/30 dark:bg-white/5 border border-border rounded-2xl hover:border-primary/50 text-text-primary hover:bg-white/60 dark:hover:bg-white/10 transition-all font-medium flex items-center gap-2.5 shadow-sm cursor-pointer"
                     >
-                      <Sparkles className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                      <NurseIcon className="w-3.5 h-3.5 text-primary shrink-0" />
                       <span>{s.label}</span>
                     </button>
                   ))}
@@ -234,23 +347,36 @@ export default function SmartSearch() {
             ) : (
               messages.map((m, i) => (
                 <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in duration-200`}>
-                  <div className={`max-w-[90%] rounded-2xl px-4 py-3 text-sm ${
+                  <div className={`max-w-[85%] rounded-[22px] px-4 py-3 text-[13px] ${
                     m.role === 'user' 
-                      ? 'bg-blue-600 text-white rounded-br-none shadow-md shadow-blue-600/10' 
-                      : 'bg-white dark:bg-[#121216] text-slate-800 dark:text-zinc-200 border border-slate-200 dark:border-zinc-800/80 rounded-bl-none shadow-sm'
+                      ? 'bg-gradient-to-r from-primary to-indigo-600 text-white rounded-br-none shadow-[0_4px_15px_rgba(59,130,246,0.2)] border border-white/10 font-medium' 
+                      : 'bg-white/60 dark:bg-white/5 text-text-primary border border-border rounded-bl-none shadow-sm backdrop-blur-md'
                   }`}>
-                    <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <div className="markdown-body max-w-none">
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{
-                          table: ({node, ...props}) => <div className="overflow-x-auto my-3"><table className="min-w-full text-left border-collapse" {...props} /></div>,
-                          th: ({node, ...props}) => <th className="border-b border-slate-250 dark:border-zinc-700 px-3 py-2 text-xs font-bold text-slate-800 dark:text-zinc-200 bg-slate-50 dark:bg-zinc-800/50" {...props} />,
-                          td: ({node, ...props}) => <td className="border-b border-slate-100 dark:border-zinc-800/40 px-3 py-2 text-xs" {...props} />,
-                          p: ({node, ...props}) => <p className="mb-2 last:mb-0 leading-relaxed text-xs" {...props} />,
-                          ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-2 text-xs space-y-1" {...props} />,
-                          ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-2 text-xs space-y-1" {...props} />,
-                          li: ({node, ...props}) => <li className="leading-relaxed mb-0.5" {...props} />,
-                          strong: ({node, ...props}) => <strong className="font-bold text-slate-900 dark:text-white" {...props} />,
+                          h1: ({node, ...props}) => <h1 className="text-lg font-bold mb-3 mt-4 first:mt-0 tracking-tight" {...props} />,
+                          h2: ({node, ...props}) => <h2 className="text-base font-bold mb-2.5 mt-4 first:mt-0 tracking-tight" {...props} />,
+                          h3: ({node, ...props}) => <h3 className="text-[14px] font-bold mb-2 mt-3 first:mt-0" {...props} />,
+                          table: ({node, ...props}) => <div className="overflow-x-auto my-3 rounded-lg border border-border"><table className="min-w-full text-left border-collapse" {...props} /></div>,
+                          th: ({node, ...props}) => <th className="border-b border-border px-3 py-2.5 text-[11px] font-bold uppercase tracking-wider text-text-secondary bg-surface" {...props} />,
+                          td: ({node, ...props}) => <td className="border-b border-border px-3 py-2.5 text-[13px]" {...props} />,
+                          p: ({node, ...props}) => <p className="mb-3 last:mb-0 leading-relaxed text-[13px] whitespace-pre-wrap" {...props} />,
+                          ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-3 text-[13px] space-y-1.5" {...props} />,
+                          ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-3 text-[13px] space-y-1.5" {...props} />,
+                          li: ({node, ...props}) => <li className="leading-relaxed mb-1" {...props} />,
+                          strong: ({node, ...props}) => <strong className="font-bold" {...props} />,
+                          em: ({node, ...props}) => <em className="italic opacity-90" {...props} />,
+                          code: ({node, inline, className, children, ...props}: any) => {
+                            const match = /language-(\w+)/.exec(className || '');
+                            if (!inline && match && match[1] === 'mermaid') {
+                              return <MermaidChart chart={String(children).replace(/\n$/, '')} />;
+                            }
+                            return inline 
+                              ? <code className="bg-slate-100 dark:bg-slate-800 text-pink-600 dark:text-pink-400 px-1.5 py-0.5 rounded-md text-[11px] font-mono" {...props}>{children}</code>
+                              : <pre className="bg-slate-900 text-slate-50 p-3 rounded-xl overflow-x-auto my-3 text-[12px] font-mono"><code {...props}>{children}</code></pre>;
+                          },
                         }}
                       >
                         {m.content}
@@ -259,21 +385,21 @@ export default function SmartSearch() {
 
                     {/* Executed Smart Actions Visual Cards */}
                     {m.actions && m.actions.length > 0 && (
-                      <div className="mt-3 space-y-2 border-t border-slate-100 dark:border-zinc-800/60 pt-3">
+                      <div className="mt-3 space-y-2 border-t border-border pt-3">
                         {m.actions.map((act, idx) => (
-                          <div key={idx} className="bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-200/60 dark:border-emerald-900/30 rounded-xl p-3 flex items-start gap-2.5">
-                            <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-white shrink-0 mt-0.5 shadow-sm">
+                          <div key={idx} className="bg-green-500/10 border border-green-500/20 rounded-xl p-3 flex items-start gap-2.5">
+                            <div className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-white shrink-0 mt-0.5 shadow-sm">
                               <CheckCircle2 className="w-3.5 h-3.5" />
                             </div>
                             <div className="min-w-0">
-                              <span className="font-bold text-[11px] text-emerald-900 dark:text-emerald-450 uppercase tracking-wider block">
+                              <span className="font-bold text-[10px] text-green-600 dark:text-green-400 uppercase tracking-widest block">
                                 {act.type === 'CREATE_TASK' ? 'Task Created' : 'Observation Logged'}
                               </span>
-                              <span className="font-semibold text-xs text-slate-800 dark:text-zinc-200 mt-0.5 block">
+                              <span className="font-bold text-xs text-text-primary mt-0.5 block">
                                 {act.title || act.action_type || 'Success'}
                               </span>
                               {act.description && (
-                                <p className="text-[11px] text-slate-550 dark:text-zinc-400 mt-1 leading-relaxed">
+                                <p className="text-[10px] text-text-secondary mt-1 leading-relaxed">
                                   {act.description}
                                 </p>
                               )}
@@ -288,9 +414,9 @@ export default function SmartSearch() {
             )}
             {isLoading && (
               <div className="flex justify-start">
-                <div className="bg-white dark:bg-[#121216] border border-slate-200 dark:border-zinc-800/80 rounded-2xl rounded-bl-none p-3 shadow-sm flex items-center gap-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-                  <span className="text-xs text-slate-400 dark:text-zinc-500 font-medium">Processing clinical data...</span>
+                <div className="bg-white/40 dark:bg-white/5 border border-border rounded-2xl rounded-bl-none p-3 shadow-md flex items-center gap-2.5">
+                  <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                  <span className="text-xs text-text-secondary font-semibold">Processing clinical database...</span>
                 </div>
               </div>
             )}
@@ -298,21 +424,21 @@ export default function SmartSearch() {
           </div>
 
           {/* Input Area */}
-          <form onSubmit={handleSend} className="p-4 bg-white dark:bg-[#0f0f12] border-t border-slate-200 dark:border-zinc-800/80">
+          <form onSubmit={handleSend} className="p-4 bg-white/20 dark:bg-black/10 border-t border-border backdrop-blur-md">
             <div className="relative flex items-center">
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Ask about a resident or log an observation..."
-                className="w-full bg-slate-100 dark:bg-[#18181c] border border-transparent focus:border-slate-350 dark:focus:border-zinc-750 text-slate-900 dark:text-white text-xs rounded-full pl-4 pr-12 py-3.5 focus:outline-none transition-all placeholder-slate-400 dark:placeholder-zinc-650"
+                className="w-full h-12 bg-surface-solid border border-border rounded-full pl-5 pr-12 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-text-primary placeholder-text-secondary shadow-inner"
               />
               <button 
                 type="submit" 
                 disabled={!query.trim() || isLoading}
-                className="absolute right-2 p-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:disabled:bg-zinc-800/50 text-white dark:text-zinc-300 rounded-full transition-all active:scale-95"
+                className="absolute right-1.5 w-9 h-9 bg-primary hover:opacity-90 disabled:opacity-50 text-white rounded-full flex items-center justify-center transition-all active:scale-95 shadow-md shadow-primary/20 cursor-pointer"
               >
-                <Send className="w-3.5 h-3.5" />
+                <Send className="w-3.5 h-3.5 text-white" />
               </button>
             </div>
           </form>
@@ -321,3 +447,5 @@ export default function SmartSearch() {
     </>
   );
 }
+
+

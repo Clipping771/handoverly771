@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ShieldAlert, LogIn, User, Lock, Sun, Moon, Hexagon, UserPlus, Mail, BadgeCent, ChevronDown, Eye, EyeOff } from 'lucide-react';
+import { ShieldAlert, LogIn, User, Lock, Sun, Moon, HeartPulse, UserPlus, Mail, BadgeCent, ChevronDown, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function Login() {
@@ -118,77 +118,69 @@ export default function Login() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#fafafa] dark:bg-black flex flex-col items-center justify-center">
-        <div className="w-12 h-12 border-4 border-black/10 dark:border-white/10 border-t-black dark:border-t-white rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-[#030712] flex flex-col items-center justify-center">
+        <div className="w-12 h-12 border-4 border-white/10 border-t-indigo-500 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen w-full relative flex items-center justify-center bg-slate-50 dark:bg-[#030712] overflow-hidden font-sans selection:bg-indigo-500/20 p-4">
+    <div className="min-h-screen w-full relative flex items-center justify-center bg-background overflow-hidden font-sans p-4">
       
-      {/* Dynamic Animated Aurora Background */}
+      {/* Soft Apple-style Ambient Gradient */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] rounded-full bg-indigo-500/20 dark:bg-indigo-600/10 blur-[120px] animate-[pulse_8s_ease-in-out_infinite] mix-blend-multiply dark:mix-blend-screen"></div>
-        <div className="absolute top-[20%] -right-[10%] w-[60%] h-[60%] rounded-full bg-blue-500/20 dark:bg-cyan-500/10 blur-[120px] animate-[pulse_10s_ease-in-out_infinite_1s] mix-blend-multiply dark:mix-blend-screen"></div>
-        <div className="absolute -bottom-[20%] left-[20%] w-[80%] h-[60%] rounded-full bg-violet-500/20 dark:bg-violet-600/10 blur-[130px] animate-[pulse_12s_ease-in-out_infinite_2s] mix-blend-multiply dark:mix-blend-screen"></div>
+        <div className="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] rounded-full bg-blue-100 dark:bg-blue-900/20 blur-[120px] animate-[pulse_8s_ease-in-out_infinite] mix-blend-multiply dark:mix-blend-screen"></div>
+        <div className="absolute top-[20%] -right-[10%] w-[60%] h-[60%] rounded-full bg-slate-200 dark:bg-slate-800/30 blur-[120px] animate-[pulse_10s_ease-in-out_infinite_1s] mix-blend-multiply dark:mix-blend-screen"></div>
       </div>
 
       {/* Theme Switcher */}
       <div className="absolute top-6 right-6 z-50">
         <button
           onClick={toggleTheme}
-          className="p-3 rounded-full bg-white/40 dark:bg-black/40 backdrop-blur-md border border-white/40 dark:border-white/10 text-slate-700 dark:text-slate-300 shadow-lg transition-all hover:scale-110 active:scale-95 hover:bg-white/80 dark:hover:bg-white/10"
+          className="p-3 rounded-full bg-white/40 dark:bg-black/40 backdrop-blur-md border border-black/5 dark:border-white/10 text-text-primary shadow-lg transition-all hover:scale-110 active:scale-95"
         >
           {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
       </div>
 
-      {/* Main Glass Card */}
-      <div className="relative z-10 w-full max-w-[440px] animate-in fade-in slide-in-from-bottom-8 duration-700">
+      <div className="w-full max-w-md relative z-10 animate-fade-in-up">
         
-        {/* Floating Logo Badge */}
-        <div className="flex justify-center mb-8">
-           <div className="relative group">
-             <div className="absolute inset-0 bg-gradient-to-r from-indigo-500 to-blue-500 blur-xl rounded-full opacity-40 group-hover:opacity-70 transition-opacity duration-500"></div>
-             <div className="w-16 h-16 rounded-[1.25rem] bg-white dark:bg-[#0a0a0a] p-[1px] relative shadow-2xl transform transition-transform group-hover:scale-105 duration-300 border border-white/50 dark:border-white/10">
-               <div className="w-full h-full rounded-[1.25rem] bg-gradient-to-br from-white to-slate-50 dark:from-zinc-900 dark:to-black flex items-center justify-center overflow-hidden relative">
-                  <div className="absolute top-0 left-[-100%] w-[50%] h-full bg-gradient-to-r from-transparent via-indigo-500/10 dark:via-white/10 to-transparent skew-x-[30deg] animate-[sheen_3s_infinite]"></div>
-                  <Hexagon className="w-7 h-7 text-indigo-600 dark:text-white drop-shadow-md" />
-               </div>
-             </div>
+        {/* Clean Circular Handover Logo */}
+        <div className="flex justify-center mb-10">
+           <div className="w-20 h-20 rounded-[24px] bg-white dark:bg-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white/80 dark:border-white/10 flex items-center justify-center transform transition-transform hover:scale-105 duration-300 z-10">
+              <HeartPulse className="w-9 h-9 text-primary" strokeWidth={1.5} />
            </div>
         </div>
 
-        <div className="bg-white/60 dark:bg-[#0a0a0a]/60 backdrop-blur-2xl border border-white/50 dark:border-white/10 p-8 sm:p-10 rounded-[2.5rem] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.1)] dark:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.5)]">
+        <div className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border border-white/60 dark:border-white/10 p-8 sm:p-10 rounded-[40px] shadow-[0_8px_32px_rgba(0,0,0,0.04)]">
           
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-extrabold tracking-tight bg-gradient-to-br from-slate-900 to-slate-600 dark:from-white dark:to-slate-400 bg-clip-text text-transparent mb-2">
+            <h1 className="text-3xl font-bold tracking-tight text-text-primary mb-2">
               Handoverly
             </h1>
-            <p className="text-[11px] font-bold text-indigo-600/80 dark:text-indigo-400 uppercase tracking-[0.2em]">
+            <p className="text-[11px] font-bold text-primary uppercase tracking-[0.2em]">
               Clinical Operations
             </p>
           </div>
 
           {/* Pill Segmented Tabs */}
-          <div className="flex p-1 bg-slate-200/50 dark:bg-white/5 rounded-2xl mb-8 backdrop-blur-md">
+          <div className="flex p-1.5 glass-pill rounded-full mb-8 border-white/60">
             <button
               onClick={() => { setIsLoginMode(true); setError(''); }}
-              className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 ${
+              className={`flex-1 py-3 text-xs font-bold rounded-full transition-all duration-300 tracking-widest uppercase ${
                 isLoginMode
-                  ? 'bg-white dark:bg-[#1a1a1a] text-indigo-600 dark:text-white shadow-sm scale-[1.02]'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                  ? 'bg-white dark:bg-slate-800 text-primary shadow-sm border border-white/50'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-white/50'
               }`}
             >
               Sign In
             </button>
             <button
               onClick={() => { setIsLoginMode(false); setError(''); }}
-              className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-wider rounded-xl transition-all duration-300 ${
+              className={`flex-1 py-3 text-xs font-bold rounded-full transition-all duration-300 tracking-widest uppercase ${
                 !isLoginMode
-                  ? 'bg-white dark:bg-[#1a1a1a] text-indigo-600 dark:text-white shadow-sm scale-[1.02]'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                  ? 'bg-white dark:bg-slate-800 text-primary shadow-sm border border-white/50'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-white/50'
               }`}
             >
               Register
@@ -196,40 +188,40 @@ export default function Login() {
           </div>
 
           {isLoginMode ? (
-            <form onSubmit={handleLoginSubmit} className="space-y-5">
-              <div className="space-y-2 relative group/input">
-                <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
+              <div className="space-y-1.5 relative group/input">
+                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">
                   Employee ID / Email
                 </label>
                 <div className="relative flex items-center">
-                  <User className="absolute left-4 w-4 h-4 text-slate-400 dark:text-slate-500 transition-colors group-focus-within/input:text-indigo-500" />
+                  <User className="absolute left-5 w-4 h-4 text-slate-400 group-focus-within/input:text-primary transition-colors z-10" />
                   <input
                     type="text"
                     placeholder="e.g. EMP1001"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="w-full h-12 bg-white/50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-2xl pl-11 pr-4 text-sm font-medium text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 dark:focus:border-indigo-500/50 transition-all"
+                    className="w-full h-14 glass-pill border-white/60 rounded-full pl-12 pr-4 text-sm font-medium text-text-primary placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white/80 transition-all shadow-inner"
                   />
                 </div>
               </div>
 
-              <div className="space-y-2 relative group/input">
-                <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">
+              <div className="space-y-1.5 relative group/input">
+                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">
                   Password
                 </label>
                 <div className="relative flex items-center">
-                  <Lock className="absolute left-4 w-4 h-4 text-slate-400 dark:text-slate-500 transition-colors group-focus-within/input:text-indigo-500" />
+                  <Lock className="absolute left-5 w-4 h-4 text-slate-400 group-focus-within/input:text-primary transition-colors z-10" />
                   <input
                     type={showPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full h-12 bg-white/50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-2xl pl-11 pr-11 text-sm font-medium tracking-wider text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 dark:focus:border-indigo-500/50 transition-all"
+                    className="w-full h-14 glass-pill border-white/60 rounded-full pl-12 pr-12 text-sm font-medium tracking-wider text-text-primary placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white/80 transition-all shadow-inner"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none transition-colors cursor-pointer"
+                    className="absolute right-5 p-1 text-slate-400 hover:text-text-secondary focus:outline-none transition-colors cursor-pointer z-10"
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -246,7 +238,7 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full h-12 mt-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold text-sm tracking-wide shadow-lg shadow-indigo-500/25 transition-all active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none flex items-center justify-center gap-2"
+                className="w-full h-12 mt-4 rounded-full bg-primary hover:opacity-90 text-white font-semibold text-sm tracking-wide transition-opacity active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
@@ -260,52 +252,52 @@ export default function Login() {
           ) : (
             <form onSubmit={handleRegisterSubmit} className="space-y-4">
               <div className="space-y-1.5 group/input">
-                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">Full Name</label>
+                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">Full Name</label>
                 <div className="relative">
-                  <User className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400 dark:text-slate-500 transition-colors group-focus-within/input:text-indigo-500" />
-                  <input type="text" placeholder="Jane Doe" value={registerName} onChange={(e) => setRegisterName(e.target.value)} className="w-full h-11 bg-white/50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-xl pl-10 pr-3 text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
+                  <User className="absolute left-4 top-4 w-4 h-4 text-slate-400 transition-colors group-focus-within/input:text-primary" />
+                  <input type="text" placeholder="Jane Doe" value={registerName} onChange={(e) => setRegisterName(e.target.value)} className="w-full h-12 bg-[#F5F5F7] dark:bg-[#2C2C2E] rounded-[14px] pl-11 pr-4 text-sm font-medium text-text-primary placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all border-none" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1.5 group/input">
-                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">Emp ID</label>
-                  <input type="text" placeholder="EMP100" value={registerEmpId} onChange={(e) => setRegisterEmpId(e.target.value)} className="w-full h-11 bg-white/50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-xl px-3 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
+                  <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">Emp ID</label>
+                  <input type="text" placeholder="EMP100" value={registerEmpId} onChange={(e) => setRegisterEmpId(e.target.value)} className="w-full h-12 bg-[#F5F5F7] dark:bg-[#2C2C2E] rounded-[14px] px-4 text-sm font-medium text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all border-none" />
                 </div>
                 {rolesList.length > 0 && (
                   <div className="space-y-1.5 group/input">
-                    <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">Role</label>
-                    <select value={registerRole} onChange={(e) => setRegisterRole(e.target.value)} className="w-full h-11 bg-white/50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-xl px-3 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
-                      {rolesList.map(r => <option key={r.id} value={r.name} className="dark:bg-slate-900">{r.name.charAt(0).toUpperCase() + r.name.slice(1)}</option>)}
+                    <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">Role</label>
+                    <select value={registerRole} onChange={(e) => setRegisterRole(e.target.value)} className="w-full h-12 bg-[#F5F5F7] dark:bg-[#2C2C2E] rounded-[14px] px-4 text-sm font-medium text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all border-none">
+                      {rolesList.map(r => <option key={r.id} value={r.name}>{r.name.charAt(0).toUpperCase() + r.name.slice(1)}</option>)}
                     </select>
                   </div>
                 )}
               </div>
               <div className="space-y-1.5 group/input">
-                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">Email</label>
+                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">Email</label>
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400 dark:text-slate-500 transition-colors group-focus-within/input:text-indigo-500" />
-                  <input type="email" placeholder="jane@facility.com" value={registerEmail} onChange={(e) => setRegisterEmail(e.target.value)} className="w-full h-11 bg-white/50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-xl pl-10 pr-3 text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
+                  <Mail className="absolute left-4 top-4 w-4 h-4 text-slate-400 transition-colors group-focus-within/input:text-primary" />
+                  <input type="email" placeholder="jane@facility.com" value={registerEmail} onChange={(e) => setRegisterEmail(e.target.value)} className="w-full h-12 bg-[#F5F5F7] dark:bg-[#2C2C2E] rounded-[14px] pl-11 pr-4 text-sm font-medium text-text-primary placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all border-none" />
                 </div>
               </div>
               <div className="space-y-1.5 group/input">
-                <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">Password</label>
+                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">Password</label>
                 <div className="relative flex items-center">
-                  <Lock className="absolute left-3.5 top-3.5 w-4 h-4 text-slate-400 dark:text-slate-500 transition-colors group-focus-within/input:text-indigo-500" />
-                  <input type={showRegisterPassword ? 'text' : 'password'} placeholder="••••••••" value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)} className="w-full h-11 bg-white/50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-xl pl-10 pr-10 text-xs font-medium text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" />
+                  <Lock className="absolute left-4 top-4 w-4 h-4 text-slate-400 transition-colors group-focus-within/input:text-primary" />
+                  <input type={showRegisterPassword ? 'text' : 'password'} placeholder="••••••••" value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)} className="w-full h-12 bg-[#F5F5F7] dark:bg-[#2C2C2E] rounded-[14px] pl-11 pr-11 text-sm font-medium text-text-primary placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all border-none" />
                   <button
                     type="button"
                     onClick={() => setShowRegisterPassword(!showRegisterPassword)}
-                    className="absolute right-3 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none transition-colors cursor-pointer"
+                    className="absolute right-4 p-1 text-slate-400 hover:text-text-secondary focus:outline-none transition-colors cursor-pointer"
                   >
-                    {showRegisterPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    {showRegisterPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
               </div>
               {facilities.length > 0 && (
                 <div className="space-y-1.5 group/input">
-                  <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider pl-1">Facility</label>
-                  <select value={registerFacility} onChange={(e) => setRegisterFacility(e.target.value)} className="w-full h-11 bg-white/50 dark:bg-black/30 border border-slate-200 dark:border-white/5 rounded-xl px-3 text-xs font-medium text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
-                    {facilities.map(f => <option key={f.id} value={f.id} className="dark:bg-slate-900">{f.name}</option>)}
+                  <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">Facility</label>
+                  <select value={registerFacility} onChange={(e) => setRegisterFacility(e.target.value)} className="w-full h-12 bg-[#F5F5F7] dark:bg-[#2C2C2E] rounded-[14px] px-4 text-sm font-medium text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all border-none">
+                    {facilities.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                   </select>
                 </div>
               )}
@@ -318,12 +310,12 @@ export default function Login() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="w-full h-11 mt-4 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold text-xs tracking-wide shadow-lg shadow-indigo-500/25 transition-all active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2"
+                className="w-full h-12 mt-4 rounded-full bg-primary hover:opacity-90 text-white font-semibold text-sm tracking-wide transition-opacity active:scale-[0.98] disabled:opacity-70 flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
                 ) : (
-                  <>Create Account <UserPlus className="w-3.5 h-3.5" /></>
+                  <>Create Account <UserPlus className="w-4 h-4" /></>
                 )}
               </button>
             </form>
@@ -333,15 +325,15 @@ export default function Login() {
         
         {/* Footer info */}
         <div className="mt-8 text-center flex items-center justify-center gap-3">
-          <div className="px-3 py-1.5 rounded-full bg-white/40 dark:bg-black/40 backdrop-blur-md border border-white/50 dark:border-white/5 text-[9px] font-bold text-slate-600 dark:text-slate-400 tracking-[0.2em] uppercase flex items-center gap-2">
-            <Lock className="w-3 h-3 text-indigo-500" />
+          <div className="px-3 py-1.5 rounded-full bg-white/40 dark:bg-black/40 backdrop-blur-md border border-black/5 dark:border-white/5 text-[9px] font-bold text-text-secondary tracking-[0.2em] uppercase flex items-center gap-2">
+            <Lock className="w-3 h-3 text-primary" />
             AES-256
           </div>
-          <div className="px-3 py-1.5 rounded-full bg-white/40 dark:bg-black/40 backdrop-blur-md border border-white/50 dark:border-white/5 text-[9px] font-bold text-slate-600 dark:text-slate-400 tracking-[0.2em] uppercase flex items-center gap-2">
-            <ShieldAlert className="w-3 h-3 text-emerald-500" />
+          <div className="px-3 py-1.5 rounded-full bg-white/40 dark:bg-black/40 backdrop-blur-md border border-black/5 dark:border-white/5 text-[9px] font-bold text-text-secondary tracking-[0.2em] uppercase flex items-center gap-2">
+            <ShieldAlert className="w-3 h-3 text-green-500" />
             RLS Active
           </div>
-          <Link href="/system-admin" className="px-3 py-1.5 rounded-full bg-white/40 dark:bg-black/40 backdrop-blur-md border border-white/50 dark:border-white/5 text-[9px] font-bold text-indigo-600 dark:text-indigo-400 tracking-[0.2em] uppercase hover:bg-white/60 dark:hover:bg-white/10 transition-colors">
+          <Link href="/system-admin" className="px-3 py-1.5 rounded-full bg-white/40 dark:bg-black/40 backdrop-blur-md border border-black/5 dark:border-white/5 text-[9px] font-bold text-primary tracking-[0.2em] uppercase hover:bg-white/60 dark:hover:bg-white/10 transition-colors">
             Setup
           </Link>
         </div>

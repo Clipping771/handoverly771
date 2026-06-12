@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { ShieldCheck, Plus, Trash2, Building, Users, AlertCircle, RefreshCw, Sun, Moon, Search, ChevronDown, LogOut, UserPlus, Edit3, Save, X, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
+import CustomModelSelector from '@/components/CustomModelSelector';
 
 interface Staff {
   id: string;
@@ -84,12 +85,11 @@ export default function AdminSetup() {
   const [groqKey, setGroqKey] = useState('');
   const [groqModel, setGroqModel] = useState('llama-3.3-70b-versatile');
   const [activeProvider, setActiveProvider] = useState<'auto' | 'anthropic' | 'openrouter' | 'groq' | 'ollama' | 'mock'>('auto');
-
-  // OpenRouter live model search
-  const [orModels, setOrModels] = useState<{id: string; name: string}[]>([]);
-  const [orModelSearch, setOrModelSearch] = useState('');
-  const [orModelsLoading, setOrModelsLoading] = useState(false);
-  const [showOrModelList, setShowOrModelList] = useState(false);
+  
+  // Module Feature Flags
+  const [sentinelEnabled, setSentinelEnabled] = useState(true);
+  const [chronicleEnabled, setChronicleEnabled] = useState(true);
+  const [ariaEnabled, setAriaEnabled] = useState(true);
 
   const [feedback, setFeedback] = useState('');
   const [error, setError] = useState('');
@@ -225,6 +225,10 @@ export default function AdminSetup() {
           setGroqKey(conf.keys.groqKey || '');
           setGroqModel(conf.keys.groqModel || 'llama-3.3-70b-versatile');
         }
+        const flags = conf.featureFlags || {};
+        setSentinelEnabled(flags.sentinelEnabled !== false);
+        setChronicleEnabled(flags.chronicleEnabled !== false);
+        setAriaEnabled(flags.ariaEnabled !== false);
       }
     } catch (err) {
       console.error(err);
@@ -426,6 +430,11 @@ export default function AdminSetup() {
         body: JSON.stringify({
           facilityId: facility.id,
           activeProvider,
+          featureFlags: {
+            sentinelEnabled,
+            chronicleEnabled,
+            ariaEnabled
+          },
           userKeys: {
             anthropicKey,
             openrouterKey,
@@ -448,25 +457,7 @@ export default function AdminSetup() {
     }
   };
 
-  const fetchOrModels = async (key: string) => {
-    if (!key) return;
-    setOrModelsLoading(true);
-    try {
-      const res = await fetch(`/api/openrouter-models?apiKey=${encodeURIComponent(key)}`);
-      const data = await res.json();
-      if (data.models) setOrModels(data.models);
-    } catch (e) {
-      console.error('Failed to fetch OR models:', e);
-    } finally {
-      setOrModelsLoading(false);
-    }
-  };
 
-  useEffect(() => {
-    if (openrouterKey && openrouterKey.length > 10) {
-      fetchOrModels(openrouterKey);
-    }
-  }, [openrouterKey]);
 
   // Loading guard re-enabled as system setup handles the bootstrapping now
   if (authLoading || !user || !facility) {
@@ -475,25 +466,19 @@ export default function AdminSetup() {
 
   return (
     <>
-    <div className="min-h-screen bg-slate-50 dark:bg-[#03040b] text-[#0f172a] dark:text-[#e2e8f0] flex flex-col pb-12 transition-colors duration-300 relative overflow-x-hidden">
-      {/* Premium Background Gradients */}
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-slate-900/10 via-transparent to-transparent pointer-events-none z-0"></div>
-      <div className="fixed inset-0 bg-[radial-gradient(ellipse_at_bottom_left,_var(--tw-gradient-stops))] from-slate-800/10 via-transparent to-transparent pointer-events-none z-0"></div>
-      
-      {/* Subtle Grid */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#e2e8f0_1px,transparent_1px),linear-gradient(to_bottom,#e2e8f0_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:4rem_4rem] opacity-30 pointer-events-none z-0"></div>
+    <div className="min-h-screen bg-transparent text-[#0f172a] dark:text-[#e2e8f0] flex flex-col pb-12 transition-colors duration-300 relative overflow-x-hidden">
+      {/* Background is handled globally by layout.tsx */}
 
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/70 dark:bg-[#0a0f1e]/60 backdrop-blur-2xl border-b border-slate-200/50 dark:border-white/5 px-4 py-4 sm:px-6 transition-all duration-300">
+      <header className="sticky top-0 z-40 bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border-b border-white/60 dark:border-white/5 px-4 py-4 sm:px-6 transition-all duration-300">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 dark:from-slate-700 dark:to-slate-800 flex items-center justify-center font-black text-sm text-white shadow-lg shadow-slate-500/20 dark:shadow-black/40 border border-white/10">
-              ADM
+            <div className="w-12 h-12 rounded-[20px] bg-white dark:bg-slate-800 flex items-center justify-center font-bold text-sm shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white/80 dark:border-white/10">
+              <ShieldCheck className="w-6 h-6 text-primary" />
             </div>
             <div>
               <h1 className="text-base font-bold text-slate-800 dark:text-white">{facility.name} Setup</h1>
-              <p className="text-xs text-slate-600 dark:text-slate-400 flex items-center gap-1 font-semibold">
-                <ShieldCheck className="w-3.5 h-3.5" />
+              <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mt-0.5">
                 Administrator Workspace
               </p>
             </div>
@@ -524,12 +509,12 @@ export default function AdminSetup() {
         {/* Title */}
         <div className="flex items-center justify-between mb-10">
           <div>
-            <h2 className="text-3xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-600 dark:from-white dark:to-slate-400">System Configuration</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-sm mt-1.5 font-medium">Manage facility settings, roles, and AI engines.</p>
+            <h2 className="text-3xl font-bold tracking-tight text-slate-800 dark:text-white">System Configuration</h2>
+            <p className="text-sm font-semibold text-text-secondary mt-1">Manage facility settings, roles, and AI engines.</p>
           </div>
           <button 
             onClick={loadData}
-            className="p-3 bg-white/80 dark:bg-[#111629]/80 backdrop-blur-md border border-slate-200/60 dark:border-white/5 hover:border-slate-400 dark:border-slate-500/30 dark:hover:border-slate-400 dark:border-slate-500/30 hover:shadow-[0_0_15px_rgba(0,0,0,0.1)] dark:shadow-[0_0_15px_rgba(255,255,255,0.05)] text-slate-500 hover:text-slate-800 dark:text-slate-300 dark:text-slate-400 dark:hover:text-slate-500 dark:text-slate-400 rounded-2xl transition-all duration-300 active:scale-95"
+            className="p-3 bg-white/60 dark:bg-black/40 backdrop-blur-md border border-white/40 dark:border-white/5 text-text-secondary rounded-full hover:bg-white/80 dark:hover:bg-white/10 transition-all shadow-sm active:scale-95"
           >
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -553,36 +538,36 @@ export default function AdminSetup() {
           
           
           {/* STAFF MANAGEMENT */}
-          <div className="space-y-8 bg-white/80 dark:bg-[#0d1326]/60 backdrop-blur-2xl border border-slate-200/50 dark:border-white/5 p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none relative overflow-hidden group">
-            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-slate-500/5 dark:from-slate-500/10 to-transparent pointer-events-none"></div>
+          <div className="space-y-8 bg-white/40 dark:bg-slate-800/40 backdrop-blur-3xl p-8 rounded-[32px] border border-white/60 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.06)] relative overflow-hidden group">
+            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white/20 dark:from-white/5 to-transparent pointer-events-none"></div>
             
-            <h3 className="text-xl font-bold flex items-center gap-3 border-b border-slate-200/50 dark:border-white/5 pb-4 text-slate-800 dark:text-slate-100 relative">
-              <div className="p-2 bg-slate-100 dark:bg-slate-1000/10 rounded-xl">
-                <Users className="w-5 h-5 text-slate-800 dark:text-slate-300" />
+            <h3 className="text-xl font-bold flex items-center gap-3 border-b border-white/50 dark:border-white/5 pb-4 text-slate-800 dark:text-white relative">
+              <div className="w-10 h-10 rounded-[14px] bg-white dark:bg-slate-800 shadow-sm border border-white/80 dark:border-white/10 flex items-center justify-center">
+                <Users className="w-5 h-5 text-primary" />
               </div>
               Staff Management
             </h3>
-
+ 
             {/* Add Staff Form */}
-            <div className="bg-slate-50/50 dark:bg-white/[0.02] p-6 rounded-2xl border border-slate-200/60 dark:border-white/5 shadow-inner">
-              <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-6 border-b border-slate-200/50 dark:border-white/5 pb-2">Register New Staff</h4>
+            <div className="bg-white/30 dark:bg-black/10 p-6 rounded-[24px] border border-white/45 dark:border-white/5 shadow-inner">
+              <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 mb-6 border-b border-white/50 dark:border-white/5 pb-2">Register New Staff</h4>
               <form onSubmit={handleAddStaff} className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 items-end">
                 <div>
                   <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block pl-1 mb-2">Name</label>
-                  <input type="text" value={staffName} onChange={(e) => setStaffName(e.target.value)} className="w-full h-11 bg-white dark:bg-[#070a14] border border-slate-200/80 dark:border-white/10 rounded-xl px-4 text-sm focus:outline-none focus:border-slate-400 dark:focus:border-slate-500/50" placeholder="John Doe" />
+                  <input type="text" value={staffName} onChange={(e) => setStaffName(e.target.value)} className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner" placeholder="John Doe" />
                 </div>
                 <div>
                   <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block pl-1 mb-2">Employee ID</label>
-                  <input type="text" value={staffEmployeeId} onChange={(e) => setStaffEmployeeId(e.target.value)} className="w-full h-11 bg-white dark:bg-[#070a14] border border-slate-200/80 dark:border-white/10 rounded-xl px-4 text-sm focus:outline-none focus:border-slate-400 dark:focus:border-slate-500/50" placeholder="EMP123" />
+                  <input type="text" value={staffEmployeeId} onChange={(e) => setStaffEmployeeId(e.target.value)} className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner" placeholder="EMP123" />
                 </div>
                 <div>
                   <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block pl-1 mb-2">Email</label>
-                  <input type="email" value={staffEmail} onChange={(e) => setStaffEmail(e.target.value)} className="w-full h-11 bg-white dark:bg-[#070a14] border border-slate-200/80 dark:border-white/10 rounded-xl px-4 text-sm focus:outline-none focus:border-slate-400 dark:focus:border-slate-500/50" placeholder="john@example.com" />
+                  <input type="email" value={staffEmail} onChange={(e) => setStaffEmail(e.target.value)} className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner" placeholder="john@example.com" />
                 </div>
                 <div>
                   <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block pl-1 mb-2">Password</label>
                   <div className="relative flex items-center">
-                    <input type={showStaffPin ? 'text' : 'password'} value={staffPin} onChange={(e) => setStaffPin(e.target.value)} className="w-full h-11 bg-white dark:bg-[#070a14] border border-slate-200/80 dark:border-white/10 rounded-xl pl-4 pr-10 text-sm focus:outline-none focus:border-slate-400 dark:focus:border-slate-500/50" placeholder="Min 6 chars" />
+                    <input type={showStaffPin ? 'text' : 'password'} value={staffPin} onChange={(e) => setStaffPin(e.target.value)} className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] pl-4 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner" placeholder="Min 6 chars" />
                     <button
                       type="button"
                       onClick={() => setShowStaffPin(!showStaffPin)}
@@ -594,14 +579,14 @@ export default function AdminSetup() {
                 </div>
                 <div>
                   <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block pl-1 mb-2">Role</label>
-                  <select value={staffRole} onChange={(e) => setStaffRole(e.target.value as any)} className="w-full h-11 bg-white dark:bg-[#070a14] border border-slate-200/80 dark:border-white/10 rounded-xl px-4 text-sm focus:outline-none focus:border-slate-400 dark:focus:border-slate-500/50">
+                  <select value={staffRole} onChange={(e) => setStaffRole(e.target.value as any)} className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner">
                     {rolesList.map(r => (
                       <option key={r.id} value={r.name}>{r.name}</option>
                     ))}
                   </select>
                 </div>
-                <div className="flex justify-end h-11 items-center">
-                  <button type="submit" className="w-full sm:w-auto h-11 px-8 rounded-xl bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-700 dark:to-slate-800 hover:from-slate-800 hover:to-slate-700 dark:hover:from-slate-600 dark:hover:to-slate-700 !text-white font-bold text-sm tracking-wide transition-all shadow-lg shadow-slate-500/20 dark:shadow-black/40 active:scale-[0.98] flex items-center justify-center gap-2">
+                <div className="flex justify-end h-12 items-center">
+                  <button type="submit" className="w-full sm:w-auto h-12 px-8 rounded-[16px] bg-primary hover:opacity-90 text-white font-bold text-sm tracking-wide transition-all shadow-lg shadow-primary/20 active:scale-[0.98] flex items-center justify-center gap-2">
                     <UserPlus className="w-4 h-4 !text-white" strokeWidth={2.5} />
                     <span>Add Staff</span>
                   </button>
@@ -652,7 +637,7 @@ export default function AdminSetup() {
                             )}
                           </td>
                           <td className="px-4 py-3 text-right">
-                            <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex justify-end gap-2 transition-opacity">
                               {editingStaffId === member.id ? (
                                 <>
                                   <button onClick={() => handleUpdateStaff(member.id)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-lg">
@@ -684,12 +669,12 @@ export default function AdminSetup() {
           </div>
 
           {/* WINGS MANAGEMENT */}
-          <div className="space-y-8 bg-white/80 dark:bg-[#0d1326]/60 backdrop-blur-2xl border border-slate-200/50 dark:border-white/5 p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none relative overflow-hidden group">
-            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-slate-500/5 dark:from-slate-500/10 to-transparent pointer-events-none"></div>
+          <div className="space-y-8 bg-white/40 dark:bg-slate-800/40 backdrop-blur-3xl p-8 rounded-[32px] border border-white/60 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.06)] relative overflow-hidden group">
+            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white/20 dark:from-white/5 to-transparent pointer-events-none"></div>
             
-            <h3 className="text-xl font-bold flex items-center gap-3 border-b border-slate-200/50 dark:border-white/5 pb-4 text-slate-800 dark:text-slate-100 relative">
-              <div className="p-2 bg-slate-100 dark:bg-slate-1000/10 rounded-xl">
-                <Building className="w-5 h-5 text-slate-800 dark:text-slate-300 dark:text-slate-500 dark:text-slate-400" />
+            <h3 className="text-xl font-bold flex items-center gap-3 border-b border-white/50 dark:border-white/5 pb-4 text-slate-800 dark:text-white relative">
+              <div className="w-10 h-10 rounded-[14px] bg-white dark:bg-slate-800 shadow-sm border border-white/80 dark:border-white/10 flex items-center justify-center">
+                <Building className="w-5 h-5 text-primary" />
               </div>
               Wings Management
             </h3>
@@ -697,21 +682,21 @@ export default function AdminSetup() {
             <form onSubmit={handleAddWing} className="flex flex-col sm:flex-row gap-4 items-end max-w-lg relative z-10">
               <div className="flex-1 w-full space-y-2">
                 <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block pl-1">New Wing Name</label>
-                <input type="text" value={newWingName} onChange={(e) => setNewWingName(e.target.value)} placeholder="e.g. North Wing" className="w-full h-12 bg-white dark:bg-[#070a14] border border-slate-200/80 dark:border-white/10 rounded-xl px-4 text-sm focus:outline-none focus:border-slate-400 dark:border-slate-500 dark:focus:border-slate-400 dark:border-slate-500/50 focus:ring-4 focus:ring-slate-500/10 dark:focus:ring-slate-500/20 text-slate-800 dark:text-slate-100 transition-all" />
+                <input type="text" value={newWingName} onChange={(e) => setNewWingName(e.target.value)} placeholder="e.g. North Wing" className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner" />
               </div>
-              <button type="submit" className="w-full sm:w-auto h-12 px-8 rounded-xl bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-700 dark:to-slate-800 hover:from-slate-800 hover:to-slate-700 dark:hover:from-slate-600 dark:hover:to-slate-700 !text-white font-bold text-sm tracking-wide transition-all shadow-lg shadow-slate-500/20 dark:shadow-black/40 active:scale-[0.98]">
+              <button type="submit" className="w-full sm:w-auto h-12 px-8 rounded-[16px] bg-primary hover:opacity-90 text-white font-bold text-sm tracking-wide transition-all shadow-lg shadow-primary/20 active:scale-[0.98]">
                 Add Wing
               </button>
             </form>
 
             {wings.length > 0 && (
               <div className="mt-8 space-y-3 relative z-10 max-w-2xl">
-                <h4 className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1 border-b border-slate-200/50 dark:border-white/5 pb-2 mb-4">Existing Wings</h4>
+                <h4 className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1 border-b border-white/50 dark:border-white/5 pb-2 mb-4">Existing Wings</h4>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {wings.map(wing => (
-                    <div key={wing.id} className="flex items-center justify-between p-3.5 bg-slate-50/50 dark:bg-white/[0.02] hover:bg-white dark:hover:bg-white/[0.04] rounded-2xl border border-slate-200/60 dark:border-white/5 transition-all group/wing">
+                    <div key={wing.id} className="flex items-center justify-between p-3.5 bg-white/30 dark:bg-black/25 hover:bg-white/50 dark:hover:bg-black/40 rounded-2xl border border-white/40 dark:border-white/5 transition-all group/wing">
                       <span className="text-sm font-bold text-slate-700 dark:text-slate-200 pl-1">{wing.name}</span>
-                      <div className="flex gap-1.5 opacity-80 sm:opacity-0 sm:group-hover/wing:opacity-100 transition-opacity">
+                      <div className="flex gap-1.5 transition-opacity">
                         <button onClick={() => handleDeleteWing(wing.id, wing.name)} className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors">
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -724,13 +709,12 @@ export default function AdminSetup() {
           </div>
 
           {/* CUSTOM ROLES MANAGEMENT */}
-          <div className="space-y-8 bg-white/80 dark:bg-[#0d1326]/60 backdrop-blur-2xl border border-slate-200/50 dark:border-white/5 p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none relative overflow-hidden group">
-            {/* Subtle glow effect behind card title */}
-            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-slate-500/5 dark:from-slate-500/10 to-transparent pointer-events-none"></div>
+          <div className="space-y-8 bg-white/40 dark:bg-slate-800/40 backdrop-blur-3xl p-8 rounded-[32px] border border-white/60 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.06)] relative overflow-hidden group">
+            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white/20 dark:from-white/5 to-transparent pointer-events-none"></div>
             
-            <h3 className="text-xl font-bold flex items-center gap-3 border-b border-slate-200/50 dark:border-white/5 pb-4 text-slate-800 dark:text-slate-100 relative">
-              <div className="p-2 bg-slate-100 dark:bg-slate-1000/10 rounded-xl">
-                <Plus className="w-5 h-5 text-slate-800 dark:text-slate-300 dark:text-slate-500 dark:text-slate-400" />
+            <h3 className="text-xl font-bold flex items-center gap-3 border-b border-white/50 dark:border-white/5 pb-4 text-slate-800 dark:text-white relative">
+              <div className="w-10 h-10 rounded-[14px] bg-white dark:bg-slate-800 shadow-sm border border-white/80 dark:border-white/10 flex items-center justify-center">
+                <Plus className="w-5 h-5 text-primary" />
               </div>
               Custom Roles
             </h3>
@@ -738,31 +722,31 @@ export default function AdminSetup() {
             <form onSubmit={handleAddRole} className="flex flex-col sm:flex-row gap-4 items-end max-w-lg relative z-10">
               <div className="flex-1 w-full space-y-2">
                 <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block pl-1">New Role Name</label>
-                <input type="text" value={newRoleName} onChange={(e) => setNewRoleName(e.target.value)} placeholder="e.g. Supervisor" className="w-full h-12 bg-white dark:bg-[#070a14] border border-slate-200/80 dark:border-white/10 rounded-xl px-4 text-sm focus:outline-none focus:border-slate-400 dark:border-slate-500 dark:focus:border-slate-400 dark:border-slate-500/50 focus:ring-4 focus:ring-slate-500/10 dark:focus:ring-slate-500/20 text-slate-800 dark:text-slate-100 transition-all" />
+                <input type="text" value={newRoleName} onChange={(e) => setNewRoleName(e.target.value)} placeholder="e.g. Supervisor" className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner" />
               </div>
-              <button type="submit" className="w-full sm:w-auto h-12 px-8 rounded-xl bg-gradient-to-r from-slate-900 to-slate-800 dark:from-slate-700 dark:to-slate-800 hover:from-slate-800 hover:to-slate-700 dark:hover:from-slate-600 dark:hover:to-slate-700 !text-white font-bold text-sm tracking-wide transition-all shadow-lg shadow-slate-500/20 dark:shadow-black/40 active:scale-[0.98]">
+              <button type="submit" className="w-full sm:w-auto h-12 px-8 rounded-[16px] bg-primary hover:opacity-90 text-white font-bold text-sm tracking-wide transition-all shadow-lg shadow-primary/20 active:scale-[0.98]">
                 Add Role
               </button>
             </form>
 
             {rolesList.length > 0 && (
               <div className="mt-8 space-y-3 relative z-10 max-w-2xl">
-                <h4 className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1 border-b border-slate-200/50 dark:border-white/5 pb-2 mb-4">Existing Roles</h4>
+                <h4 className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest pl-1 border-b border-white/50 dark:border-white/5 pb-2 mb-4">Existing Roles</h4>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {rolesList.map(role => (
-                    <div key={role.id} className="flex items-center justify-between p-3.5 bg-slate-50/50 dark:bg-white/[0.02] hover:bg-white dark:hover:bg-white/[0.04] rounded-2xl border border-slate-200/60 dark:border-white/5 transition-all group/role">
+                    <div key={role.id} className="flex items-center justify-between p-3.5 bg-white/30 dark:bg-black/25 hover:bg-white/50 dark:hover:bg-black/40 rounded-2xl border border-white/40 dark:border-white/5 transition-all group/role">
                       {editingRoleId === role.id ? (
                         <input 
                           type="text" 
                           value={editRoleName}
                           onChange={e => setEditRoleName(e.target.value)}
-                          className="h-9 bg-white dark:bg-[#070a14] border border-slate-300 dark:border-white/10 rounded-lg px-3 text-sm flex-1 mr-3 focus:outline-none focus:border-slate-400 dark:border-slate-500 focus:ring-2 focus:ring-slate-500/20 transition-all shadow-inner"
+                          className="h-9 bg-white/85 dark:bg-black/40 border border-white/45 dark:border-white/10 rounded-lg px-3 text-sm flex-1 mr-3 focus:outline-none"
                         />
                       ) : (
                         <span className="text-sm font-bold text-slate-700 dark:text-slate-200 capitalize pl-1">{role.name}</span>
                       )}
                     
-                      <div className="flex gap-1.5 opacity-80 sm:opacity-0 sm:group-hover/role:opacity-100 transition-opacity">
+                      <div className="flex gap-1.5 transition-opacity">
                         {editingRoleId === role.id ? (
                           <>
                             <button onClick={() => handleUpdateRole(role.id)} className="p-2 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 rounded-lg transition-colors">
@@ -792,19 +776,19 @@ export default function AdminSetup() {
           </div>
 
           {/* AI CONFIGURATION MANAGEMENT */}
-          <div className="space-y-8 bg-white/80 dark:bg-[#0d1326]/60 backdrop-blur-2xl border border-slate-200/50 dark:border-white/5 p-8 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-none relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-full h-32 bg-gradient-to-b from-slate-500/5 dark:from-slate-500/10 to-transparent pointer-events-none"></div>
+          <div className="space-y-8 bg-white/40 dark:bg-slate-800/40 backdrop-blur-3xl p-8 rounded-[32px] border border-white/60 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.06)] relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-full h-32 bg-gradient-to-b from-white/20 dark:from-white/5 to-transparent pointer-events-none"></div>
             
-            <h3 className="text-xl font-bold flex items-center gap-3 border-b border-slate-200/50 dark:border-white/5 pb-4 text-slate-800 dark:text-slate-100 relative">
-              <div className="p-2 bg-slate-100 dark:bg-slate-1000/10 rounded-xl">
-                <ShieldCheck className="w-5 h-5 text-slate-800 dark:text-slate-300 dark:text-slate-500 dark:text-slate-400" />
+            <h3 className="text-xl font-bold flex items-center gap-3 border-b border-white/50 dark:border-white/5 pb-4 text-slate-800 dark:text-white relative">
+              <div className="w-10 h-10 rounded-[14px] bg-white dark:bg-slate-800 shadow-sm border border-white/80 dark:border-white/10 flex items-center justify-center">
+                <ShieldCheck className="w-5 h-5 text-primary" />
               </div>
               AI Engine Configuration
             </h3>
 
             <form onSubmit={handleSaveApiKeys} className="grid gap-8 sm:grid-cols-2 relative z-10">
               {/* Active AI Engine Selector */}
-              <div className="sm:col-span-2 bg-slate-50/50 dark:bg-white/[0.02] p-6 rounded-2xl border border-slate-200/60 dark:border-white/5 space-y-5 shadow-inner">
+              <div className="sm:col-span-2 bg-white/30 dark:bg-black/10 p-6 rounded-[24px] border border-white/40 dark:border-white/5 space-y-5 shadow-inner">
                 <div>
                   <h4 className="text-base font-bold text-slate-800 dark:text-slate-200">Active AI Routing Policy</h4>
                   <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Select the primary AI engine or use auto-routing fallback.</p>
@@ -823,16 +807,60 @@ export default function AdminSetup() {
                       key={prov.id}
                       type="button"
                       onClick={() => setActiveProvider(prov.id as any)}
-                      className={`flex flex-col items-center justify-center text-center py-4 px-2 rounded-2xl border transition-all duration-300 cursor-pointer ${
+                      className={`flex flex-col items-center justify-center text-center py-4 px-2 rounded-[20px] border transition-all duration-300 cursor-pointer ${
                         activeProvider === prov.id
-                          ? 'border-slate-400 dark:border-slate-500 bg-slate-100/80 dark:bg-slate-1000/10 text-slate-900 dark:text-slate-200 dark:text-slate-500 dark:text-slate-400 shadow-[0_0_15px_rgba(0,0,0,0.15)] dark:shadow-[0_0_15px_rgba(255,255,255,0.05)] scale-105'
-                          : 'border-slate-200 dark:border-white/10 bg-white dark:bg-[#070a14] hover:border-slate-300 dark:hover:border-white/20 text-slate-600 dark:text-slate-400 hover:-translate-y-1'
+                          ? 'border-white/60 dark:border-white/20 bg-white/85 dark:bg-black/40 text-slate-900 dark:text-white shadow-md scale-105'
+                          : 'border-white/30 dark:border-white/5 bg-white/30 dark:bg-black/20 hover:bg-white/50 dark:hover:bg-black/30 text-slate-650 dark:text-slate-350 hover:-translate-y-1'
                       }`}
                     >
                       <span className="font-bold text-sm">{prov.label}</span>
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium tracking-wide uppercase">{prov.desc}</span>
+                      <span className="text-[10px] text-slate-450 dark:text-slate-500 mt-1 font-medium tracking-wide uppercase">{prov.desc}</span>
                     </button>
                   ))}
+                </div>
+                {/* Feature Flags Module Enablement */}
+                <div className="pt-4 border-t border-white/50 dark:border-white/5 space-y-4">
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Module Enablement (Feature Flags)</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <label className="flex items-center gap-3 p-3 bg-white/45 dark:bg-black/20 border border-white/40 dark:border-white/5 rounded-xl cursor-pointer hover:bg-white/60 dark:hover:bg-black/30 select-none">
+                      <input
+                        type="checkbox"
+                        checked={sentinelEnabled}
+                        onChange={(e) => setSentinelEnabled(e.target.checked)}
+                        className="w-4 h-4 rounded text-primary focus:ring-primary border-white/40"
+                      />
+                      <div>
+                        <span className="text-xs font-bold block text-slate-800 dark:text-slate-200">Sentinel Core</span>
+                        <span className="text-[10px] text-text-secondary block">Compliance & Escalations</span>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-3 p-3 bg-white/45 dark:bg-black/20 border border-white/40 dark:border-white/5 rounded-xl cursor-pointer hover:bg-white/60 dark:hover:bg-black/30 select-none">
+                      <input
+                        type="checkbox"
+                        checked={chronicleEnabled}
+                        onChange={(e) => setChronicleEnabled(e.target.checked)}
+                        className="w-4 h-4 rounded text-primary focus:ring-primary border-white/40"
+                      />
+                      <div>
+                        <span className="text-xs font-bold block text-slate-800 dark:text-slate-200">Chronicle NLP</span>
+                        <span className="text-[10px] text-text-secondary block">Outbreak Cluster Tracking</span>
+                      </div>
+                    </label>
+
+                    <label className="flex items-center gap-3 p-3 bg-white/45 dark:bg-black/20 border border-white/40 dark:border-white/5 rounded-xl cursor-pointer hover:bg-white/60 dark:hover:bg-black/30 select-none">
+                      <input
+                        type="checkbox"
+                        checked={ariaEnabled}
+                        onChange={(e) => setAriaEnabled(e.target.checked)}
+                        className="w-4 h-4 rounded text-primary focus:ring-primary border-white/40"
+                      />
+                      <div>
+                        <span className="text-xs font-bold block text-slate-800 dark:text-slate-200">Aria Voice</span>
+                        <span className="text-[10px] text-text-secondary block">Speech-to-Vitals Parser</span>
+                      </div>
+                    </label>
+                  </div>
                 </div>
               </div>
 
@@ -845,7 +873,7 @@ export default function AdminSetup() {
                     value={anthropicKey}
                     onChange={(e) => setAnthropicKey(e.target.value)}
                     placeholder="sk-ant-..."
-                    className="w-full h-12 bg-white dark:bg-[#070a14] border border-slate-200/80 dark:border-white/10 rounded-xl px-4 text-sm focus:outline-none focus:border-slate-400 dark:border-slate-500 dark:focus:border-slate-400 dark:border-slate-500/50 focus:ring-4 focus:ring-slate-500/10 dark:focus:ring-slate-500/20 text-slate-800 dark:text-slate-100 transition-all"
+                    className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner"
                   />
                 </div>
               </div>
@@ -859,7 +887,14 @@ export default function AdminSetup() {
                     value={openrouterKey}
                     onChange={(e) => setOpenrouterKey(e.target.value)}
                     placeholder="sk-or-v1-..."
-                    className="w-full h-12 bg-white dark:bg-[#070a14] border border-slate-200/80 dark:border-white/10 rounded-xl px-4 text-sm focus:outline-none focus:border-slate-400 dark:border-slate-500 dark:focus:border-slate-400 dark:border-slate-500/50 focus:ring-4 focus:ring-slate-500/10 dark:focus:ring-slate-500/20 text-slate-800 dark:text-slate-100 transition-all"
+                    className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner mb-3"
+                  />
+                  <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block mb-1.5 pl-1">Model</label>
+                  <CustomModelSelector
+                    value={openrouterModel}
+                    onChange={setOpenrouterModel}
+                    apiKey={openrouterKey}
+                    provider="openrouter"
                   />
                 </div>
               </div>
@@ -873,19 +908,15 @@ export default function AdminSetup() {
                     value={groqKey}
                     onChange={(e) => setGroqKey(e.target.value)}
                     placeholder="gsk_..."
-                    className="w-full h-12 bg-white dark:bg-[#070a14] border border-slate-200/80 dark:border-white/10 rounded-xl px-4 text-sm focus:outline-none focus:border-slate-400 dark:border-slate-500 dark:focus:border-slate-400 dark:border-slate-500/50 focus:ring-4 focus:ring-slate-500/10 dark:focus:ring-slate-500/20 text-slate-800 dark:text-slate-100 transition-all mb-3"
+                    className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner mb-3"
                   />
                   <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block mb-1.5 pl-1">Model</label>
-                  <select
+                  <CustomModelSelector
                     value={groqModel}
-                    onChange={(e) => setGroqModel(e.target.value)}
-                    className="w-full h-12 bg-white dark:bg-[#070a14] border border-slate-200/80 dark:border-white/10 rounded-xl px-4 text-sm focus:outline-none focus:border-slate-400 dark:border-slate-500 dark:focus:border-slate-400 dark:border-slate-500/50 focus:ring-4 focus:ring-slate-500/10 dark:focus:ring-slate-500/20 text-slate-800 dark:text-slate-100 transition-all"
-                  >
-                    <option value="llama-3.3-70b-versatile">Llama 3.3 70B (Recommended)</option>
-                    <option value="llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
-                    <option value="gemma2-9b-it">Gemma 2 9B IT</option>
-                    <option value="mixtral-8x7b-32768">Mixtral 8x7B</option>
-                  </select>
+                    onChange={setGroqModel}
+                    apiKey={groqKey}
+                    provider="groq"
+                  />
                 </div>
               </div>
 
@@ -899,7 +930,7 @@ export default function AdminSetup() {
                       value={ollamaUrl}
                       onChange={(e) => setOllamaUrl(e.target.value)}
                       placeholder="http://localhost:11434"
-                      className="w-full h-12 bg-white dark:bg-[#070a14] border border-slate-200/80 dark:border-white/10 rounded-xl px-4 text-sm focus:outline-none focus:border-slate-400 dark:border-slate-500 dark:focus:border-slate-400 dark:border-slate-500/50 focus:ring-4 focus:ring-slate-500/10 dark:focus:ring-slate-500/20 text-slate-800 dark:text-slate-100 transition-all"
+                      className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner"
                     />
                   </div>
                   <div>
@@ -909,7 +940,7 @@ export default function AdminSetup() {
                       value={ollamaModel}
                       onChange={(e) => setOllamaModel(e.target.value)}
                       placeholder="llama3"
-                      className="w-full h-12 bg-white dark:bg-[#070a14] border border-slate-200/80 dark:border-white/10 rounded-xl px-4 text-sm focus:outline-none focus:border-slate-400 dark:border-slate-500 dark:focus:border-slate-400 dark:border-slate-500/50 focus:ring-4 focus:ring-slate-500/10 dark:focus:ring-slate-500/20 text-slate-800 dark:text-slate-100 transition-all"
+                      className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner"
                     />
                   </div>
                 </div>
@@ -918,7 +949,7 @@ export default function AdminSetup() {
               <div className="sm:col-span-2 mt-2">
                 <button
                   type="submit"
-                  className="w-full h-12 bg-slate-800 hover:bg-slate-700 dark:bg-slate-700 dark:hover:bg-slate-600 !text-white font-semibold rounded-xl text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                  className="w-full h-12 bg-primary hover:opacity-90 text-white font-bold rounded-[16px] text-sm tracking-wide transition-all shadow-lg shadow-primary/20 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <ShieldCheck className="w-4.5 h-4.5" />
                   Save AI Configuration

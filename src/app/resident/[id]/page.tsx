@@ -5,9 +5,11 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { ChevronLeft, Brain, Activity, TrendingUp, AlertTriangle, Play, FileText, Sun, Moon, History, RotateCcw } from 'lucide-react';
+import { ChevronLeft, Brain, Activity, TrendingUp, AlertTriangle, Play, FileText, Sun, Moon, History, RotateCcw, Pencil, X, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import ActivityTimeline from '@/components/ActivityTimeline';
+import toast from 'react-hot-toast';
+import { ShieldAlert, CheckCircle2, Lightbulb } from 'lucide-react';
 
 interface Resident {
   id: string;
@@ -15,13 +17,33 @@ interface Resident {
   room_number: string;
   care_level: string;
   dob: string;
+  wing_id?: string;
+  facility_id?: string;
+}
+
+interface Wing {
+  id: string;
+  name: string;
+}
+
+interface ProactiveAlert {
+  id: string;
+  severity: 'critical' | 'warning';
+  message: string;
+  evidence: string;
+}
+
+interface OptimizationSuggestion {
+  id: string;
+  message: string;
+  evidence: string;
 }
 
 interface Insights {
   summary: string;
-  trends: string[];
-  recommendations: string[];
   risk_level: 'Low' | 'Medium' | 'High';
+  proactive_alerts: ProactiveAlert[];
+  optimizations: OptimizationSuggestion[];
 }
 
 export default function ResidentProfile() {
@@ -37,6 +59,14 @@ export default function ResidentProfile() {
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [error, setError] = useState('');
   const [activeBottomTab, setActiveBottomTab] = useState<'timeline' | 'history'>('timeline');
+  const [unacknowledgedTasks, setUnacknowledgedTasks] = useState<any[]>([]);
+
+  // Edit modal state
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [wings, setWings] = useState<Wing[]>([]);
+  const [editForm, setEditForm] = useState({ name: '', room_number: '', dob: '', care_level: 'High', wing_id: '' });
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [editError, setEditError] = useState('');
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -68,10 +98,66 @@ export default function ResidentProfile() {
     fetchResident();
   }, [residentId]);
 
-  const generateInsights = async () => {
+  // Fetch wings when resident loads
+  useEffect(() => {
+    if (!resident?.facility_id) return;
+    supabase
+      .from('wings')
+      .select('id, name')
+      .eq('facility_id', resident.facility_id)
+      .order('name')
+      .then(({ data }) => setWings(data || []));
+  }, [resident?.facility_id]);
+
+  const openEditModal = () => {
+    if (!resident) return;
+    setEditForm({
+      name: resident.name,
+      room_number: resident.room_number,
+      dob: resident.dob || '',
+      care_level: resident.care_level,
+      wing_id: resident.wing_id || ''
+    });
+    setEditError('');
+    setShowEditModal(true);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resident) return;
+    if (!editForm.name || !editForm.room_number) {
+      setEditError('Name and room number are required.');
+      return;
+    }
+    setEditSubmitting(true);
+    setEditError('');
+    try {
+      const { data, error } = await supabase
+        .from('residents')
+        .update({
+          name: editForm.name.trim(),
+          room_number: editForm.room_number.trim(),
+          dob: editForm.dob || null,
+          care_level: editForm.care_level,
+          wing_id: editForm.wing_id || null
+        })
+        .eq('id', resident.id)
+        .select()
+        .single();
+      if (error) throw error;
+      setResident(data);
+      setShowEditModal(false);
+    } catch (err: any) {
+      setEditError(err.message || 'Failed to update resident.');
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
+  const generateInsights = async (forceRefresh = false) => {
     if (!residentId) return;
-    setLoadingInsights(true);
     
+    setLoadingInsights(true);
     try {
       const userKeys = {
         anthropicKey: typeof window !== 'undefined' ? localStorage.getItem('user_anthropic_key') || '' : '',
@@ -80,7 +166,7 @@ export default function ResidentProfile() {
       const res = await fetch('/api/generate-insights', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ residentId, userKeys })
+        body: JSON.stringify({ residentId, userKeys, forceRefresh })
       });
 
       const data = await res.json();
@@ -94,15 +180,87 @@ export default function ResidentProfile() {
     }
   };
 
+  const handleAcknowledgeAlert = async (alertId: string, alertMessage: string) => {
+    if (!resident || !user || !facility) return;
+    
+    try {
+      const { error } = await supabase
+        .from('activity_timeline')
+        .insert({
+          resident_id: resident.id,
+          staff_id: user.id,
+          facility_id: facility.id,
+          action_type: 'insight_acknowledged',
+          description: `Acknowledged alert: ${alertId} (${alertMessage.substring(0, 45)}...) by ${user.name}`,
+          metadata: {
+            alert_id: alertId
+          }
+        });
+        
+      if (error) throw error;
+      
+      // Update local state by filtering out acknowledged alert
+      setInsights(prev => {
+        if (!prev) return null;
+        return {
+          ...prev,
+          proactive_alerts: prev.proactive_alerts.filter(a => a.id !== alertId)
+        };
+      });
+      
+      toast.success('Alert acknowledged and muted.');
+      
+      // Refresh database cache
+      generateInsights(true);
+    } catch (e: any) {
+      console.error('Failed to acknowledge alert:', e);
+      toast.error('Failed to acknowledge alert.');
+    }
+  };
+
   useEffect(() => {
     if (resident) {
-      generateInsights();
+      generateInsights(false); // Use cache on load
     }
   }, [resident]);
 
+  useEffect(() => {
+    if (!residentId) return;
+    
+    const fetchUnacknowledgedTasks = async () => {
+      try {
+        const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+        const { data, error } = await supabase
+          .from('tasks')
+          .select(`
+            id, title, description, tags, created_at,
+            handover:handovers(urgency)
+          `)
+          .eq('resident_id', residentId)
+          .or('is_completed.is.null,is_completed.eq.false')
+          .lt('created_at', twoHoursAgo);
+
+        if (!error && data) {
+          const priorityTasks = data.filter((t: any) => {
+            const urgency = t.handover?.urgency || 'routine';
+            const hasPriorityTag = t.tags?.includes('medication') || t.tags?.includes('incidents');
+            return urgency === 'critical' || urgency === 'attention' || hasPriorityTag;
+          });
+          setUnacknowledgedTasks(priorityTasks);
+        }
+      } catch (err) {
+        console.error('Failed to fetch unacknowledged tasks:', err);
+      }
+    };
+
+    fetchUnacknowledgedTasks();
+    const timer = setInterval(fetchUnacknowledgedTasks, 60000);
+    return () => clearInterval(timer);
+  }, [residentId]);
+
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-[#080b16] flex flex-col items-center justify-center">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
         <div className="w-10 h-10 border-2 border-slate-500 border-t-transparent rounded-full animate-spin"></div>
         <p className="mt-4 text-slate-500 dark:text-slate-400 font-mono text-xs tracking-widest uppercase">Loading Profile...</p>
       </div>
@@ -111,7 +269,7 @@ export default function ResidentProfile() {
 
   if (error || !resident) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-[#0b0b0d] flex items-center justify-center text-rose-500">
+      <div className="min-h-screen bg-background flex items-center justify-center text-rose-500">
         Error: {error || 'Resident not found'}
       </div>
     );
@@ -120,7 +278,7 @@ export default function ResidentProfile() {
   const age = new Date().getFullYear() - new Date(resident.dob).getFullYear();
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-[#0b0b0d] text-[#1f1f1f] dark:text-[#e2e8f0] flex flex-col pb-12 transition-colors duration-300">
+    <div className="min-h-screen bg-background text-text-primary flex flex-col pb-12 transition-colors duration-300">
       
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/80 dark:bg-[#0b0b0d]/80 backdrop-blur-md border-b border-[#e3e3e3] dark:border-[#202024] px-6 py-4">
@@ -129,8 +287,18 @@ export default function ResidentProfile() {
             <ChevronLeft className="w-4 h-4" />
             Back to Registry
           </Link>
-          <div className="flex items-center gap-3">
-             <button
+          <div className="flex items-center gap-2">
+            {/* Edit Resident — non-carer only */}
+            {user?.role !== 'carer' && (
+              <button
+                onClick={openEditModal}
+                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-500 dark:text-slate-400 transition-colors cursor-pointer"
+                title="Edit Resident Info"
+              >
+                <Pencil className="w-4 h-4" />
+              </button>
+            )}
+            <button
               onClick={toggleTheme}
               className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400 transition-colors cursor-pointer"
             >
@@ -168,6 +336,34 @@ export default function ResidentProfile() {
           </Link>
         </div>
 
+        {/* Unacknowledged Escalation Warning Banner */}
+        {unacknowledgedTasks.length > 0 && (
+          <div className="mb-6 p-5 rounded-[24px] border border-rose-200 bg-rose-50/20 dark:border-rose-900/30 dark:bg-rose-950/10 space-y-3 relative z-10">
+            <h4 className="text-xs font-bold text-rose-800 dark:text-rose-400 uppercase tracking-wider flex items-center gap-1.5 font-sans">
+              <ShieldAlert className="w-4.5 h-4.5 text-rose-500 animate-pulse" />
+              SIRS Compliance Warning: Uncompleted Critical Tasks
+            </h4>
+            <div className="text-xs text-rose-800 dark:text-rose-350 leading-relaxed font-semibold">
+              The following critical care tasks have remained uncompleted for over 2 hours and may violate shift transition governance:
+            </div>
+            <ul className="space-y-2">
+              {unacknowledgedTasks.map((t) => (
+                <li key={t.id} className="text-xs text-slate-700 dark:text-slate-350 bg-white dark:bg-[#121214] p-3 rounded-xl border border-rose-100 dark:border-rose-955/40 flex items-start justify-between gap-3">
+                  <div>
+                    <strong className="text-slate-900 dark:text-white">{t.title}</strong> - {t.description}
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
+                      Created: {new Date(t.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} ({new Date(t.created_at).toLocaleDateString([], { day: 'numeric', month: 'short' })})
+                    </div>
+                  </div>
+                  <span className="text-[9px] uppercase tracking-wider font-bold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-455 shrink-0">
+                    Overdue
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {/* Smart Insights Panel */}
         <section className="bg-white dark:bg-[#121214] border border-violet-200 dark:border-violet-900/50 rounded-[32px] p-8 shadow-sm relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
@@ -183,19 +379,37 @@ export default function ResidentProfile() {
                </div>
              </div>
              <button
-               onClick={generateInsights}
-               disabled={loadingInsights}
-               className="p-2 rounded-full bg-slate-50 hover:bg-slate-100 dark:bg-[#1c1c21] dark:hover:bg-[#25252b] text-slate-500 transition-colors disabled:opacity-50"
-               title="Refresh Insights"
-             >
-               <Activity className={`w-5 h-5 ${loadingInsights ? 'animate-spin text-violet-500' : ''}`} />
-             </button>
-          </div>
-
-          {loadingInsights ? (
-            <div className="py-12 flex flex-col items-center justify-center text-violet-500">
-               <Brain className="w-8 h-8 animate-pulse mb-4" />
-               <p className="text-sm font-medium">Analyzing handover history...</p>
+                onClick={() => generateInsights(true)}
+                disabled={loadingInsights}
+                className="p-2 rounded-full bg-slate-50 hover:bg-slate-100 dark:bg-[#1c1c21] dark:hover:bg-[#25252b] text-slate-500 transition-colors disabled:opacity-50 cursor-pointer"
+                title="Force Refresh Insights"
+              >
+                <Activity className={`w-5 h-5 ${loadingInsights ? 'animate-spin text-violet-500' : ''}`} />
+              </button>
+           </div>
+           
+           {loadingInsights ? (
+            <div className="grid md:grid-cols-2 gap-8 relative z-10 animate-pulse">
+               <div className="space-y-6">
+                 <div>
+                   <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/3 mb-3"></div>
+                   <div className="h-24 bg-slate-100 dark:bg-slate-900/60 rounded-2xl"></div>
+                 </div>
+                 <div>
+                   <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/4 mb-3"></div>
+                   <div className="h-8 bg-slate-100 dark:bg-slate-900/60 rounded-full w-1/3"></div>
+                 </div>
+               </div>
+               <div className="space-y-6">
+                 <div>
+                   <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/3 mb-3"></div>
+                   <div className="h-20 bg-slate-100 dark:bg-slate-900/60 rounded-2xl"></div>
+                 </div>
+                 <div>
+                   <div className="h-4 bg-slate-200 dark:bg-slate-800 rounded w-1/3 mb-3"></div>
+                   <div className="h-20 bg-slate-100 dark:bg-slate-900/60 rounded-2xl"></div>
+                 </div>
+               </div>
             </div>
           ) : insights ? (
             <div className="grid md:grid-cols-2 gap-8 relative z-10">
@@ -205,7 +419,7 @@ export default function ResidentProfile() {
                     <FileText className="w-4 h-4" />
                     Clinical Summary
                   </h3>
-                  <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-900/40 p-4 rounded-2xl border border-slate-100 dark:border-[#202024]">
+                  <p className="text-sm text-slate-700 dark:text-slate-350 leading-relaxed bg-slate-50/50 dark:bg-slate-900/40 p-4.5 rounded-2xl border border-slate-150/80 dark:border-[#202024]">
                     {insights.summary}
                   </p>
                 </div>
@@ -213,14 +427,14 @@ export default function ResidentProfile() {
                 <div>
                   <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3 flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4" />
-                    Risk Level
+                    Resident Risk Level
                   </h3>
-                  <div className={`inline-flex px-4 py-1.5 rounded-full text-sm font-bold ${
-                    insights.risk_level === 'High' ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400' :
-                    insights.risk_level === 'Medium' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' :
-                    'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                  <div className={`inline-flex px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${
+                    insights.risk_level === 'High' ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/30 dark:text-rose-400' :
+                    insights.risk_level === 'Medium' ? 'bg-amber-100 text-amber-700 dark:bg-amber-955/20 dark:text-amber-400' :
+                    'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400'
                   }`}>
-                    {insights.risk_level} Risk
+                    {insights.risk_level} Risk Profile
                   </div>
                 </div>
               </div>
@@ -228,32 +442,69 @@ export default function ResidentProfile() {
               <div className="space-y-6">
                 <div>
                   <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3 flex items-center gap-2">
-                    <TrendingUp className="w-4 h-4" />
-                    Identified Trends
+                    <ShieldAlert className="w-4 h-4 text-rose-500" />
+                    Proactive Safety Alerts
                   </h3>
-                  <ul className="space-y-2">
-                    {insights.trends?.map((trend, i) => (
-                      <li key={i} className="text-sm text-slate-700 dark:text-slate-300 flex items-start gap-2">
-                        <span className="text-violet-500 mt-1">•</span>
-                        <span>{trend}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  {insights.proactive_alerts?.length === 0 ? (
+                    <div className="text-xs text-slate-400 dark:text-slate-500 italic p-3 bg-slate-50 dark:bg-slate-900/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                      No active critical care alerts.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {insights.proactive_alerts?.map((alert: any) => (
+                        <div key={alert.id} className={`p-4 rounded-2xl border flex flex-col gap-2 ${
+                          alert.severity === 'critical' 
+                            ? 'bg-rose-50/20 border-rose-200/60 dark:bg-[#1c1216] dark:border-rose-900/30' 
+                            : 'bg-amber-50/20 border-amber-200/60 dark:bg-[#1c1912] dark:border-amber-900/30'
+                        }`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <span className={`text-[9px] uppercase tracking-widest font-bold px-2 py-0.5 rounded-md ${
+                              alert.severity === 'critical' ? 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-455' : 'bg-amber-100 text-amber-750 dark:bg-amber-950/40 dark:text-amber-450'
+                            }`}>
+                              {alert.severity}
+                            </span>
+                            <button
+                              onClick={() => handleAcknowledgeAlert(alert.id, alert.message)}
+                              className="text-[9px] font-bold text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors uppercase tracking-wider cursor-pointer"
+                            >
+                              Acknowledge
+                            </button>
+                          </div>
+                          <p className="text-xs text-slate-805 dark:text-slate-250 leading-relaxed font-semibold">
+                            {alert.message}
+                          </p>
+                          <span className="text-[9px] text-slate-400 dark:text-slate-500 font-medium">
+                            Evidence: {alert.evidence}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
  
                 <div>
                   <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-3 flex items-center gap-2">
-                    <Activity className="w-4 h-4" />
-                    Recommendations
+                    <Lightbulb className="w-4 h-4 text-violet-500" />
+                    Care Optimizations
                   </h3>
-                  <ul className="space-y-2">
-                    {insights.recommendations?.map((rec, i) => (
-                      <li key={i} className="text-sm text-slate-700 dark:text-slate-300 flex items-start gap-2">
-                        <span className="text-violet-500 mt-1">•</span>
-                        <span>{rec}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  {insights.optimizations?.length === 0 ? (
+                    <div className="text-xs text-slate-400 dark:text-slate-500 italic p-3 bg-slate-50 dark:bg-slate-900/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                      No suggestions at this time.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {insights.optimizations?.map((opt: any) => (
+                        <div key={opt.id} className="p-4 bg-violet-50/15 border border-violet-100 dark:bg-[#121217] dark:border-violet-900/30 rounded-2xl flex flex-col gap-1.5">
+                          <p className="text-xs text-slate-750 dark:text-slate-300 leading-relaxed font-medium">
+                            {opt.message}
+                          </p>
+                          <span className="text-[9px] text-slate-400 dark:text-slate-500 font-medium">
+                            Evidence: {opt.evidence}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -297,6 +548,115 @@ export default function ResidentProfile() {
         </section>
 
       </main>
+
+      {/* Edit Resident Modal */}
+      {showEditModal && resident && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md px-4">
+          <div className="w-full max-w-[400px] bg-white dark:bg-[#121214] border border-[#e3e3e3] dark:border-[#202024] p-7 rounded-[28px] shadow-2xl flex flex-col">
+            <div className="flex items-center justify-between border-b border-[#e3e3e3] dark:border-[#202024] pb-4 mb-6">
+              <div>
+                <h3 className="text-lg font-normal tracking-tight text-slate-900 dark:text-white">Edit Resident</h3>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Update profile details for {resident.name}.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditModal(false)}
+                className="p-1 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-400 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {editError && (
+              <div className="mb-4 p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 dark:bg-rose-950/40 dark:border-rose-500/30 dark:text-rose-200 text-xs flex items-center gap-2.5">
+                <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                <span className="font-semibold">{editError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleEditSubmit} className="space-y-4">
+              <div>
+                <label className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider block mb-1">Full Name</label>
+                <input
+                  type="text"
+                  value={editForm.name}
+                  onChange={e => setEditForm(f => ({ ...f, name: e.target.value }))}
+                  className="w-full h-11 bg-slate-50 dark:bg-slate-900/60 border border-[#e3e3e3] dark:border-[#202024] rounded-xl px-3.5 text-xs focus:outline-none focus:border-[#1f1f1f] dark:focus:border-[#e3e3e3] text-slate-800 dark:text-slate-100 font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider block mb-1">Room No.</label>
+                  <input
+                    type="text"
+                    value={editForm.room_number}
+                    onChange={e => setEditForm(f => ({ ...f, room_number: e.target.value }))}
+                    className="w-full h-11 bg-slate-50 dark:bg-slate-900/60 border border-[#e3e3e3] dark:border-[#202024] rounded-xl px-3.5 text-xs focus:outline-none focus:border-[#1f1f1f] dark:focus:border-[#e3e3e3] text-slate-800 dark:text-slate-100 font-bold"
+                  />
+                </div>
+                <div>
+                  <label className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider block mb-1">DOB</label>
+                  <input
+                    type="date"
+                    value={editForm.dob}
+                    onChange={e => setEditForm(f => ({ ...f, dob: e.target.value }))}
+                    className="w-full h-11 bg-slate-50 dark:bg-slate-900/60 border border-[#e3e3e3] dark:border-[#202024] rounded-xl px-3 text-xs focus:outline-none text-slate-700 dark:text-slate-300"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider block mb-1">Care Level</label>
+                <select
+                  value={editForm.care_level}
+                  onChange={e => setEditForm(f => ({ ...f, care_level: e.target.value }))}
+                  className="w-full h-11 bg-slate-50 dark:bg-slate-900/60 border border-[#e3e3e3] dark:border-[#202024] rounded-xl px-3.5 text-xs focus:outline-none text-slate-700 dark:text-slate-300"
+                >
+                  <option value="High">High Care</option>
+                  <option value="Low">Low Care</option>
+                  <option value="Dementia">Dementia Care</option>
+                </select>
+              </div>
+
+              {wings.length > 0 && (
+                <div>
+                  <label className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider block mb-1">Wing</label>
+                  <select
+                    value={editForm.wing_id}
+                    onChange={e => setEditForm(f => ({ ...f, wing_id: e.target.value }))}
+                    className="w-full h-11 bg-slate-50 dark:bg-slate-900/60 border border-[#e3e3e3] dark:border-[#202024] rounded-xl px-3.5 text-xs focus:outline-none text-slate-700 dark:text-slate-300"
+                  >
+                    <option value="">No Wing (Unassigned)</option>
+                    {wings.map(w => (
+                      <option key={w.id} value={w.id}>{w.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-5 border-t border-[#e3e3e3] dark:border-[#202024] mt-6">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="flex-1 h-11 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-[#1c1c21] dark:hover:bg-[#25252b] text-slate-700 dark:text-slate-250 text-xs font-semibold tracking-wider uppercase transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={editSubmitting}
+                  className="flex-1 h-11 rounded-full bg-slate-800 hover:bg-slate-700 dark:bg-slate-100 dark:hover:bg-white text-white dark:text-[#0b0b0d] text-xs font-semibold tracking-wider uppercase transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  {editSubmitting ? (
+                    <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                  ) : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

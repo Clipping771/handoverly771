@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import Anthropic from '@anthropic-ai/sdk';
+import { parseUntilDate, getAdelaideTodayStr } from '@/lib/taskUtils';
 
 export async function POST(request: Request) {
   try {
@@ -27,7 +28,7 @@ export async function POST(request: Request) {
     // 1. Fetch ALL handovers for the last 14 days for context (simple RAG)
     const fourteenDaysAgo = new Date();
     fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
-    
+
     const { data: handovers } = await supabase
       .from('handovers')
       .select(`
@@ -47,11 +48,12 @@ export async function POST(request: Request) {
       .eq('is_active', true);
 
     // 3. Fetch Active/Pending Tasks
+    const todayStr = getAdelaideTodayStr();
     const { data: activeTasks } = await supabase
       .from('tasks')
-      .select('title, description, assigned_role, resident_id')
+      .select('title, description, assigned_role, resident_id, is_completed, carry_until_date')
       .eq('facility_id', facilityId)
-      .eq('is_completed', false);
+      .or(`is_completed.eq.false,carry_until_date.gte.${todayStr}`);
 
     // 4. Fetch Recent Activity Logs (last 7 days)
     const sevenDaysAgo = new Date();
@@ -84,10 +86,10 @@ ${tasksStr}`;
       residentsStr = residents.map((r: any) => {
         const age = r.dob ? new Date().getFullYear() - new Date(r.dob).getFullYear() : 'N/A';
         const wingName = r.wings?.name || 'Unassigned';
-        
+
         // Find tasks for this resident
         const resTasks = (activeTasks || []).filter((t: any) => t.resident_id === r.id);
-        const tasksStr = resTasks.length > 0 
+        const tasksStr = resTasks.length > 0
           ? resTasks.map((t: any) => `- [${t.assigned_role.toUpperCase()}]: ${t.title} (${t.description})`).join('\n')
           : 'No pending tasks';
 
@@ -113,23 +115,24 @@ ${logsStr}`;
       }).join('\n\n====================\n\n');
     }
 
-    const systemPrompt = `You are an Action-Oriented AI Clinical Assistant for an aged care facility.
-Staff will ask you questions about residents, and you can perform tasks or log events/observations on their behalf.
+    const systemPrompt = `You are an advanced, professional, and highly capable Clinical AI Copilot for Handoverly, an aged care management system.
+Your primary role is to assist clinical staff with insights, answer questions about recent handovers, create tasks, and log timeline events.
 
-USER ROLE: ${userRole?.toUpperCase() || 'UNKNOWN'}
-You must respect Role-Based Access Control (RBAC). 
-- 'RN' and 'MANAGER' can perform all actions including creating tasks and logging observations.
-- 'CARER' has restricted access and cannot approve handovers.
-If the user's role prohibits an action, politely refuse.
+USER PROFILE:
+- Role: ${userRole?.toUpperCase() || 'UNKNOWN'}
 
-FACILITY RESIDENTS DIRECTORY (Live):
+FACILITY DIRECTORY (Live Active Residents):
 ${residentsStr}
 
-RECENT HANDOVERS (Last 14 days):
+RECENT CLINICAL HISTORY (Last 14 days):
 ${contextStr}
 
-ACTION PROTOCOL:
-If the user explicitly asks you to perform an action (e.g. create a task, log a fall or clinical incident, record blood pressure, update observations), you MUST output a JSON block wrapped in <action> tags at the very end of your response.
+CAPABILITIES & ACTION PROTOCOL:
+You possess the ability to perform EXACTLY TWO autonomous actions in the system via JSON outputs.
+1. CREATE_TASK: Create a clinical task for a resident.
+2. LOG_OBSERVATION: Log a clinical event, incident, or observation in the resident's timeline.
+
+If the user requests an action covered by these two capabilities, you MUST output a JSON block wrapped in <action> tags at the very end of your response.
 
 Example to create a task:
 <action>
@@ -141,7 +144,7 @@ Example to create a task:
 }
 </action>
 
-Example to log an observation or timeline event:
+Example to log an observation:
 <action>
 {
   "type": "LOG_OBSERVATION",
@@ -151,13 +154,19 @@ Example to log an observation or timeline event:
 }
 </action>
 
-Answer the user's query accurately based ONLY on the provided history. Be concise, professional, and directly address the question.
+CRITICAL BOUNDARIES & LIMITATIONS:
+1. You DO NOT have the capability to register, delete, or modify Resident Profiles.
+   - If a user asks to register a new resident, DO NOT ask them for the resident's details. You cannot do it.
+   - Instead, instruct them clearly: "To register a new resident, please navigate to the Shift Registry dashboard and click the '+ Register Resident' button at the top right."
+2. If a user asks about a resident who is NOT in your "FACILITY DIRECTORY" list above, inform them that the resident is not currently active in the system, and advise them to register the resident via the Shift Registry dashboard.
+3. Respect Role-Based Access Control (RBAC). 'RN' and 'MANAGER' can perform all actions. 'CARER' cannot approve handovers.
 
-ROLE-SPECIFIC TASK QUERIES: If the user asks specifically for "Carer Tasks" or "RN Tasks" for a resident or shift, strictly filter the tasks to only include those matching the requested role (e.g. tasks with "[Assigned Role: carer]" or "[Assigned Role: all]" for carer tasks, and "[Assigned Role: rn]" for RN tasks). Do NOT list clinical RN tasks if the user asks for carer tasks, and vice versa.
-
-CRITICAL: Do NOT expose the database ID/UUID to the user in your text, lists, or tables. The Database ID is strictly for your reference when constructing <action> blocks. For user-facing tables or lists, display friendly fields like Name, Room Number, Age, and Care Level.
-
-CRITICAL: If you generate a table, you MUST use proper markdown format with explicit NEWLINES separating every single row, and you MUST include a delimiter row immediately after the headers (e.g. \`|---|---|---|\`).`;
+RESPONSE GUIDELINES:
+- Be highly professional, clever, and concise. Speak like a senior clinical coordinator. Do not use repetitive phrasing.
+- GRAPHS AND CHARTS: If the user asks for a visual graph, chart, or visual representation, you MUST use Mermaid.js markdown code blocks (e.g. \`\`\`mermaid pie ... \`\`\` or \`\`\`mermaid bar ... \`\`\`). Do NOT say you cannot create visual graphs; you CAN create them using Mermaid.
+- If you generate a table, you MUST use proper markdown format with explicit NEWLINES separating every single row, and you MUST include a delimiter row immediately after the headers (e.g. \`|---|---|---|\`).
+- Do NOT expose database UUIDs in your conversational text. Use them strictly in <action> blocks.
+- Provide actionable clinical value, connecting the dots between recent handovers and pending tasks where relevant.`;
 
     let answerStr: string | null = null;
     const targetProvider = provider || 'auto';
@@ -283,23 +292,27 @@ CRITICAL: If you generate a table, you MUST use proper markdown format with expl
     // --- ACTION PARSING & EXECUTION ---
     let cleanAnswer = answerStr;
     const executedActions: any[] = [];
-    const actionRegex = /<action>([\s\S]*?)<\/action>/;
-    const match = answerStr.match(actionRegex);
-
-    if (match) {
+    const actionRegex = /<action>([\s\S]*?)<\/action>/g;
+    
+    // Find all matches
+    const matches = Array.from(answerStr.matchAll(actionRegex));
+    
+    for (const match of matches) {
       try {
         const actionPayload = JSON.parse(match[1].trim());
-        
+
         // Execute the action in Supabase
         if (actionPayload.type === 'CREATE_TASK') {
+          const carryUntil = parseUntilDate(actionPayload.description) || parseUntilDate(actionPayload.title);
           const { error } = await supabase.from('tasks').insert({
             facility_id: facilityId,
             resident_id: actionPayload.resident_id,
             title: actionPayload.title,
             description: actionPayload.description,
-            is_completed: false
+            is_completed: false,
+            carry_until_date: carryUntil
           });
-          
+
           if (!error) {
             executedActions.push(actionPayload);
           } else {
@@ -314,22 +327,24 @@ CRITICAL: If you generate a table, you MUST use proper markdown format with expl
             description: actionPayload.description,
             metadata: actionPayload.metadata || {}
           });
-          
+
           if (!error) {
             executedActions.push(actionPayload);
           } else {
             console.error('Observation Action Error:', error);
           }
         }
-        
-        // Remove the <action> block from the final answer sent to user
-        cleanAnswer = answerStr.replace(actionRegex, '').trim();
       } catch (e) {
         console.error('Failed to parse AI action:', e);
       }
     }
+    
+    // Remove all <action> blocks from the final answer sent to user
+    if (matches.length > 0) {
+      cleanAnswer = answerStr.replace(/<action>[\s\S]*?<\/action>/g, '').trim();
+    }
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       answer: cleanAnswer,
       executedActions
     });

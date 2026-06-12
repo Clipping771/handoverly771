@@ -2,27 +2,131 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* Hourglass Soft Glassmorphism Aesthetic */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: rgba(248, 250, 252, 0.4); /* Highly translucent to show mesh */
+  --surface: rgba(255, 255, 255, 0.7); /* Frosted glass surface */
+  --surface-solid: #FFFFFF;
+  --border: rgba(255, 255, 255, 0.5); /* Soft white borders */
+  --border-solid: #E2E8F0;
+  
+  --text-1: #0F172A; /* Deep Navy Black */
+  --text-2: #64748B; /* Soft Blue-Gray */
+  
+  --primary: #3B82F6; /* Soft Blue */
+  --amber: #F59E0B; /* Soft Orange */
+  --red: #EF4444; /* Soft Red */
+  --green: #10B981; /* Soft Green */
+}
+
+/* Dark Mode (Deep Frosted Glass) */
+.dark {
+  --background: rgba(15, 23, 42, 0.6); 
+  --surface: rgba(30, 41, 59, 0.6); 
+  --surface-solid: #1E293B;
+  --border: rgba(255, 255, 255, 0.05);
+  --border-solid: #334155;
+  
+  --text-1: #F8FAFC;
+  --text-2: #94A3B8;
+  
+  --primary: #60A5FA;
+  --amber: #FCD34D;
+  --red: #F87171;
+  --green: #34D399;
 }
 
 @theme inline {
   --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-surface: var(--surface);
+  --color-surface-solid: var(--surface-solid);
+  --color-border: var(--border);
+  --color-border-solid: var(--border-solid);
+  --color-text-primary: var(--text-1);
+  --color-text-secondary: var(--text-2);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-primary: var(--primary);
+  --color-teal-accent: var(--primary);
+  --color-amber-accent: var(--amber);
+  --color-red-accent: var(--red);
+  --color-green-accent: var(--green);
+
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-jetbrains-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--background);
+  color: var(--text-1);
+  font-family: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Premium Layout Components */
+.apple-card {
+  background-color: var(--surface);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid var(--border);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.03), inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.apple-card:hover {
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.06), inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+  transform: translateY(-2px);
+}
+
+.apple-card-inner {
+  background-color: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.glass-pill {
+  background-color: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02);
+}
+
+.dark .glass-pill {
+  background-color: rgba(30, 41, 59, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+/* Custom Scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--border-solid);
+  border-radius: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--text-2);
+}
+
+/* Premium Animations managed by GSAP, keeping simple fade for non-critical elements */
+
+@keyframes fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out forwards;
+}
+
+/* Hide Next.js Dev Indicator */
+nextjs-portal,
+[data-nextjs-toast],
+#__next-build-watcher {
+  display: none !important;
 }

@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase';
 
 export async function POST(request: Request) {
   try {
-    const { facilityId, activeProvider, userKeys } = await request.json();
+    const { facilityId, activeProvider, featureFlags, userKeys } = await request.json();
 
     if (!facilityId) {
       return NextResponse.json({ error: 'Facility ID is required' }, { status: 400 });
@@ -11,6 +11,7 @@ export async function POST(request: Request) {
 
     const aiConfig = {
       activeProvider,
+      featureFlags: featureFlags || {},
       keys: userKeys
     };
 

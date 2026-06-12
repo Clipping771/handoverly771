@@ -1,48 +1,93 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useSync } from '@/context/SyncContext';
-import { Wifi, WifiOff, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { Wifi, WifiOff, RefreshCw, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function SyncBanner() {
   const { isOnline, pendingCount, syncInProgress } = useSync();
+  const [showSynced, setShowSynced] = useState(false);
+  const [hasError, setHasError] = useState(false);
+  
+  const prevSyncInProgress = useRef(syncInProgress);
+  const prevPendingCount = useRef(pendingCount);
 
-  if (isOnline && pendingCount === 0 && !syncInProgress) {
-    return null; // Don't show anything if everything is fine and synced
-  }
-
-  let bgColor = 'bg-amber-500';
-  let textColor = 'text-white';
-  let Icon = WifiOff;
-  let message = 'Offline mode enabled. Drafts will be saved locally.';
-
-  if (isOnline) {
-    if (syncInProgress) {
-      bgColor = 'bg-blue-500';
-      Icon = RefreshCw;
-      message = `Syncing ${pendingCount} records...`;
-    } else if (pendingCount > 0) {
-      bgColor = 'bg-rose-500';
-      Icon = Wifi;
-      message = `${pendingCount} records waiting for sync`;
-    } else {
-      bgColor = 'bg-emerald-500';
-      Icon = CheckCircle2;
-      message = 'All changes synced';
+  useEffect(() => {
+    // Transition from syncing=true to false with pendingCount=0 means successful sync completion
+    if (prevSyncInProgress.current && !syncInProgress && pendingCount === 0 && isOnline && prevPendingCount.current > 0) {
+      setShowSynced(true);
+      setHasError(false);
+      const timer = setTimeout(() => {
+        setShowSynced(false);
+      }, 2000);
+      return () => clearTimeout(timer);
     }
+    
+    // If sync finished but there are still pending records, sync failed or is retrying
+    if (prevSyncInProgress.current && !syncInProgress && pendingCount > 0 && isOnline) {
+      setHasError(true);
+    }
+
+    // Reset error when sync starts again
+    if (syncInProgress) {
+      setHasError(false);
+    }
+
+    prevSyncInProgress.current = syncInProgress;
+    prevPendingCount.current = pendingCount;
+  }, [syncInProgress, pendingCount, isOnline]);
+
+  const showOffline = !isOnline;
+  const showSyncing = isOnline && syncInProgress;
+  const showError = isOnline && hasError && pendingCount > 0;
+  
+  const isVisible = showOffline || showSyncing || showError || showSynced;
+
+  if (!isVisible) return null;
+
+  let borderStyles = 'border-amber-500/30';
+  let bgStyles = 'bg-amber-500/20';
+  let textColor = 'text-amber-700 dark:text-amber-400';
+  let Icon = WifiOff;
+  let message = '';
+
+  if (showOffline) {
+    borderStyles = 'border-amber-500/30';
+    bgStyles = 'bg-amber-500/25';
+    textColor = 'text-amber-700 dark:text-amber-400';
+    Icon = WifiOff;
+    message = `Offline · ${pendingCount} changes pending`;
+  } else if (showSyncing) {
+    borderStyles = 'border-indigo-500/30';
+    bgStyles = 'bg-indigo-500/25';
+    textColor = 'text-indigo-700 dark:text-indigo-400';
+    Icon = RefreshCw;
+    message = `Syncing ${pendingCount} changes...`;
+  } else if (showError) {
+    borderStyles = 'border-rose-500/30';
+    bgStyles = 'bg-rose-500/25';
+    textColor = 'text-rose-700 dark:text-rose-400';
+    Icon = AlertTriangle;
+    message = 'Sync failed · will retry';
+  } else if (showSynced) {
+    borderStyles = 'border-emerald-500/30';
+    bgStyles = 'bg-emerald-500/25';
+    textColor = 'text-emerald-700 dark:text-emerald-450';
+    Icon = CheckCircle2;
+    message = 'Synced successfully';
   }
 
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ y: -50, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: -50, opacity: 0 }}
-        className={`fixed top-0 left-0 right-0 z-50 ${bgColor} ${textColor} px-4 py-1.5 flex items-center justify-center gap-2 text-xs font-semibold shadow-md`}
+        initial={{ y: -70, x: '-50%', opacity: 0 }}
+        animate={{ y: 0, x: '-50%', opacity: 1 }}
+        exit={{ y: -70, x: '-50%', opacity: 0 }}
+        className={`fixed top-4 left-1/2 z-50 ${bgStyles} ${textColor} border ${borderStyles} backdrop-blur-md px-4 py-2 rounded-full flex items-center gap-2 text-xs font-bold shadow-lg shadow-black/5`}
       >
-        <Icon className={`w-4 h-4 ${syncInProgress ? 'animate-spin' : ''}`} />
-        <span>{message}</span>
+        <Icon className={`w-3.5 h-3.5 ${showSyncing ? 'animate-spin' : ''}`} />
+        <span className="font-sans tracking-wide">{message}</span>
       </motion.div>
     </AnimatePresence>
   );

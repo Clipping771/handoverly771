@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 import bcrypt from 'bcryptjs';
 
 // One-time admin creation endpoint
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
 
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from('staff')
       .insert([{
         facility_id: facilityId,
@@ -28,6 +28,16 @@ export async function POST(request: Request) {
       .select();
 
     if (error) {
+      if (error.code === '23505' || error.message.includes('unique constraint') || error.message.includes('already exists')) {
+        const msg = error.message.toLowerCase();
+        if (msg.includes('email')) {
+          return NextResponse.json({ error: 'An admin with this email address already exists.' }, { status: 400 });
+        }
+        if (msg.includes('employee_id') || msg.includes('employee')) {
+          return NextResponse.json({ error: 'An admin with this Employee ID already exists.' }, { status: 400 });
+        }
+        return NextResponse.json({ error: 'An admin account with these details already exists.' }, { status: 400 });
+      }
       return NextResponse.json({ error: error.message }, { status: 400 });
     }
 
@@ -37,14 +47,33 @@ export async function POST(request: Request) {
   }
 }
 
-// GET /api/auth/create-admin - list facilities so we know the ID
+// GET /api/auth/create-admin - list facilities and existing admins
 export async function GET() {
-  const { data, error } = await supabase
-    .from('facilities')
-    .select('id, name');
+  try {
+    const { data: facilities, error: facError } = await supabaseAdmin
+      .from('facilities')
+      .select('id, name, code');
+    if (facError) throw facError;
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const { data: admins, error: adminError } = await supabaseAdmin
+      .from('staff')
+      .select(`
+        id,
+        name,
+        role,
+        employee_id,
+        email,
+        facility_id,
+        facilities (
+          name
+        )
+      `)
+      .eq('role', 'admin')
+      .order('created_at', { ascending: false });
+    if (adminError) throw adminError;
+
+    return NextResponse.json({ facilities, admins });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
-  return NextResponse.json({ facilities: data });
 }

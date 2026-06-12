@@ -10,11 +10,17 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.102.0",
+    "@gsap/react": "^2.1.2",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.1",
     "@supabase/supabase-js": "^2.107.0",
+    "@types/three": "^0.184.1",
     "bcryptjs": "^3.0.3",
     "framer-motion": "^12.40.0",
+    "gsap": "^3.15.0",
     "idb": "^8.0.3",
     "lucide-react": "^1.17.0",
+    "mermaid": "^11.15.0",
     "next": "16.2.7",
     "pg": "^8.21.0",
     "react": "19.2.4",
@@ -22,7 +28,8 @@
     "react-hot-toast": "^2.6.0",
     "react-joyride": "^3.1.0",
     "react-markdown": "^10.1.0",
-    "remark-gfm": "^4.0.1"
+    "remark-gfm": "^4.0.1",
+    "three": "^0.184.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

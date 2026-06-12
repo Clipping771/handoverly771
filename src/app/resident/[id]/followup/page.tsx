@@ -142,12 +142,17 @@ export default function FollowUp() {
     });
     sessionStorage.setItem('handover_raw_input', appendedNote);
     sessionStorage.setItem('handover_input_method', 'voice');
+    sessionStorage.setItem('followup_completed', 'true');
     router.push(`/resident/${residentId}/process`);
+  };
+
+  const handleSkip = () => {
+    router.push(`/resident/${residentId}/review`);
   };
 
   if (authLoading || !user || !resident) {
     return (
-      <div className="min-h-screen bg-[#f8f9fa] dark:bg-[#0a0a0c] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <div className="w-10 h-10 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
           <p className="text-sm text-slate-500 dark:text-slate-400">Loading clarification...</p>
@@ -159,10 +164,10 @@ export default function FollowUp() {
   const answeredCount = answers.filter(a => a.trim()).length;
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] dark:bg-[#0a0a0c] flex flex-col transition-colors duration-300">
+    <div className="min-h-screen bg-background flex flex-col transition-colors duration-300">
       
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white/80 dark:bg-[#0a0a0c]/80 backdrop-blur-2xl border-b border-slate-200/60 dark:border-white/5 px-6 py-4">
+      <header className="sticky top-0 z-40 bg-white/40 dark:bg-[#0a0a0c]/40 backdrop-blur-2xl border-b border-slate-200/60 dark:border-white/5 px-6 py-4">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <Link
             href={`/resident/${residentId}/input`}
@@ -290,21 +295,27 @@ export default function FollowUp() {
       </div>
 
       {/* Sticky Bottom Action Bar — Always Visible */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/90 dark:bg-[#0a0a0c]/90 backdrop-blur-2xl border-t border-slate-200/60 dark:border-white/5 px-6 py-4">
+      <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/40 dark:bg-[#0a0a0c]/40 backdrop-blur-2xl border-t border-slate-200/60 dark:border-white/5 px-6 py-4">
         <div className="max-w-2xl mx-auto flex gap-3">
           <Link
             href={`/resident/${residentId}/input`}
-            className="flex-1 h-12 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-600 dark:text-slate-300 text-sm font-semibold flex items-center justify-center transition-all hover:bg-slate-50 dark:hover:bg-white/8"
+            className="px-4 h-12 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-500 dark:text-slate-400 text-xs font-semibold flex items-center justify-center transition-all hover:bg-slate-50 dark:hover:bg-white/8 shrink-0"
           >
-            Cancel Draft
+            Cancel
           </Link>
           <button
-            onClick={handleNext}
-            className="flex-1 h-12 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-sm font-bold flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/25 transition-all duration-200 active:scale-[0.98]"
+            onClick={handleSkip}
+            className="flex-1 h-12 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 hover:bg-slate-50 dark:hover:bg-white/8 text-slate-700 dark:text-slate-300 text-xs font-semibold flex items-center justify-center transition-all cursor-pointer"
           >
-            <Sparkles className="w-4 h-4" />
-            Submit & Regenerate
-            <ArrowRight className="w-4 h-4" />
+            Skip Clarification
+          </button>
+          <button
+            onClick={handleNext}
+            className="flex-1 h-12 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-indigo-600/25 transition-all duration-200 active:scale-[0.98] cursor-pointer"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            Regenerate
+            <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
