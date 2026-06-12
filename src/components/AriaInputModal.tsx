@@ -152,33 +152,32 @@ export default function AriaInputModal({
     setShowConfirmation(false);
     onClose();
   };
-
   return (
     <>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f172a]/30 dark:bg-[#020617]/65 backdrop-blur-md p-4">
         {/* Backdrop */}
         <div 
-          className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-md transition-opacity duration-300"
+          className="fixed inset-0 pointer-events-auto"
           onClick={onClose}
         ></div>
 
         {/* Modal Window */}
-        <div className="relative w-full max-w-lg bg-white dark:bg-[#0a0f1d] border border-slate-200 dark:border-white/10 rounded-[2rem] shadow-2xl p-6 sm:p-8 animate-in zoom-in-95 duration-200">
-          <div className="absolute -top-20 -right-20 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="relative w-full max-w-lg bg-surface backdrop-blur-2xl border border-border rounded-[32px] shadow-2xl p-6 sm:p-8 overflow-hidden z-10">
+          <div className="absolute -top-20 -right-20 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none"></div>
 
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-white/5 pb-4 mb-6">
+          <div className="flex items-center justify-between border-b border-border pb-4 mb-6">
             <div>
-              <h3 className="text-lg font-bold text-slate-800 dark:text-white flex items-center gap-2">
-                <Sparkles className="w-5 h-5 text-indigo-500" />
+              <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary" />
                 Aria Speech-to-Vitals Parser
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Dictate vitals for <strong className="text-slate-700 dark:text-slate-300">{residentName}</strong>
+              <p className="text-xs text-text-secondary mt-1">
+                Dictate vitals for <strong className="text-text-primary font-bold">{residentName}</strong>
               </p>
             </div>
             <button 
               onClick={onClose}
-              className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-white/5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+              className="p-1.5 rounded-xl hover:bg-slate-100/80 dark:hover:bg-slate-800/60 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 transition-colors outline-none focus:outline-none"
             >
               <X className="w-5 h-5" />
             </button>
@@ -186,8 +185,8 @@ export default function AriaInputModal({
 
           <div className="space-y-5">
             {/* Instruction Banner */}
-            <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-150 dark:border-white/5 p-4 rounded-2xl text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-              <p className="font-semibold text-slate-850 dark:text-slate-200 mb-1">Example Statements:</p>
+            <div className="bg-surface-solid/40 dark:bg-white/[0.01] border border-border-solid p-4 rounded-2xl text-xs text-text-secondary leading-relaxed">
+              <p className="font-semibold text-text-primary mb-1">Example Statements:</p>
               <ul className="list-disc pl-4 space-y-1">
                 <li>"Margaret has a temperature of thirty-eight point two and BP is 140 over 90"</li>
                 <li>"Temp is thirty-seven point four and blood pressure felt high around 150 over 95"</li>
@@ -196,31 +195,31 @@ export default function AriaInputModal({
 
             {/* Error banners */}
             {recognitionError && (
-              <div className="p-3 bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 text-amber-800 dark:text-amber-400 text-xs rounded-xl">
+              <div className="p-3 bg-amber-500/10 border border-amber-500/20 text-amber-600 dark:text-amber-400 text-xs rounded-xl">
                 {recognitionError}
               </div>
             )}
             {parseError && (
-              <div className="p-3 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 text-rose-800 dark:text-rose-400 text-xs rounded-xl">
+              <div className="p-3 bg-rose-500/10 border border-rose-500/20 text-rose-600 dark:text-rose-400 text-xs rounded-xl">
                 {parseError}
               </div>
             )}
 
             {/* Textarea Input */}
             <div className="space-y-2 relative">
-              <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider block pl-1">
+              <label className="text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block pl-1">
                 Dictated/Typed Notes
               </label>
               <textarea
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder="Speak using the microphone or type clinical notes here..."
-                className="w-full bg-slate-50 dark:bg-[#070a14] border border-slate-200 dark:border-white/10 rounded-2xl p-4 text-sm focus:outline-none focus:border-indigo-55 focus:ring-4 focus:ring-indigo-500/10 text-slate-800 dark:text-white min-h-[120px] resize-none leading-relaxed"
+                className="w-full bg-white/30 dark:bg-black/25 border border-slate-200/50 dark:border-white/5 rounded-2xl p-4 text-sm focus:outline-none focus:border-primary/60 focus:ring-4 focus:ring-primary/10 text-text-primary min-h-[120px] resize-none leading-relaxed transition-all"
               ></textarea>
 
               {/* Interim Text */}
               {isListening && interimText && (
-                <div className="absolute inset-x-0 bottom-14 mx-4 bg-slate-100/90 dark:bg-[#121214]/90 backdrop-blur-sm p-3 border border-slate-200 dark:border-white/10 rounded-xl text-xs italic text-slate-600 dark:text-slate-350 animate-pulse">
+                <div className="absolute inset-x-0 bottom-14 mx-4 bg-white/80 dark:bg-[#121214]/85 backdrop-blur-sm p-3 border border-border rounded-xl text-xs italic text-text-secondary animate-pulse">
                   {interimText}
                 </div>
               )}
@@ -229,7 +228,7 @@ export default function AriaInputModal({
               {isListening && (
                 <div className="absolute bottom-4 right-4 flex items-center gap-1.5 pointer-events-none">
                   <span className="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
-                  <span className="text-[10px] text-rose-600 dark:text-rose-400 font-bold uppercase tracking-wider">Listening...</span>
+                  <span className="text-[10px] text-rose-500 font-bold uppercase tracking-wider">Listening...</span>
                 </div>
               )}
             </div>
@@ -239,10 +238,10 @@ export default function AriaInputModal({
               <button
                 type="button"
                 onClick={toggleListening}
-                className={`flex-1 h-12 rounded-xl border font-bold text-xs tracking-wider uppercase transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                className={`flex-1 h-12 rounded-2xl border font-bold text-xs tracking-wider uppercase transition-all flex items-center justify-center gap-2 cursor-pointer outline-none focus:outline-none ${
                   isListening
-                    ? 'bg-rose-650 border-rose-650 text-white shadow-lg shadow-rose-600/20 animate-pulse'
-                    : 'bg-slate-100 hover:bg-slate-200 border-transparent text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300'
+                    ? 'bg-rose-500 border-transparent text-white shadow-lg shadow-rose-500/20 animate-pulse'
+                    : 'bg-slate-100 hover:bg-slate-200 border-border-solid text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-350'
                 }`}
               >
                 {isListening ? (
@@ -263,7 +262,7 @@ export default function AriaInputModal({
                 type="button"
                 onClick={handleParse}
                 disabled={isParsing || !inputText.trim()}
-                className="flex-1 h-12 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs tracking-wider uppercase rounded-xl transition-all shadow-md shadow-indigo-600/25 active:scale-95 flex items-center justify-center gap-2 cursor-pointer"
+                className="flex-1 h-12 bg-gradient-to-r from-primary to-[#00C9A7] hover:opacity-95 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs tracking-wider uppercase rounded-2xl transition-all shadow-md shadow-primary/20 active:scale-95 flex items-center justify-center gap-2 cursor-pointer outline-none focus:outline-none"
               >
                 {isParsing ? (
                   <Loader2 className="w-4 h-4 animate-spin text-white" />
