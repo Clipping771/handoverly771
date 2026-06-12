@@ -20,8 +20,8 @@ export default function Template({ children }: { children: React.ReactNode }) {
       {/* Premium Frosted Glass Overlay Transition Curtain */}
       <motion.div
         key={`curtain-${pathname}`}
-        initial={{ opacity: 1, backdropFilter: "blur(24px)", webkitBackdropFilter: "blur(24px)" }}
-        animate={{ opacity: 0, backdropFilter: "blur(0px)", webkitBackdropFilter: "blur(0px)" }}
+        initial={{ opacity: 1, backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)" }}
+        animate={{ opacity: 0, backdropFilter: "blur(0px)", WebkitBackdropFilter: "blur(0px)" }}
         transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
         className="fixed inset-0 bg-background/90 dark:bg-[#080b11]/90 z-50 pointer-events-none flex items-center justify-center"
       >
