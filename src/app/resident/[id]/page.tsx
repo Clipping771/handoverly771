@@ -10,6 +10,7 @@ import Link from 'next/link';
 import ActivityTimeline from '@/components/ActivityTimeline';
 import toast from 'react-hot-toast';
 import { ShieldAlert, CheckCircle2, Lightbulb } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Resident {
   id: string;
@@ -45,6 +46,8 @@ interface Insights {
   proactive_alerts: ProactiveAlert[];
   optimizations: OptimizationSuggestion[];
 }
+
+const MotionLink = motion(Link);
 
 export default function ResidentProfile() {
   const { user, facility, isLoading: authLoading } = useAuth();
@@ -283,27 +286,36 @@ export default function ResidentProfile() {
       {/* Header */}
       <header className="sticky top-0 z-40 bg-white/80 dark:bg-[#0b0b0d]/80 backdrop-blur-md border-b border-[#e3e3e3] dark:border-[#202024] px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <Link href="/shift" className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#1f1f1f] dark:text-slate-400 dark:hover:text-white transition-colors">
+          <MotionLink 
+            href="/shift" 
+            whileHover={{ x: -2 }}
+            whileTap={{ scale: 0.98 }}
+            className="flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-[#1f1f1f] dark:text-slate-400 dark:hover:text-white transition-colors outline-none focus:outline-none focus-visible:outline-none"
+          >
             <ChevronLeft className="w-4 h-4" />
             Back to Registry
-          </Link>
+          </MotionLink>
           <div className="flex items-center gap-2">
             {/* Edit Resident — non-carer only */}
             {user?.role !== 'carer' && (
-              <button
+              <motion.button
                 onClick={openEditModal}
-                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-500 dark:text-slate-400 transition-colors cursor-pointer"
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.92 }}
+                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-500 dark:text-slate-400 transition-colors cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
                 title="Edit Resident Info"
               >
                 <Pencil className="w-4 h-4" />
-              </button>
+              </motion.button>
             )}
-            <button
+            <motion.button
               onClick={toggleTheme}
-              className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400 transition-colors cursor-pointer"
+              whileHover={{ scale: 1.08, rotate: 15 }}
+              whileTap={{ scale: 0.92, rotate: -15 }}
+              className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400 transition-colors cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
             >
               {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-[#1f1f1f]" />}
-            </button>
+            </motion.button>
           </div>
         </div>
       </header>
@@ -327,13 +339,15 @@ export default function ResidentProfile() {
             </h1>
           </div>
           
-          <Link
+          <MotionLink
             href={`/resident/${resident.id}/input`}
-            className="px-6 py-3 rounded-full bg-violet-600 hover:bg-violet-700 text-white font-semibold text-sm tracking-wide transition-colors flex items-center gap-2 shadow-lg shadow-violet-500/20"
+            whileHover={{ scale: 1.03, y: -2 }}
+            whileTap={{ scale: 0.97 }}
+            className="px-6 py-3 rounded-full bg-primary hover:opacity-95 text-white font-bold text-xs tracking-widest uppercase transition-all duration-300 flex items-center gap-2 shadow-md hover:shadow-lg whitespace-nowrap cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
           >
             <Play className="w-4 h-4" />
             Start New Handover
-          </Link>
+          </MotionLink>
         </div>
 
         {/* Unacknowledged Escalation Warning Banner */}
@@ -365,13 +379,13 @@ export default function ResidentProfile() {
         )}
 
         {/* Smart Insights Panel */}
-        <section className="bg-white dark:bg-[#121214] border border-violet-200 dark:border-violet-900/50 rounded-[32px] p-8 shadow-sm relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-violet-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
+        <section className="apple-card rounded-[32px] p-8 relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3"></div>
           
           <div className="flex items-center justify-between mb-8 relative z-10">
              <div className="flex items-center gap-3">
-               <div className="w-12 h-12 rounded-2xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center">
-                 <Brain className="w-6 h-6 text-violet-600 dark:text-violet-400" />
+               <div className="w-12 h-12 rounded-2xl bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+                 <Brain className="w-6 h-6 text-primary" />
                </div>
                <div>
                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">Smart Insights</h2>
@@ -384,7 +398,7 @@ export default function ResidentProfile() {
                 className="p-2 rounded-full bg-slate-50 hover:bg-slate-100 dark:bg-[#1c1c21] dark:hover:bg-[#25252b] text-slate-500 transition-colors disabled:opacity-50 cursor-pointer"
                 title="Force Refresh Insights"
               >
-                <Activity className={`w-5 h-5 ${loadingInsights ? 'animate-spin text-violet-500' : ''}`} />
+                <Activity className={`w-5 h-5 ${loadingInsights ? 'animate-spin text-primary' : ''}`} />
               </button>
            </div>
            
@@ -419,7 +433,7 @@ export default function ResidentProfile() {
                     <FileText className="w-4 h-4" />
                     Clinical Summary
                   </h3>
-                  <p className="text-sm text-slate-700 dark:text-slate-350 leading-relaxed bg-slate-50/50 dark:bg-slate-900/40 p-4.5 rounded-2xl border border-slate-150/80 dark:border-[#202024]">
+                  <p className="text-sm text-slate-700 dark:text-slate-350 leading-relaxed bg-slate-50/50 dark:bg-slate-900/40 p-4.5 rounded-2xl border border-border">
                     {insights.summary}
                   </p>
                 </div>
@@ -446,7 +460,7 @@ export default function ResidentProfile() {
                     Proactive Safety Alerts
                   </h3>
                   {insights.proactive_alerts?.length === 0 ? (
-                    <div className="text-xs text-slate-400 dark:text-slate-500 italic p-3 bg-slate-50 dark:bg-slate-900/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                    <div className="text-xs text-slate-400 dark:text-slate-500 italic p-4 bg-slate-50/55 dark:bg-slate-900/20 rounded-2xl border border-border">
                       No active critical care alerts.
                     </div>
                   ) : (
@@ -488,13 +502,13 @@ export default function ResidentProfile() {
                     Care Optimizations
                   </h3>
                   {insights.optimizations?.length === 0 ? (
-                    <div className="text-xs text-slate-400 dark:text-slate-500 italic p-3 bg-slate-50 dark:bg-slate-900/20 rounded-xl border border-dashed border-slate-200 dark:border-slate-800">
+                    <div className="text-xs text-slate-400 dark:text-slate-500 italic p-4 bg-slate-50/55 dark:bg-slate-900/20 rounded-2xl border border-border">
                       No suggestions at this time.
                     </div>
                   ) : (
                     <div className="space-y-3">
                       {insights.optimizations?.map((opt: any) => (
-                        <div key={opt.id} className="p-4 bg-violet-50/15 border border-violet-100 dark:bg-[#121217] dark:border-violet-900/30 rounded-2xl flex flex-col gap-1.5">
+                        <div key={opt.id} className="p-4 bg-primary/5 border border-border rounded-2xl flex flex-col gap-1.5">
                           <p className="text-xs text-slate-750 dark:text-slate-300 leading-relaxed font-medium">
                             {opt.message}
                           </p>
@@ -517,26 +531,37 @@ export default function ResidentProfile() {
 
         {/* Lower Section Tabs: Activity Timeline vs Handover Version History */}
         <section className="mt-12 mb-10">
-          <div className="flex border-b border-slate-200 dark:border-[#202024] mb-6 gap-6 text-[15px] font-semibold text-slate-400 dark:text-slate-500">
+          {/* Pill Segmented Tabs */}
+          <div className="flex p-1 bg-slate-100/60 dark:bg-slate-800/40 backdrop-blur-md rounded-full border border-slate-200/50 dark:border-white/5 relative z-10 w-[380px] shadow-sm mb-6">
             <button
               onClick={() => setActiveBottomTab('timeline')}
-              className={`pb-2.5 transition-all border-b-2 cursor-pointer ${
-                activeBottomTab === 'timeline' 
-                  ? 'border-[#1f1f1f] dark:border-white text-[#1f1f1f] dark:text-white' 
-                  : 'border-transparent hover:text-slate-700 dark:hover:text-slate-350'
-              }`}
+              className="flex-1 py-2 text-xs font-bold rounded-full relative transition-colors duration-300 tracking-wider uppercase outline-none focus:outline-none focus-visible:outline-none cursor-pointer z-20 text-center"
             >
-              Activity Timeline
+              {activeBottomTab === 'timeline' && (
+                <motion.div
+                  layoutId="activeTabIndicator"
+                  className="absolute inset-0 bg-white dark:bg-slate-700 rounded-full z-[-1] shadow-xs"
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                />
+              )}
+              <span className={`transition-colors duration-300 ${activeBottomTab === 'timeline' ? 'text-primary' : 'text-slate-500 hover:text-slate-850 dark:text-slate-400 dark:hover:text-slate-200'}`}>
+                Activity Timeline
+              </span>
             </button>
             <button
               onClick={() => setActiveBottomTab('history')}
-              className={`pb-2.5 transition-all border-b-2 cursor-pointer ${
-                activeBottomTab === 'history' 
-                  ? 'border-[#1f1f1f] dark:border-white text-[#1f1f1f] dark:text-white' 
-                  : 'border-transparent hover:text-slate-700 dark:hover:text-slate-350'
-              }`}
+              className="flex-1 py-2 text-xs font-bold rounded-full relative transition-colors duration-300 tracking-wider uppercase outline-none focus:outline-none focus-visible:outline-none cursor-pointer z-20 text-center"
             >
-              Handover Version History
+              {activeBottomTab === 'history' && (
+                <motion.div
+                  layoutId="activeTabIndicator"
+                  className="absolute inset-0 bg-white dark:bg-slate-700 rounded-full z-[-1] shadow-xs"
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                />
+              )}
+              <span className={`transition-colors duration-300 ${activeBottomTab === 'history' ? 'text-primary' : 'text-slate-500 hover:text-slate-850 dark:text-slate-400 dark:hover:text-slate-200'}`}>
+                Version History
+              </span>
             </button>
           </div>
 

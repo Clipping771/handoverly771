@@ -130,3 +130,35 @@ nextjs-portal,
 #__next-build-watcher {
   display: none !important;
 }
+
+/* Global Reset to eliminate browser focus outlines, borders, and tap highlight colors on click */
+button,
+a,
+input,
+select,
+textarea,
+[role="button"] {
+  -webkit-tap-highlight-color: transparent !important;
+}
+
+button:focus,
+button:active,
+button:focus-visible,
+button:focus-within,
+a:focus,
+a:active,
+a:focus-visible,
+[role="button"]:focus,
+[role="button"]:active,
+[role="button"]:focus-visible {
+  outline: none !important;
+  outline-width: 0 !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+/* Specific focus outline removal for Tailwind v4 modern properties */
+*:focus, *:focus-visible, *:active {
+  outline: none !important;
+  box-shadow: none !important;
+}
