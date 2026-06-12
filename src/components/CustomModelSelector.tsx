@@ -184,9 +184,9 @@ export default function CustomModelSelector({
   ];
 
   return (
-    <div className="w-full space-y-3.5 bg-white/10 dark:bg-slate-950/15 backdrop-blur-sm p-4 rounded-2xl border border-slate-250/30 dark:border-white/5">
+    <div className="w-full space-y-3.5 apple-card hover:transform-none p-4 rounded-2xl">
       <div className="text-[9.5px] font-sans font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1 flex items-center gap-1.5">
-        <Cpu className="w-3.5 h-3.5 text-primary" />
+        <Cpu className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
         <span>{provider === 'openrouter' ? 'OpenRouter Active Engine' : 'Groq Active Engine'}</span>
       </div>
       

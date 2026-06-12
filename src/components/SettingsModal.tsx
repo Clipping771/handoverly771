@@ -55,11 +55,11 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         animate={{ y: 0, opacity: 1, scale: 1 }}
         exit={{ y: 15, opacity: 0, scale: 0.98 }}
         transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-        className="w-full max-w-[840px] bg-surface backdrop-blur-2xl border border-border p-7 rounded-[32px] shadow-2xl relative z-50 flex flex-col transition-all duration-300"
+        className="w-full max-w-[840px] apple-card hover:transform-none p-7 rounded-[32px] relative z-50 flex flex-col transition-all duration-300"
       >
         
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-border mb-6">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-200/50 dark:border-white/5 mb-6">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center">
               <Cpu className="w-4.5 h-4.5 text-primary" />
@@ -82,9 +82,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           
           {/* Left Column: API Keys & Ollama */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2 border-b border-border/80 pb-2 mb-3">
-              <Key className="w-4 h-4 text-primary" />
-              <h4 className="text-[10.5px] font-sans font-bold uppercase tracking-wider text-primary">
+            <div className="flex items-center gap-2 border-b border-slate-200/50 dark:border-white/5 pb-2 mb-3">
+              <Key className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+              <h4 className="text-[10.5px] font-sans font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Credentials & Servers
               </h4>
             </div>
@@ -159,10 +159,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             </div>
 
             {/* Ollama Local Integration */}
-            <div className="pt-2.5 border-t border-border/60 mt-3 space-y-3.5">
+            <div className="pt-2.5 border-t border-slate-200/50 dark:border-white/5 mt-3 space-y-3.5">
               <div className="flex items-center gap-1.5">
-                <Server className="w-4 h-4 text-slate-400" />
-                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-450 dark:text-slate-450">Ollama Local Config</span>
+                <Server className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Ollama Local Config</span>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -190,10 +190,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
           </div>
 
           {/* Right Column: AI Engine Routing */}
-          <div className="space-y-4 md:border-l md:border-border/60 md:pl-8">
-            <div className="flex items-center gap-2 border-b border-border/80 pb-2 mb-3">
-              <Cpu className="w-4 h-4 text-[#00C9A7]" />
-              <h4 className="text-[10.5px] font-sans font-bold uppercase tracking-wider text-[#00C9A7]">
+          <div className="space-y-4 md:border-l md:border-slate-200/50 md:dark:border-white/5 md:pl-8">
+            <div className="flex items-center gap-2 border-b border-slate-200/50 dark:border-white/5 pb-2 mb-3">
+              <Cpu className="w-4 h-4 text-slate-400 dark:text-slate-500" />
+              <h4 className="text-[10.5px] font-sans font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Active Engine Routing
               </h4>
             </div>
@@ -222,13 +222,13 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         </div>
 
         {/* Footer Buttons */}
-        <div className="flex gap-3 pt-5 border-t border-border mt-2">
+        <div className="flex gap-3 pt-5 border-t border-slate-200/50 dark:border-white/5 mt-2">
           <motion.button
             type="button"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={onClose}
-            className="flex-1 h-11 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-250 text-xs font-semibold tracking-wider uppercase border border-border-solid transition-all outline-none focus:outline-none cursor-pointer"
+            className="flex-1 h-11 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-250 text-xs font-semibold tracking-wider uppercase border border-slate-200/50 dark:border-white/5 transition-all outline-none focus:outline-none cursor-pointer"
           >
             Cancel
           </motion.button>
@@ -237,7 +237,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
             whileHover={{ scale: 1.02, y: -1 }}
             whileTap={{ scale: 0.98 }}
             onClick={handleSave}
-            className="flex-1 h-11 rounded-full bg-gradient-to-r from-primary to-[#00C9A7] hover:opacity-95 text-white text-xs font-semibold tracking-wider uppercase transition-all shadow-md shadow-primary/15 flex items-center justify-center outline-none focus:outline-none cursor-pointer"
+            className="flex-1 h-11 rounded-full bg-primary hover:opacity-95 text-white text-xs font-semibold tracking-wider uppercase transition-all shadow-md shadow-primary/15 flex items-center justify-center outline-none focus:outline-none cursor-pointer"
           >
             Save Settings
           </motion.button>
