@@ -915,28 +915,27 @@ function formatHandoverTime(dateStr?: string) {
                           </span>
                         )}
                       </div>
-                      
                       {user?.role !== 'carer' && (
-                        <>
+                        <div className="flex items-center gap-1 shrink-0 z-10">
                           <button
                             onClick={(e) => { 
                               e.stopPropagation(); 
                               setEditingResident(res);
                               setShowEditModal(true);
                             }}
-                            className="p-1 rounded-lg text-text-tertiary hover:text-teal-accent hover:bg-teal-accent/10 transition-all cursor-pointer z-10 shrink-0"
+                            className="p-1 rounded-lg text-text-tertiary hover:text-teal-accent hover:bg-teal-accent/10 transition-all cursor-pointer"
                             title={`Edit ${res.name}`}
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={(e) => { e.stopPropagation(); handleDeleteResident(res); }}
-                            className="p-1 rounded-lg text-text-tertiary hover:text-red-accent hover:bg-red-accent/10 transition-all cursor-pointer z-10 shrink-0"
+                            className="p-1 rounded-lg text-text-tertiary hover:text-red-accent hover:bg-red-accent/10 transition-all cursor-pointer"
                             title={`Delete ${res.name}`}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
-                        </>
+                        </div>
                       )}
                     </div>
 
