@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '@/context/AuthContext';
 import { Send, X, Loader2, CheckCircle2, Trash2, Stethoscope } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
@@ -11,35 +12,100 @@ import mermaid from 'mermaid';
 // Custom Mermaid renderer component
 const MermaidChart = ({ chart }: { chart: string }) => {
   const ref = useRef<HTMLDivElement>(null);
+  const [errorText, setErrorText] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
   
   useEffect(() => {
     if (ref.current && chart) {
-      mermaid.initialize({
-        startOnLoad: false,
-        theme: 'base',
-        themeVariables: {
-          primaryColor: '#2dd4bf',
-          primaryTextColor: '#f8fafc',
-          primaryBorderColor: '#0f172a',
-          lineColor: '#64748b',
-          secondaryColor: '#6366f1',
-          tertiaryColor: '#1e293b',
-          background: 'transparent'
-        }
-      });
-      const id = `mermaid-${Math.random().toString(36).substr(2, 9)}`;
-      mermaid.render(id, chart).then((result) => {
-        if (ref.current) {
-          ref.current.innerHTML = result.svg;
-        }
-      }).catch(err => {
-        console.error('Mermaid render error', err);
-        if (ref.current) ref.current.innerHTML = `<div class="text-rose-500 text-xs">Failed to render graph</div>`;
-      });
+      setErrorText(null);
+      // Sanitize AI hallucinations (Claude/Llama sometimes generates fancy unicode arrows)
+      let sanitizedChart = chart
+        // Replace various unicode long arrows or dash-arrows with standard mermaid arrows
+        .replace(/[─—–]+>/g, '-->')
+        .replace(/⟶/g, '-->')
+        .replace(/→/g, '-->')
+        // Remove weird triangles that AI appends to labels
+        .replace(/\|▷/g, '|')
+        .replace(/\|>/g, '|')
+        .replace(/▷/g, '')
+        // Catch the pattern -->|label|> B and change to -->|label| B
+        .replace(/(\|[^|]+\|)\s*[>▷]/g, '$1 ');
+        
+      try {
+        mermaid.initialize({
+          startOnLoad: false,
+          theme: 'base',
+          themeVariables: {
+            primaryColor: '#2dd4bf',
+            primaryTextColor: '#f8fafc',
+            primaryBorderColor: '#0f172a',
+            lineColor: '#64748b',
+            secondaryColor: '#6366f1',
+            tertiaryColor: '#1e293b',
+            background: 'transparent'
+          }
+        });
+        const id = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
+        
+        // mermaid.render can throw synchronously sometimes or return a rejected promise
+        mermaid.render(id, sanitizedChart).then((result) => {
+          if (ref.current) {
+            ref.current.innerHTML = result.svg;
+          }
+        }).catch(err => {
+          console.error('Mermaid async render error:', err);
+          setErrorText(sanitizedChart);
+        });
+      } catch (err) {
+        console.error('Mermaid sync render error:', err);
+        setErrorText(sanitizedChart);
+      }
     }
   }, [chart]);
 
-  return <div ref={ref} className="w-full flex justify-center my-4 overflow-x-auto bg-slate-900/20 dark:bg-slate-900/50 p-4 rounded-xl border border-border" />;
+  if (errorText) {
+    return (
+      <div className="w-full my-4 p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl overflow-x-auto">
+        <p className="text-xs text-rose-500 font-bold mb-2">Notice: Failed to render diagram, displaying raw data instead:</p>
+        <pre className="text-[10px] text-text-primary whitespace-pre-wrap font-mono">{errorText}</pre>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      <div 
+        ref={ref} 
+        onClick={() => !errorText && setIsExpanded(true)}
+        title="Click to expand graph"
+        className="w-full flex justify-center my-4 overflow-x-auto bg-slate-900/20 dark:bg-slate-900/50 p-4 rounded-xl border border-border cursor-pointer hover:border-primary/50 transition-colors hover:shadow-lg hover:shadow-primary/5 relative group"
+      >
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-primary/10 text-primary text-[10px] font-semibold px-2 py-1 rounded-md backdrop-blur-sm">
+          Click to expand
+        </div>
+      </div>
+
+      {isExpanded && !errorText && typeof document !== 'undefined' && createPortal(
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setIsExpanded(false)}>
+          <div className="relative bg-surface p-8 rounded-2xl w-[95vw] max-w-6xl max-h-[90vh] flex flex-col shadow-2xl border border-border animate-in fade-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+            <button 
+              onClick={() => setIsExpanded(false)} 
+              className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-full transition-colors z-10"
+            >
+              <X className="w-5 h-5 text-text-secondary" />
+            </button>
+            <div className="w-full h-full overflow-auto flex items-center justify-center p-4">
+              <div 
+                className="w-full flex justify-center [&>svg]:w-full [&>svg]:max-w-4xl [&>svg]:h-auto"
+                dangerouslySetInnerHTML={ref.current ? { __html: ref.current.innerHTML } : undefined}
+              />
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
+  );
 };
 
 

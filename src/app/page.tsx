@@ -240,52 +240,65 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-background text-text-primary flex flex-col pb-16 font-sans transition-colors duration-300 relative">
       <OnboardingTour />
-      {/* Premium Header */}
-      <header className="sticky top-0 z-40 bg-surface/95 backdrop-blur-xl border-b border-border px-6 py-4 transition-colors duration-300">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
+      {/* Premium Minimalist Header (Themed) */}
+      <header className="sticky top-0 z-40 bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-2xl border-b border-slate-200/60 dark:border-white/10 px-6 md:px-8 py-4 transition-colors duration-300">
+        <div className="max-w-[1400px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="w-11 h-11 rounded-[14px] bg-surface-solid border border-border flex items-center justify-center shadow-sm">
-              <Activity className="w-5 h-5 text-text-primary animate-pulse" />
+            {/* Themed Brand Logo Box */}
+            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shadow-inner transition-colors">
+              <span className="font-extrabold text-lg text-primary">H</span>
             </div>
-            <div>
-              <h1 className="text-base font-semibold text-text-primary tracking-tight">{facility.name}</h1>
-              <p className="text-[11px] text-text-secondary flex items-center gap-1.5 font-medium uppercase tracking-widest mt-0.5">
-                <Clock className="w-3 h-3 text-teal-accent" />
-                Live Handover
-              </p>
+            <div className="flex flex-col">
+              <h1 className="text-lg font-extrabold text-slate-900 dark:text-white tracking-tight leading-none mb-1">
+                {facility.name}
+              </h1>
+              <div className="flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-accent opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-accent"></span>
+                </span>
+                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none">
+                  Live Handover
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <button
               id="tour-theme-toggle"
               onClick={toggleTheme}
-              className="p-2.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 transition-all duration-200 dark:bg-white/5 dark:hover:bg-white/10 dark:text-slate-300"
+              className="p-2 rounded-lg border border-transparent hover:border-border bg-surface-solid/50 hover:bg-surface-solid text-text-secondary hover:text-text-primary transition-all duration-200 shadow-sm"
               title={theme === 'dark' ? "Switch to Day Mode" : "Switch to Night Mode"}
             >
-              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
+              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4" />}
             </button>
 
             {isCarer ? (
               <Link
                 id="tour-shift-action"
                 href="/tasks"
-                className="px-5 py-2.5 rounded-full bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-semibold dark:bg-[#1a1a1c] dark:border-white/10 dark:hover:border-white/20 dark:text-slate-200 transition-all shadow-sm"
+                className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-sm font-bold transition-all shadow-[0_4px_12px_rgba(45,212,191,0.2)] flex items-center gap-2"
               >
-                Shift Tasks
+                <span>Shift Tasks</span>
+                <ChevronRight className="w-4 h-4 opacity-70" />
               </Link>
             ) : (
               <Link
                 id="tour-shift-action"
                 href="/shift"
-                className="px-5 py-2.5 rounded-full bg-white border border-slate-200 hover:border-slate-300 hover:bg-slate-50 text-slate-700 text-sm font-semibold dark:bg-[#1a1a1c] dark:border-white/10 dark:hover:border-white/20 dark:text-slate-200 transition-all shadow-sm"
+                className="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white text-sm font-bold transition-all shadow-[0_4px_12px_rgba(45,212,191,0.2)] flex items-center gap-2"
               >
-                My Shift
+                <span>My Shift</span>
+                <ChevronRight className="w-4 h-4 opacity-70" />
               </Link>
             )}
+            
+            <div className="w-px h-6 bg-slate-200 dark:bg-white/10 mx-1"></div>
+
             <button
               onClick={handleLogout}
-              className="p-2.5 rounded-full bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-600 transition-all duration-200 dark:bg-white/5 dark:hover:bg-red-500/10 dark:hover:text-red-400 dark:text-slate-300"
+              className="p-2 rounded-lg border border-transparent hover:border-red-500/20 bg-surface-solid/50 hover:bg-red-500/10 text-text-secondary hover:text-red-500 transition-all duration-200 shadow-sm"
               title="Logout"
             >
               <LogOut className="w-4 h-4" />
