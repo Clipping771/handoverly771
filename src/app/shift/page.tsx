@@ -742,6 +742,24 @@ function formatHandoverTime(dateStr?: string) {
                 </div>
               </div>
               <div className="flex items-center gap-3">
+                <div className="hidden lg:flex items-center gap-3 mr-2">
+                  <button
+                    onClick={toggleTheme}
+                    className="p-3 rounded-full bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400 transition-colors cursor-pointer border border-slate-200/60 dark:border-white/10 shadow-sm flex items-center justify-center"
+                    title="Toggle Theme"
+                  >
+                    {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-[#1f1f1f]" />}
+                  </button>
+                  <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200/60 dark:border-white/10 shadow-sm flex items-center justify-center">
+                    <SentinelBadge
+                      unacknowledgedTasks={facilityUnacknowledgedTasks}
+                      proactiveAlerts={facilityProactiveAlerts}
+                      onAcknowledgeAlert={handleAcknowledgeAlert}
+                      onAcknowledgeTask={handleAcknowledgeTask}
+                    />
+                  </div>
+                </div>
+
                 <button
                   id="tour-register-resident"
                   onClick={() => setShowAddModal(true)}

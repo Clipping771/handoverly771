@@ -10,6 +10,8 @@ import Link from 'next/link';
 import AdvancedCalendar from '@/components/AdvancedCalendar';
 import OnboardingTour from '@/components/OnboardingTour';
 import AmbientOrb from '@/components/AmbientOrb';
+import SentinelBadge from '@/components/SentinelBadge';
+import toast from 'react-hot-toast';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 
@@ -50,6 +52,8 @@ export default function Dashboard() {
   const [expandedResidents, setExpandedResidents] = useState<string[]>([]);
   const [expandedShifts, setExpandedShifts] = useState<string[]>([]);
   const [datesWithHandovers, setDatesWithHandovers] = useState<string[]>([]);
+  const [facilityUnacknowledgedTasks, setFacilityUnacknowledgedTasks] = useState<any[]>([]);
+  const [facilityProactiveAlerts, setFacilityProactiveAlerts] = useState<any[]>([]);
 
   const filteredHandovers = useMemo(() => {
     return handovers.filter((h) => {
@@ -191,11 +195,113 @@ export default function Dashboard() {
     }
   };
 
+  const fetchSentinelData = async () => {
+    if (!facility) return;
+    try {
+      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+      const { data: facilityTasks } = await supabase
+        .from('tasks')
+        .select(`
+          id, title, description, tags, created_at, resident_id, assigned_role, facility_id,
+          resident:residents(name, room_number, is_active),
+          handover:handovers(urgency)
+        `)
+        .eq('facility_id', facility.id)
+        .or('is_completed.is.null,is_completed.eq.false')
+        .lt('created_at', twoHoursAgo);
+
+      const filteredTasks = (facilityTasks || []).filter((t: any) => {
+        const resObj = Array.isArray(t.resident) ? t.resident[0] : t.resident;
+        if (!resObj || !resObj.is_active) return false;
+        
+        const urgency = t.handover?.urgency || 'routine';
+        const hasPriorityTag = t.tags?.includes('medication') || t.tags?.includes('incidents');
+        return urgency === 'critical' || urgency === 'attention' || hasPriorityTag;
+      });
+      setFacilityUnacknowledgedTasks(filteredTasks);
+
+      const { data: cachedInsights } = await supabase
+        .from('resident_insights')
+        .select('resident_id, insights, residents:residents(name, room_number, is_active)')
+        .eq('facility_id', facility.id);
+        
+      const allAlerts: any[] = [];
+      (cachedInsights || []).forEach((row: any) => {
+        const resObj = Array.isArray(row.residents) ? row.residents[0] : row.residents;
+        if (resObj && resObj.is_active) {
+          const alertsList = row.insights?.proactive_alerts || [];
+          alertsList.forEach((alert: any) => {
+            allAlerts.push({
+              ...alert,
+              residentId: row.resident_id,
+              residentName: resObj?.name || 'Resident',
+              roomNumber: resObj?.room_number || 'N/A'
+            });
+          });
+        }
+      });
+      setFacilityProactiveAlerts(allAlerts);
+    } catch (err) {
+      console.error('Error fetching sentinel data:', err);
+    }
+  };
+
+  const handleAcknowledgeAlert = async (alertId: string, alertMessage: string, residentId?: string) => {
+    if (!user || !facility) return;
+    try {
+      const { error } = await supabase
+        .from('activity_timeline')
+        .insert({
+          resident_id: residentId || 'unknown',
+          staff_id: user.id,
+          facility_id: facility.id,
+          action_type: 'insight_acknowledged',
+          description: `Acknowledged alert: ${alertId} (${alertMessage.substring(0, 45)}...) by ${user.name}`,
+          metadata: { alert_id: alertId }
+        });
+
+      if (error) throw error;
+      toast.success('Alert acknowledged and muted.');
+      
+      await fetch('/api/generate-insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ residentId, userKeys: {}, forceRefresh: true })
+      });
+      fetchSentinelData();
+    } catch (e: any) {
+      console.error('Failed to acknowledge alert:', e);
+      toast.error('Failed to acknowledge alert.');
+    }
+  };
+
+  const handleAcknowledgeTask = async (taskId: string) => {
+    if (!user || !facility) return;
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ 
+          is_completed: true, 
+          completed_by: user.id, 
+          completed_at: new Date().toISOString() 
+        })
+        .eq('id', taskId);
+
+      if (error) throw error;
+      toast.success('Task marked as completed.');
+      fetchSentinelData();
+    } catch (e: any) {
+      console.error('Failed to complete task:', e);
+      toast.error('Failed to complete task.');
+    }
+  };
+
   useEffect(() => {
     if (!facility) return;
 
     fetchHandovers();
     fetchAvailableDates();
+    fetchSentinelData();
 
     const channel = supabase
       .channel('handover-updates')
@@ -205,6 +311,7 @@ export default function Dashboard() {
         () => {
           fetchHandovers();
           fetchAvailableDates();
+          fetchSentinelData();
         }
       )
       .subscribe();
@@ -265,6 +372,16 @@ export default function Dashboard() {
           </div>
 
           <div className="flex items-center gap-2.5">
+            <SentinelBadge 
+              unacknowledgedTasks={facilityUnacknowledgedTasks}
+              proactiveAlerts={facilityProactiveAlerts}
+              onAcknowledgeAlert={(id, msg) => {
+                const alertObj = facilityProactiveAlerts.find(a => a.id === id);
+                return handleAcknowledgeAlert(id, msg, alertObj?.residentId);
+              }}
+              onAcknowledgeTask={handleAcknowledgeTask}
+            />
+
             <button
               id="tour-theme-toggle"
               onClick={toggleTheme}
