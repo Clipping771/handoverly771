@@ -1037,14 +1037,21 @@ function formatHandoverTime(dateStr?: string) {
                       {selectedResidentTimeline.length === 0 ? (
                         <p className="text-xs text-text-secondary">No recent activity.</p>
                       ) : (
-                        <div className="space-y-5">
-                          {selectedResidentTimeline.map(item => (
-                            <div key={item.id} className="flex gap-3 text-sm relative">
-                              <div className="w-2.5 h-2.5 mt-1 rounded-full bg-teal-accent shrink-0 shadow-[0_0_8px_rgba(0,201,167,0.4)]"></div>
-                              <div className="absolute left-[4px] top-4 bottom-[-16px] w-[1px] bg-border/50"></div>
-                              <div>
-                                <p className="text-text-primary leading-snug">{item.description}</p>
-                                <p className="font-mono text-[10px] text-text-secondary mt-1">{new Date(item.created_at).toLocaleTimeString()}</p>
+                        <div className="pt-2">
+                          {selectedResidentTimeline.map((item, index) => (
+                            <div key={item.id} className="flex gap-4 text-sm relative pb-6">
+                              {/* Solid Branch Line */}
+                              {index !== selectedResidentTimeline.length - 1 && (
+                                <div className="absolute left-[5px] top-4 bottom-0 w-[2px] bg-primary/20 dark:bg-primary/30 rounded-full"></div>
+                              )}
+                              
+                              {/* Timeline Node */}
+                              <div className="relative z-10 w-3 h-3 mt-1 rounded-full border-[2.5px] border-primary bg-white dark:bg-slate-800 shrink-0 shadow-[0_0_8px_rgba(13,148,136,0.3)]"></div>
+                              
+                              {/* Content */}
+                              <div className="flex-1 -mt-0.5">
+                                <p className="text-slate-800 dark:text-slate-200 leading-relaxed font-medium">{item.description}</p>
+                                <p className="font-mono text-[10.5px] text-slate-500 dark:text-slate-400 mt-1.5 uppercase tracking-wider">{new Date(item.created_at).toLocaleTimeString()}</p>
                               </div>
                             </div>
                           ))}

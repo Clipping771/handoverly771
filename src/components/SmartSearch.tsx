@@ -320,7 +320,7 @@ export default function SmartSearch() {
 
       {/* Premium Glassmorphic Chat Drawer */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 w-[430px] h-[640px] max-h-[85vh] bg-surface border border-border rounded-[32px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.12)] z-50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
+        <div className="fixed bottom-6 right-6 w-[430px] h-[640px] max-h-[85vh] bg-white dark:bg-slate-900 border border-border rounded-[32px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.12)] z-50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
           
           {/* Accent colored top strip */}
           <div className="h-[3px] w-full bg-gradient-to-r from-primary via-indigo-500 to-primary"></div>
@@ -382,19 +382,23 @@ export default function SmartSearch() {
                   {/* Faint Static Core Glow */}
                   <div className="absolute inset-0 rounded-full border-[1.5px] border-teal-accent/15"></div>
 
-                  {/* Single Planetary Orbit */}
-                  <div className="absolute inset-[-10px] flex items-center justify-center animate-[spin_8s_linear_infinite]">
-                    <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible" style={{ transform: 'rotate(15deg)' }}>
-                      {/* Orbit Path */}
-                      <ellipse cx="50" cy="50" rx="48" ry="15" fill="none" stroke="currentColor" strokeWidth="1.2" className="text-teal-accent/40" />
-                      {/* Orbiting Satellite/Planet */}
-                      <circle cx="2" cy="50" r="2.5" className="fill-teal-accent drop-shadow-[0_0_8px_rgba(45,212,191,0.9)]" />
+                  {/* Liquid Orb Orbit (No path line) */}
+                  <div 
+                    className="absolute inset-[-15px] flex items-center justify-center animate-[spin_4s_linear_infinite]"
+                  >
+                    <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
+                      {/* Single glowing light blue liquid orb orbiting the center */}
+                      <circle 
+                        cx="50" cy="4" 
+                        r="4.5" 
+                        className="fill-blue-400 drop-shadow-[0_0_12px_rgba(96,165,250,0.9)]" 
+                      />
                     </svg>
                   </div>
                   
                   {/* Core Glass Sphere */}
-                  <div className="relative w-16 h-16 rounded-full bg-surface-solid border border-border backdrop-blur-xl flex items-center justify-center shadow-[0_0_20px_rgba(45,212,191,0.2)]">
-                    <NurseIcon className="w-8 h-8 text-teal-accent" />
+                  <div className="relative w-16 h-16 rounded-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-white/10 flex items-center justify-center shadow-lg">
+                    <NurseIcon className="w-8 h-8 text-primary" />
                   </div>
                 </div>
 
