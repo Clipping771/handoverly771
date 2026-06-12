@@ -774,35 +774,35 @@ function formatHandoverTime(dateStr?: string) {
             {/* Facility Pulse / Clinical Notice Board */}
             <div className="mb-8 apple-card rounded-[24px] p-6 flex flex-col gap-5">
               <div 
-                className={`flex justify-between items-center cursor-pointer transition-colors ${isPulseOpen ? 'border-b border-border pb-4' : ''}`}
+                className={`flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-4 cursor-pointer transition-colors ${isPulseOpen ? 'border-b border-border pb-4' : ''}`}
                 onClick={() => setIsPulseOpen(!isPulseOpen)}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-teal-accent/10 flex items-center justify-center text-teal-accent">
+                  <div className="w-10 h-10 rounded-xl bg-teal-accent/10 flex items-center justify-center text-teal-accent shrink-0">
                     <Activity className="w-5 h-5" />
                   </div>
                   <div>
-                    <h2 className="text-sm font-bold text-text-primary uppercase tracking-widest flex items-center gap-2">
+                    <h2 className="text-sm font-bold text-text-primary uppercase tracking-widest flex items-center flex-wrap gap-2">
                       Facility Pulse & Trends
-                      <div className="p-1 rounded-full bg-slate-100 dark:bg-slate-800 ml-1">
+                      <div className="p-1 rounded-full bg-slate-100 dark:bg-slate-800 ml-0 sm:ml-1 shrink-0">
                         {isPulseOpen ? <ChevronUp className="w-3.5 h-3.5 text-slate-500" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-500" />}
                       </div>
                     </h2>
-                    <p className="text-[11px] text-text-secondary mt-0.5">Real-time clinical intelligence (Last 7 days)</p>
+                    <p className="text-[11px] text-text-secondary mt-0.5 leading-tight">Real-time clinical intelligence (Last 7 days)</p>
                   </div>
                 </div>
-                <div className="flex gap-2 items-center">
+                <div className="flex gap-2 items-center self-start sm:self-auto shrink-0 w-full sm:w-auto mt-2 sm:mt-0">
                   {(() => {
                     const emergingCount = facilityProactiveAlerts.filter(a => a.severity === 'critical' || a.severity === 'warning').length;
                     return emergingCount > 0 ? (
-                      <span className="px-3 py-1 bg-red-accent/10 text-red-accent text-[11px] font-bold rounded-lg flex items-center gap-1.5 border border-red-accent/20 shadow-sm animate-pulse">
-                        <span className="w-1.5 h-1.5 rounded-full bg-red-accent"></span>
-                        {emergingCount} Emerging Risk{emergingCount === 1 ? '' : 's'}
+                      <span className="px-3 py-1.5 bg-red-accent/10 text-red-accent text-[11px] font-bold rounded-lg flex items-center gap-1.5 border border-red-accent/20 shadow-sm animate-pulse whitespace-nowrap">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-accent shrink-0"></span>
+                        <span>{emergingCount} Emerging Risk{emergingCount === 1 ? '' : 's'}</span>
                       </span>
                     ) : (
-                      <span className="px-3 py-1 bg-green-accent/10 text-green-accent text-[11px] font-bold rounded-lg flex items-center gap-1.5 border border-green-accent/20 shadow-sm">
-                        <span className="w-1.5 h-1.5 rounded-full bg-green-accent"></span>
-                        0 Emerging Risks
+                      <span className="px-3 py-1.5 bg-green-accent/10 text-green-accent text-[11px] font-bold rounded-lg flex items-center gap-1.5 border border-green-accent/20 shadow-sm whitespace-nowrap">
+                        <span className="w-1.5 h-1.5 rounded-full bg-green-accent shrink-0"></span>
+                        <span>0 Emerging Risks</span>
                       </span>
                     );
                   })()}
