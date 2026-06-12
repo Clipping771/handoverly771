@@ -184,7 +184,7 @@ export default function CustomModelSelector({
   ];
 
   return (
-    <div className="w-full border border-[#e3e3e3] dark:border-[#202024] rounded-2xl overflow-hidden bg-slate-50/50 dark:bg-black/20 p-3.5 space-y-3">
+    <div className="w-full border border-slate-200/50 dark:border-white/5 rounded-2xl overflow-hidden bg-slate-50/30 dark:bg-black/10 p-3.5 space-y-3">
       {/* Search box */}
       <div className="relative flex items-center">
         <Search className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
@@ -193,7 +193,7 @@ export default function CustomModelSelector({
           placeholder="Search models..."
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full h-10 bg-white dark:bg-[#0b0b0d] border border-[#e3e3e3] dark:border-[#202024] rounded-xl pl-9 pr-4 text-xs focus:outline-none focus:border-slate-800 dark:focus:border-slate-100 text-[#1f1f1f] dark:text-white"
+          className="w-full h-10 bg-white/50 dark:bg-black/20 border border-slate-200/50 dark:border-white/5 rounded-xl pl-9 pr-4 text-xs focus:outline-none focus:border-primary/60 focus:ring-4 focus:ring-primary/10 text-[#1f1f1f] dark:text-white transition-all"
         />
       </div>
 
@@ -207,7 +207,7 @@ export default function CustomModelSelector({
           className={`w-full text-left p-3 rounded-xl border text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
             value === 'google/gemini-2.5-flash' || value === 'llama-3.3-70b-versatile' || value === 'auto'
               ? 'border-primary bg-primary/5 text-primary'
-              : 'border-[#e3e3e3] dark:border-[#202024] bg-white dark:bg-[#070708] text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-white/5'
+              : 'border-slate-200/50 dark:border-white/5 bg-white/70 dark:bg-[#0d1425]/60 text-slate-700 dark:text-slate-350 hover:bg-slate-50 dark:hover:bg-white/5'
           }`}
         >
           <div className="flex items-center gap-2">
@@ -228,7 +228,7 @@ export default function CustomModelSelector({
           const Icon = cat.icon;
 
           return (
-            <div key={cat.id} className="border border-[#e3e3e3] dark:border-[#202024] rounded-xl overflow-hidden bg-white dark:bg-[#070708]">
+            <div key={cat.id} className="border border-slate-200/50 dark:border-white/5 rounded-xl overflow-hidden bg-white/70 dark:bg-[#0d1425]/60">
               {/* Category Header */}
               <button
                 type="button"
@@ -254,7 +254,7 @@ export default function CustomModelSelector({
 
               {/* Models List */}
               {isExpanded && (
-                <div className="border-t border-[#e3e3e3] dark:border-[#202024] bg-slate-50/50 dark:bg-black/10 divide-y divide-[#e3e3e3]/50 dark:divide-[#202024]/50">
+                <div className="border-t border-slate-200/50 dark:border-white/5 bg-slate-50/50 dark:bg-black/10 divide-y divide-slate-200/40 dark:divide-white/5">
                   {catModels.map(model => (
                     <button
                       key={model.id}

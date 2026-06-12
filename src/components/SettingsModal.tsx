@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Key, Eye, EyeOff, Server, Cpu, Search, ChevronDown, ChevronUp, Zap, Rocket, Globe, Gem, Check } from 'lucide-react';
 import CustomModelSelector from './CustomModelSelector';
+import { motion } from 'framer-motion';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -47,25 +48,31 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md px-4 transition-all duration-300">
-      <div className="w-full max-w-[420px] bg-white dark:bg-[#121214] border border-[#e3e3e3] dark:border-[#202024] p-7 rounded-[28px] shadow-2xl relative z-50 flex flex-col transition-all duration-300">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0f172a]/45 dark:bg-[#020617]/70 backdrop-blur-md px-4 transition-all duration-300">
+      <motion.div 
+        initial={{ y: 20, opacity: 0, scale: 0.96 }}
+        animate={{ y: 0, opacity: 1, scale: 1 }}
+        exit={{ y: 15, opacity: 0, scale: 0.98 }}
+        transition={{ type: 'spring', stiffness: 350, damping: 28 }}
+        className="w-full max-w-[560px] bg-white/80 dark:bg-[#0d1527]/80 backdrop-blur-xl border border-white/40 dark:border-white/10 p-7 rounded-[32px] shadow-2xl relative z-50 flex flex-col transition-all duration-300"
+      >
         
         {/* Header */}
-        <div className="flex items-center justify-between pb-4 border-b border-[#e3e3e3] dark:border-[#202024] mb-6">
+        <div className="flex items-center justify-between pb-4 border-b border-slate-200/50 dark:border-white/5 mb-6">
           <div className="flex items-center gap-2">
-            <Cpu className="w-5 h-5 text-slate-800 dark:text-white" />
+            <Cpu className="w-5 h-5 text-primary" />
             <h3 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white">AI Engine Configuration</h3>
           </div>
           <button 
             onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-slate-100 dark:hover:bg-[#1c1c21] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer"
+            className="p-1.5 rounded-full hover:bg-slate-100/80 dark:hover:bg-[#1c1c21]/80 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer outline-none focus:outline-none"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Inputs */}
-        <div className="space-y-4.5 flex-1 max-h-[450px] overflow-y-auto pr-1">
+        <div className="space-y-5 flex-1 max-h-[450px] overflow-y-auto pr-1.5 custom-scrollbar">
           <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed mb-4">
             Provide your custom keys and models below to execute LLM calls directly using your own accounts. Leaves these blank to fall back to facility-configured keys.
           </p>
@@ -81,12 +88,12 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 placeholder="sk-ant-..."
                 value={anthropicKey}
                 onChange={(e) => setAnthropicKey(e.target.value)}
-                className="w-full h-11 bg-slate-50 dark:bg-[#0b0b0d] border border-[#e3e3e3] dark:border-[#202024] rounded-xl px-4 pr-10 text-xs focus:outline-none focus:border-slate-800 dark:focus:border-slate-100 text-[#1f1f1f] dark:text-white font-mono"
+                className="w-full h-11 bg-white/45 dark:bg-black/20 border border-slate-200/60 dark:border-white/5 rounded-xl px-4 pr-10 text-xs focus:outline-none focus:border-primary/60 focus:ring-4 focus:ring-primary/10 text-slate-800 dark:text-white font-mono transition-all"
               />
               <button
                 type="button"
                 onClick={() => setShowAnthropic(!showAnthropic)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-350 cursor-pointer"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-350 cursor-pointer outline-none focus:outline-none"
               >
                 {showAnthropic ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -104,12 +111,12 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 placeholder="sk-or-..."
                 value={openrouterKey}
                 onChange={(e) => setOpenrouterKey(e.target.value)}
-                className="w-full h-11 bg-slate-50 dark:bg-[#0b0b0d] border border-[#e3e3e3] dark:border-[#202024] rounded-xl px-4 pr-10 text-xs focus:outline-none focus:border-slate-800 dark:focus:border-slate-100 text-[#1f1f1f] dark:text-white font-mono"
+                className="w-full h-11 bg-white/45 dark:bg-black/20 border border-slate-200/60 dark:border-white/5 rounded-xl px-4 pr-10 text-xs focus:outline-none focus:border-primary/60 focus:ring-4 focus:ring-primary/10 text-slate-800 dark:text-white font-mono transition-all"
               />
               <button
                 type="button"
                 onClick={() => setShowOpenrouter(!showOpenrouter)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-350 cursor-pointer"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-350 cursor-pointer outline-none focus:outline-none"
               >
                 {showOpenrouter ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -137,12 +144,12 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 placeholder="gsk_..."
                 value={groqKey}
                 onChange={(e) => setGroqKey(e.target.value)}
-                className="w-full h-11 bg-slate-50 dark:bg-[#0b0b0d] border border-[#e3e3e3] dark:border-[#202024] rounded-xl px-4 pr-10 text-xs focus:outline-none focus:border-slate-800 dark:focus:border-slate-100 text-[#1f1f1f] dark:text-white font-mono"
+                className="w-full h-11 bg-white/45 dark:bg-black/20 border border-slate-200/60 dark:border-white/5 rounded-xl px-4 pr-10 text-xs focus:outline-none focus:border-primary/60 focus:ring-4 focus:ring-primary/10 text-slate-800 dark:text-white font-mono transition-all"
               />
               <button
                 type="button"
                 onClick={() => setShowGroq(!showGroq)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-350 cursor-pointer"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-350 cursor-pointer outline-none focus:outline-none"
               >
                 {showGroq ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
@@ -169,7 +176,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               placeholder="http://127.0.0.1:11434"
               value={ollamaUrl}
               onChange={(e) => setOllamaUrl(e.target.value)}
-              className="w-full h-11 bg-slate-50 dark:bg-[#0b0b0d] border border-[#e3e3e3] dark:border-[#202024] rounded-xl px-4 text-xs focus:outline-none focus:border-slate-800 dark:focus:border-slate-100 text-[#1f1f1f] dark:text-white font-mono"
+              className="w-full h-11 bg-white/45 dark:bg-black/20 border border-slate-200/60 dark:border-white/5 rounded-xl px-4 text-xs focus:outline-none focus:border-primary/60 focus:ring-4 focus:ring-primary/10 text-slate-800 dark:text-white font-mono transition-all"
             />
           </div>
 
@@ -183,30 +190,34 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               placeholder="llama3"
               value={ollamaModel}
               onChange={(e) => setOllamaModel(e.target.value)}
-              className="w-full h-11 bg-slate-50 dark:bg-[#0b0b0d] border border-[#e3e3e3] dark:border-[#202024] rounded-xl px-4 text-xs focus:outline-none focus:border-slate-800 dark:focus:border-slate-100 text-[#1f1f1f] dark:text-white font-mono"
+              className="w-full h-11 bg-white/45 dark:bg-black/20 border border-slate-200/60 dark:border-white/5 rounded-xl px-4 text-xs focus:outline-none focus:border-primary/60 focus:ring-4 focus:ring-primary/10 text-slate-800 dark:text-white font-mono transition-all"
             />
           </div>
         </div>
 
         {/* Footer Buttons */}
-        <div className="flex gap-3 pt-5 border-t border-[#e3e3e3] dark:border-[#202024] mt-6">
-          <button
+        <div className="flex gap-3 pt-5 border-t border-slate-200/50 dark:border-white/5 mt-6">
+          <motion.button
             type="button"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={onClose}
-            className="flex-1 h-11 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-[#1c1c21] dark:hover:bg-[#25252b] text-slate-700 dark:text-slate-250 text-xs font-semibold tracking-wider uppercase transition-all duration-150 cursor-pointer"
+            className="flex-1 h-11 rounded-full bg-slate-100/80 hover:bg-slate-200/90 dark:bg-[#1c1c21]/80 dark:hover:bg-[#25252b]/95 text-slate-650 dark:text-slate-250 text-xs font-semibold tracking-wider uppercase transition-all outline-none focus:outline-none cursor-pointer"
           >
             Cancel
-          </button>
-          <button
+          </motion.button>
+          <motion.button
             type="button"
+            whileHover={{ scale: 1.02, y: -1 }}
+            whileTap={{ scale: 0.98 }}
             onClick={handleSave}
-            className="flex-1 h-11 rounded-full bg-slate-800 hover:bg-slate-700 dark:bg-slate-100 dark:hover:bg-[#ffffff] text-white dark:text-[#0b0b0d] text-xs font-semibold tracking-wider uppercase transition-all duration-300 shadow-md shadow-slate-200/50 dark:shadow-none flex items-center justify-center cursor-pointer"
+            className="flex-1 h-11 rounded-full bg-gradient-to-r from-primary to-[#00C9A7] hover:opacity-95 text-white text-xs font-semibold tracking-wider uppercase transition-all shadow-md shadow-primary/15 flex items-center justify-center outline-none focus:outline-none cursor-pointer"
           >
             Save Settings
-          </button>
+          </motion.button>
         </div>
 
-      </div>
+      </motion.div>
     </div>
   );
 }
