@@ -3,6 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useTheme } from '@/context/ThemeContext';
 import { Send, X, Loader2, CheckCircle2, Trash2, Stethoscope } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -14,6 +15,7 @@ const MermaidChart = ({ chart }: { chart: string }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const { theme } = useTheme();
   
   useEffect(() => {
     if (ref.current && chart) {
@@ -34,15 +36,23 @@ const MermaidChart = ({ chart }: { chart: string }) => {
       try {
         mermaid.initialize({
           startOnLoad: false,
-          theme: 'base',
+          theme: theme === 'dark' ? 'dark' : 'default',
           themeVariables: {
-            primaryColor: '#2dd4bf',
-            primaryTextColor: '#f8fafc',
-            primaryBorderColor: '#0f172a',
-            lineColor: '#64748b',
-            secondaryColor: '#6366f1',
-            tertiaryColor: '#1e293b',
-            background: 'transparent'
+            fontFamily: 'inherit',
+            primaryColor: theme === 'dark' ? '#0d9488' : '#2dd4bf', // Teal matching Handoverly brand
+            primaryTextColor: theme === 'dark' ? '#f8fafc' : '#0f172a',
+            primaryBorderColor: theme === 'dark' ? '#115e59' : '#99f6e4',
+            lineColor: theme === 'dark' ? '#475569' : '#94a3b8',
+            secondaryColor: theme === 'dark' ? '#4f46e5' : '#6366f1',
+            tertiaryColor: theme === 'dark' ? '#1e293b' : '#f8fafc',
+            background: 'transparent',
+            // Specifically for xychart-beta (bar charts)
+            titleColor: theme === 'dark' ? '#f8fafc' : '#0f172a',
+            xAxisLabelColor: theme === 'dark' ? '#cbd5e1' : '#475569',
+            xAxisTitleColor: theme === 'dark' ? '#cbd5e1' : '#475569',
+            yAxisLabelColor: theme === 'dark' ? '#cbd5e1' : '#475569',
+            yAxisTitleColor: theme === 'dark' ? '#cbd5e1' : '#475569',
+            plotColorPalette: theme === 'dark' ? '#2dd4bf,#6366f1,#ec4899' : '#0d9488,#4f46e5,#db2777'
           }
         });
         const id = `mermaid-${Math.random().toString(36).substring(2, 9)}`;
@@ -78,7 +88,7 @@ const MermaidChart = ({ chart }: { chart: string }) => {
         ref={ref} 
         onClick={() => !errorText && setIsExpanded(true)}
         title="Click to expand graph"
-        className="w-full flex justify-center my-4 overflow-x-auto bg-slate-900/20 dark:bg-slate-900/50 p-4 rounded-xl border border-border cursor-pointer hover:border-primary/50 transition-colors hover:shadow-lg hover:shadow-primary/5 relative group"
+        className="w-full flex justify-center my-4 overflow-x-auto bg-white dark:bg-slate-900/80 p-6 rounded-2xl border border-slate-200 dark:border-white/10 cursor-pointer hover:border-primary/50 transition-all hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)] dark:hover:shadow-[0_8px_30px_rgba(255,255,255,0.02)] relative group"
       >
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity bg-primary/10 text-primary text-[10px] font-semibold px-2 py-1 rounded-md backdrop-blur-sm">
           Click to expand
