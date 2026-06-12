@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, ChevronDown, ChevronUp, Zap, Rocket, Globe, Gem, Check } from 'lucide-react';
+import { Search, ChevronDown, ChevronUp, Zap, Rocket, Globe, Gem, Check, Cpu } from 'lucide-react';
 
 const STATIC_MODELS = [
   // Groq Default
