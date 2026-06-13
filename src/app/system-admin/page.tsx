@@ -232,37 +232,38 @@ export default function SystemAdminSetup() {
             <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mt-2">Enter master password to bootstrap facilities</p>
           </div>
           
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div className="space-y-1.5 group/input">
-              <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">Master Password</label>
+          <form onSubmit={handleLogin} className="space-y-6 mt-8">
+            <div className="space-y-2 group/input">
+              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest pl-1">Master Password</label>
               <div className="relative flex items-center">
-                <Lock className="absolute left-4 w-4 h-4 text-slate-400 group-focus-within/input:text-primary transition-colors" />
+                <Lock className="absolute left-4 w-5 h-5 text-slate-400 group-focus-within/input:text-indigo-500 transition-colors z-10" />
                 <input
                   type={showMasterPassword ? 'text' : 'password'}
                   placeholder="••••••••"
                   value={masterPassword}
                   onChange={(e) => setMasterPassword(e.target.value)}
-                  className="w-full h-14 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-full pl-11 pr-11 text-sm font-medium text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-inner"
+                  className="w-full h-14 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl pl-12 pr-12 text-sm font-medium tracking-wider text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all shadow-sm hover:border-indigo-500/50"
                 />
                 <button
                   type="button"
                   onClick={() => setShowMasterPassword(!showMasterPassword)}
-                  className="absolute right-4 p-1 text-slate-400 hover:text-primary focus:outline-none transition-colors cursor-pointer"
+                  className="absolute right-4 p-1 text-slate-400 hover:text-indigo-500 focus:outline-none transition-colors cursor-pointer z-10"
                 >
-                  {showMasterPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showMasterPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
             </div>
             {error && (
-              <div className="p-3.5 rounded-2xl bg-red-50/80 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 text-[11px] font-semibold text-red-600 dark:text-red-400 text-center">
+              <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 text-[12px] font-bold text-rose-600 dark:text-rose-400 text-center shadow-sm">
                 {error}
               </div>
             )}
             <button
               type="submit"
-              className="w-full h-14 bg-primary hover:opacity-90 text-white font-bold rounded-full text-sm tracking-wide transition-all shadow-lg shadow-primary/20 hover:shadow-primary/40 active:scale-[0.98]"
+              className="w-full h-14 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold rounded-2xl text-sm tracking-wide transition-all shadow-xl shadow-indigo-500/25 active:scale-[0.98] overflow-hidden relative group"
             >
-              Unlock Setup
+              <div className="absolute inset-0 w-[200%] h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-[150%] hover:animate-[sheen_1.5s_infinite]"></div>
+              <span className="relative z-10">Unlock Setup</span>
             </button>
             <div className="text-center mt-6">
               <Link href="/" className="text-[10px] font-bold text-text-secondary uppercase tracking-widest hover:text-primary transition-colors flex items-center justify-center gap-1">
@@ -311,63 +312,68 @@ export default function SystemAdminSetup() {
         </div>
       </header>
 
-      <main className="max-w-6xl mx-auto w-full px-4 mt-12 flex-1 relative z-10">
-        <div className="flex items-center justify-between mb-10">
+      <main className="max-w-[1200px] mx-auto w-full px-4 mt-12 flex-1 relative z-10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-12 gap-4">
           <div>
-            <h2 className="text-3xl font-bold tracking-tight text-slate-800 dark:text-white">Facility Bootstrap</h2>
-            <p className="text-sm font-semibold text-text-secondary mt-1">Create root facilities and initial admin accounts.</p>
+            <h2 className="text-4xl font-black tracking-tight bg-gradient-to-br from-slate-900 to-slate-500 dark:from-white dark:to-slate-400 bg-clip-text text-transparent">
+              Facility Bootstrap
+            </h2>
+            <p className="text-[13px] font-bold text-text-secondary mt-1.5 uppercase tracking-widest">
+              Initialize core infrastructure & administrators
+            </p>
           </div>
           <button 
             onClick={loadFacilities}
-            className="p-3 bg-white/60 dark:bg-black/40 backdrop-blur-md border border-white/40 dark:border-white/5 text-text-secondary rounded-full hover:bg-white/80 dark:hover:bg-white/10 transition-all shadow-sm active:scale-95"
+            className="p-3 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border border-slate-200/60 dark:border-white/10 text-slate-600 dark:text-slate-300 rounded-full hover:bg-white dark:hover:bg-slate-700 transition-all shadow-sm hover:shadow-md active:scale-95 group"
             title="Refresh Facilities"
           >
-            <RefreshCw className="w-5 h-5" />
+            <RefreshCw className="w-5 h-5 group-hover:rotate-180 transition-transform duration-500" />
           </button>
         </div>
 
 
 
-        <div className="grid gap-10 lg:grid-cols-2">
+        <div className="grid gap-8 lg:grid-cols-2">
           
           {/* FACILITY CREATION */}
-          <div className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-3xl p-8 rounded-[32px] border border-white/60 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.06)] relative overflow-hidden group">
-            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white/20 dark:from-white/5 to-transparent pointer-events-none"></div>
+          <div className="bg-white/90 dark:bg-[#111827]/80 backdrop-blur-3xl p-8 sm:p-10 rounded-[32px] border border-white dark:border-white/5 shadow-2xl shadow-indigo-500/5 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 dark:bg-indigo-500/20 blur-[80px] rounded-full pointer-events-none -z-10 translate-x-1/2 -translate-y-1/2"></div>
             
-            <h3 className="text-xl font-bold flex items-center gap-3 border-b border-white/50 dark:border-white/5 pb-4 text-slate-800 dark:text-white relative">
-              <div className="w-10 h-10 rounded-[14px] bg-white dark:bg-slate-800 shadow-sm border border-white/80 dark:border-white/10 flex items-center justify-center">
-                <Building className="w-5 h-5 text-primary" />
+            <h3 className="text-2xl font-black flex items-center gap-4 mb-8 text-slate-800 dark:text-white relative">
+              <div className="w-12 h-12 rounded-[16px] bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-500/20 dark:to-blue-500/20 shadow-inner border border-indigo-100 dark:border-indigo-500/30 flex items-center justify-center">
+                <Building className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
               </div>
-              1. Register Facility
+              <span className="bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">1. Register Facility</span>
             </h3>
 
-            <form onSubmit={handleAddFacility} className="grid gap-5 sm:grid-cols-2 items-end mt-6">
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">Facility Name</label>
+            <form onSubmit={handleAddFacility} className="grid gap-5 sm:grid-cols-2 items-end">
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest pl-1">Facility Name</label>
                 <input
                   type="text"
                   placeholder="e.g. SunnyCare Sydney"
                   value={newFacName}
                   onChange={(e) => setNewFacName(e.target.value)}
-                  className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner"
+                  className="w-full h-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all text-slate-900 dark:text-white shadow-sm hover:border-indigo-500/50"
                 />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">Facility Code</label>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest pl-1">Facility Code</label>
                 <input
                   type="text"
                   placeholder="e.g. SYD001"
                   value={newFacCode}
                   onChange={(e) => setNewFacCode(e.target.value)}
-                  className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner"
+                  className="w-full h-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all text-slate-900 dark:text-white shadow-sm hover:border-indigo-500/50"
                 />
               </div>
               <button
                 type="submit"
-                className="h-12 bg-primary hover:opacity-90 text-white font-bold rounded-[16px] text-sm tracking-wide transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 sm:col-span-2 active:scale-[0.98]"
+                className="h-12 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold rounded-2xl text-sm tracking-wide transition-all shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2 sm:col-span-2 active:scale-[0.98] overflow-hidden relative"
               >
-                <Plus className="w-4 h-4" />
-                Register Facility
+                <div className="absolute inset-0 w-[200%] h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-[150%] hover:animate-[sheen_1.5s_infinite]"></div>
+                <Plus className="w-5 h-5 relative z-10" />
+                <span className="relative z-10">Register Facility</span>
               </button>
             </form>
 
@@ -406,22 +412,22 @@ export default function SystemAdminSetup() {
                         ) : fac.code}
                       </td>
                       <td className="p-4 text-right">
-                        <div className="flex justify-end gap-1.5 transition-opacity">
+                        <div className="flex justify-end gap-2 transition-opacity">
                           {editingFacilityId === fac.id ? (
                             <>
-                              <button onClick={() => handleUpdateFacility(fac.id)} className="p-2 text-green-600 bg-white/60 dark:bg-white/5 rounded-xl hover:bg-white dark:hover:bg-white/10 transition-colors shadow-sm">
+                              <button onClick={() => handleUpdateFacility(fac.id)} className="p-2.5 text-emerald-600 bg-emerald-50 dark:bg-emerald-500/10 rounded-xl hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition-colors shadow-sm">
                                 <Save className="w-4 h-4" />
                               </button>
-                              <button onClick={() => setEditingFacilityId(null)} className="p-2 text-slate-500 bg-white/60 dark:bg-white/5 rounded-xl hover:bg-white dark:hover:bg-white/10 transition-colors shadow-sm">
+                              <button onClick={() => setEditingFacilityId(null)} className="p-2.5 text-slate-500 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shadow-sm">
                                 <X className="w-4 h-4" />
                               </button>
                             </>
                           ) : (
                             <>
-                              <button onClick={() => { setEditingFacilityId(fac.id); setEditFacName(fac.name); setEditFacCode(fac.code); }} className="p-2 text-slate-600 dark:text-slate-300 bg-white/60 dark:bg-white/5 rounded-xl hover:bg-white dark:hover:bg-white/10 transition-colors shadow-sm">
+                              <button onClick={() => { setEditingFacilityId(fac.id); setEditFacName(fac.name); setEditFacCode(fac.code); }} className="p-2.5 text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors shadow-sm">
                                 <Edit3 className="w-4 h-4" />
                               </button>
-                              <button onClick={() => handleDeleteFacility(fac.id, fac.name)} className="p-2 text-red-500 bg-white/60 dark:bg-white/5 rounded-xl hover:bg-white dark:hover:bg-white/10 transition-colors shadow-sm">
+                              <button onClick={() => handleDeleteFacility(fac.id, fac.name)} className="p-2.5 text-rose-500 bg-rose-50 dark:bg-rose-500/10 rounded-xl hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors shadow-sm">
                                 <Trash2 className="w-4 h-4" />
                               </button>
                             </>
@@ -439,23 +445,23 @@ export default function SystemAdminSetup() {
           </div>
 
           {/* ADMIN CREATION */}
-          <div className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-3xl p-8 rounded-[32px] border border-white/60 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.06)] relative overflow-hidden group">
-            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white/20 dark:from-white/5 to-transparent pointer-events-none"></div>
+          <div className="bg-white/90 dark:bg-[#111827]/80 backdrop-blur-3xl p-8 sm:p-10 rounded-[32px] border border-white dark:border-white/5 shadow-2xl shadow-emerald-500/5 relative overflow-hidden group">
+            <div className="absolute bottom-0 right-0 w-64 h-64 bg-emerald-500/10 dark:bg-emerald-500/20 blur-[80px] rounded-full pointer-events-none -z-10 translate-x-1/3 translate-y-1/3"></div>
 
-            <h3 className="text-xl font-bold flex items-center gap-3 border-b border-white/50 dark:border-white/5 pb-4 text-slate-800 dark:text-white relative">
-              <div className="w-10 h-10 rounded-[14px] bg-white dark:bg-slate-800 shadow-sm border border-white/80 dark:border-white/10 flex items-center justify-center">
-                <UserPlus className="w-5 h-5 text-primary" />
+            <h3 className="text-2xl font-black flex items-center gap-4 mb-8 text-slate-800 dark:text-white relative">
+              <div className="w-12 h-12 rounded-[16px] bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-500/20 dark:to-teal-500/20 shadow-inner border border-emerald-100 dark:border-emerald-500/30 flex items-center justify-center">
+                <UserPlus className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
               </div>
-              2. Create Initial Admin
+              <span className="bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-slate-300 bg-clip-text text-transparent">2. Create Initial Admin</span>
             </h3>
 
-            <form onSubmit={handleCreateAdmin} className="grid gap-5 sm:grid-cols-2 mt-6">
-              <div className="sm:col-span-2 space-y-1.5">
-                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">Select Facility</label>
+            <form onSubmit={handleCreateAdmin} className="grid gap-5 sm:grid-cols-2">
+              <div className="sm:col-span-2 space-y-2">
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest pl-1">Select Facility</label>
                 <select
                   value={selectedFacilityId}
                   onChange={(e) => setSelectedFacilityId(e.target.value)}
-                  className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner"
+                  className="w-full h-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all text-slate-900 dark:text-white shadow-sm hover:border-emerald-500/50"
                 >
                   <option value="">-- Choose Facility --</option>
                   {facilities.map(f => (
@@ -464,50 +470,50 @@ export default function SystemAdminSetup() {
                 </select>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">Admin Full Name</label>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest pl-1">Admin Full Name</label>
                 <input
                   type="text"
                   placeholder="e.g. Master Admin"
                   value={adminName}
                   onChange={(e) => setAdminName(e.target.value)}
-                  className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner"
+                  className="w-full h-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all text-slate-900 dark:text-white shadow-sm hover:border-emerald-500/50"
                 />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">Admin Email</label>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest pl-1">Admin Email</label>
                 <input
                   type="email"
                   placeholder="e.g. admin@handoverly.com"
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
-                  className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner"
+                  className="w-full h-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all text-slate-900 dark:text-white shadow-sm hover:border-emerald-500/50"
                 />
               </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">Employee ID (Login)</label>
+              <div className="space-y-2">
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest pl-1">Employee ID (Login)</label>
                 <input
                   type="text"
                   placeholder="e.g. ADMIN001"
                   value={adminEmpId}
                   onChange={(e) => setAdminEmpId(e.target.value)}
-                  className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner"
+                  className="w-full h-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all text-slate-900 dark:text-white shadow-sm hover:border-emerald-500/50"
                 />
               </div>
-              <div className="space-y-1.5 group/input">
-                <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">Password</label>
+              <div className="space-y-2 group/input">
+                <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest pl-1">Password</label>
                 <div className="relative flex items-center">
                   <input
                     type={showAdminPassword ? 'text' : 'password'}
                     placeholder="Min 6 characters"
                     value={adminPassword}
                     onChange={(e) => setAdminPassword(e.target.value)}
-                    className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] pl-4 pr-11 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner"
+                    className="w-full h-12 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl pl-4 pr-11 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500 transition-all text-slate-900 dark:text-white shadow-sm hover:border-emerald-500/50"
                   />
                   <button
                     type="button"
                     onClick={() => setShowAdminPassword(!showAdminPassword)}
-                    className="absolute right-4 p-1 text-slate-400 hover:text-primary focus:outline-none transition-colors cursor-pointer"
+                    className="absolute right-4 p-1 text-slate-400 hover:text-emerald-500 focus:outline-none transition-colors cursor-pointer"
                   >
                     {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
@@ -516,10 +522,11 @@ export default function SystemAdminSetup() {
 
               <button
                 type="submit"
-                className="h-12 mt-2 bg-primary hover:opacity-90 text-white font-bold rounded-[16px] text-sm tracking-wide transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 sm:col-span-2 active:scale-[0.98]"
+                className="h-12 mt-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white font-bold rounded-2xl text-sm tracking-wide transition-all shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 sm:col-span-2 active:scale-[0.98] overflow-hidden relative group"
               >
-                <UserPlus className="w-4 h-4" />
-                Create Admin Account
+                <div className="absolute inset-0 w-[200%] h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-[150%] hover:animate-[sheen_1.5s_infinite]"></div>
+                <UserPlus className="w-5 h-5 relative z-10" />
+                <span className="relative z-10">Create Admin Account</span>
               </button>
             </form>
 
