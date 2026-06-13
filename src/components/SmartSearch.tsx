@@ -7,6 +7,8 @@ import { useTheme } from '@/context/ThemeContext';
 import { Send, X, Loader2, CheckCircle2, Trash2, Stethoscope } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import toast from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import mermaid from 'mermaid';
 
@@ -157,9 +159,11 @@ const NurseIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 export default function SmartSearch() {
   const { facility, user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [messages, setMessages] = useState<{ role: 'user' | 'ai'; content: string; actions?: any[] }[]>([]);
+  const [messages, setMessages] = useState<{ role: 'user' | 'ai'; content: string; actions?: any[]; pendingAction?: any; requiresConfig?: boolean }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [residents, setResidents] = useState<{ name: string; room_number: string }[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -232,6 +236,22 @@ export default function SmartSearch() {
     setIsLoading(true);
 
     try {
+      const userKeys = {
+        anthropicKey: localStorage.getItem('user_anthropic_key') || '',
+        openrouterKey: localStorage.getItem('user_openrouter_key') || '',
+        openrouterModel: localStorage.getItem('user_openrouter_model') || 'anthropic/claude-3.5-sonnet',
+        groqKey: localStorage.getItem('user_groq_key') || '',
+        groqModel: localStorage.getItem('user_groq_model') || 'llama-3.3-70b-versatile',
+        ollamaUrl: localStorage.getItem('user_ollama_url') || 'http://127.0.0.1:11434',
+        ollamaModel: localStorage.getItem('user_ollama_model') || 'llama3'
+      };
+
+      // Extract last 6 messages for context
+      const chatHistory = messages
+        .filter(m => !m.content.startsWith('[System:'))
+        .slice(-6)
+        .map(m => ({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.content }));
+
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -239,15 +259,41 @@ export default function SmartSearch() {
           query: userQuery, 
           facilityId: facility.id,
           userRole: user.role,
-          userId: user.id
+          userId: user.id,
+          userKeys: userKeys,
+          chatHistory: chatHistory
         })
       });
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
 
-      setMessages(prev => [...prev, { role: 'ai', content: data.answer, actions: data.executedActions }]);
+      // Process client-side executed actions immediately
+      if (data.executedActions && data.executedActions.length > 0) {
+        data.executedActions.forEach((act: any) => {
+          if (act.type === 'CHANGE_THEME') {
+            if (act.theme !== theme) {
+              toggleTheme();
+            }
+          } else if (act.type === 'NAVIGATE_TO' && act.url) {
+            router.push(act.url);
+            setIsOpen(false);
+          } else if (act.type === 'UPDATE_API_KEY' && act.provider && act.key) {
+            localStorage.setItem(`user_${act.provider}_key`, act.key.trim());
+            toast.success(`${act.provider} key updated successfully via Chat!`);
+          }
+        });
+      }
+
+      let requiresConfig = false;
+      if (data.answer && data.answer.includes('Mock Engine:')) {
+        toast.error('AI Engine Error: Please check your API keys.');
+        requiresConfig = true;
+      }
+
+      setMessages(prev => [...prev, { role: 'ai', content: data.answer, actions: data.executedActions, pendingAction: data.pendingAction, requiresConfig }]);
     } catch (err: any) {
+      toast.error(`Smart Assistant Error: ${err.message}`);
       setMessages(prev => [...prev, { role: 'ai', content: `Error: ${err.message}` }]);
     } finally {
       setIsLoading(false);
@@ -296,6 +342,79 @@ export default function SmartSearch() {
 
   const handleSuggestionClick = (text: string) => {
     setQuery(text);
+  };
+
+  const sendAutoMessage = async (text: string) => {
+    if (!facility) return;
+    const isDirectExecution = text.trim().startsWith('<execute_action>');
+    const displayMessage = isDirectExecution ? '[System: Executing confirmed action...]' : text;
+    
+    setMessages(prev => [...prev, { role: 'user', content: displayMessage }]);
+    setIsLoading(true);
+
+    try {
+      const userKeys = {
+        anthropicKey: localStorage.getItem('user_anthropic_key') || '',
+        openrouterKey: localStorage.getItem('user_openrouter_key') || '',
+        openrouterModel: localStorage.getItem('user_openrouter_model') || 'anthropic/claude-3.5-sonnet',
+        groqKey: localStorage.getItem('user_groq_key') || '',
+        groqModel: localStorage.getItem('user_groq_model') || 'llama-3.3-70b-versatile',
+        ollamaUrl: localStorage.getItem('user_ollama_url') || 'http://127.0.0.1:11434',
+        ollamaModel: localStorage.getItem('user_ollama_model') || 'llama3'
+      };
+
+      // Extract last 6 messages for context
+      const chatHistory = messages
+        .filter(m => !m.content.startsWith('[System:'))
+        .slice(-6)
+        .map(m => ({ role: m.role === 'ai' ? 'assistant' : 'user', content: m.content }));
+
+      const res = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          query: text, 
+          facilityId: facility.id,
+          userRole: user.role,
+          userId: user.id,
+          userKeys: userKeys,
+          chatHistory: chatHistory
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      if (data.executedActions && data.executedActions.length > 0) {
+        let needsRefresh = false;
+        data.executedActions.forEach((act: any) => {
+          if (act.type === 'CHANGE_THEME') {
+            if (act.theme !== theme) {
+              toggleTheme();
+            }
+          } else if (act.type === 'NAVIGATE_TO' && act.url) {
+            router.push(act.url);
+            setIsOpen(false);
+          } else if (act.type === 'UPDATE_API_KEY' && act.provider && act.key) {
+            localStorage.setItem(`user_${act.provider}_key`, act.key.trim());
+            toast.success(`${act.provider} key updated successfully via Chat!`);
+          } else {
+            // It's a DB modification (UPDATE_RESIDENT, LOG_OBSERVATION, etc)
+            needsRefresh = true;
+          }
+        });
+        
+        if (needsRefresh) {
+          window.dispatchEvent(new Event('refresh_data'));
+        }
+      }
+
+      setMessages(prev => [...prev, { role: 'ai', content: data.answer, actions: data.executedActions, pendingAction: data.pendingAction }]);
+    } catch (err: any) {
+      setMessages(prev => [...prev, { role: 'ai', content: `Error: ${err.message}` }]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -442,7 +561,7 @@ export default function SmartSearch() {
                           table: ({node, ...props}) => <div className="overflow-x-auto my-3 rounded-lg border border-border"><table className="min-w-full text-left border-collapse" {...props} /></div>,
                           th: ({node, ...props}) => <th className="border-b border-border px-3 py-2.5 text-[11px] font-bold uppercase tracking-wider text-text-secondary bg-surface" {...props} />,
                           td: ({node, ...props}) => <td className="border-b border-border px-3 py-2.5 text-[13px]" {...props} />,
-                          p: ({node, ...props}) => <p className="mb-3 last:mb-0 leading-relaxed text-[13px] whitespace-pre-wrap" {...props} />,
+                          p: ({node, ...props}) => <p className="mb-3 last:mb-0 leading-relaxed text-[13px] whitespace-pre-wrap break-words" {...props} />,
                           ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-3 text-[13px] space-y-1.5" {...props} />,
                           ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-3 text-[13px] space-y-1.5" {...props} />,
                           li: ({node, ...props}) => <li className="leading-relaxed mb-1" {...props} />,
@@ -450,18 +569,101 @@ export default function SmartSearch() {
                           em: ({node, ...props}) => <em className="italic opacity-90" {...props} />,
                           code: ({node, inline, className, children, ...props}: any) => {
                             const match = /language-(\w+)/.exec(className || '');
-                            if (!inline && match && match[1] === 'mermaid') {
+                            const isMermaid = match && match[1] === 'mermaid';
+                            if (isMermaid) {
                               return <MermaidChart chart={String(children).replace(/\n$/, '')} />;
                             }
-                            return inline 
-                              ? <code className="bg-slate-100 dark:bg-slate-800 text-pink-600 dark:text-pink-400 px-1.5 py-0.5 rounded-md text-[11px] font-mono" {...props}>{children}</code>
-                              : <pre className="bg-slate-900 text-slate-50 p-3 rounded-xl overflow-x-auto my-3 text-[12px] font-mono"><code {...props}>{children}</code></pre>;
-                          },
+                            return !inline ? (
+                              <pre className="bg-slate-900/5 dark:bg-black/30 p-3 rounded-lg overflow-x-auto border border-border my-3 text-[12px]"><code className={className} {...props}>{children}</code></pre>
+                            ) : (
+                              <code className="bg-slate-900/5 dark:bg-black/30 px-1.5 py-0.5 rounded text-[12px] text-primary" {...props}>{children}</code>
+                            );
+                          }
                         }}
                       >
                         {m.content}
                       </ReactMarkdown>
                     </div>
+
+                    {m.pendingAction && (
+                      <div className="mt-4 flex items-center gap-3 border-t border-border/50 pt-3">
+                        <button 
+                          onClick={() => {
+                            // Safely extract the action string BEFORE mutating state
+                            const actionStr = `<execute_action>\n${JSON.stringify(m.pendingAction, null, 2)}\n</execute_action>`;
+                            
+                            setMessages(prev => {
+                              const updated = [...prev];
+                              // Use object spread to avoid mutating the original message reference
+                              updated[i] = { ...updated[i], pendingAction: null };
+                              return updated;
+                            });
+                            
+                            sendAutoMessage(actionStr);
+                          }} 
+                          className="bg-primary/10 text-primary px-4 py-2 rounded-xl text-xs font-bold hover:bg-primary hover:text-white transition-colors"
+                        >
+                          Confirm Update
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setMessages(prev => {
+                              const updated = [...prev];
+                              updated[i] = { ...updated[i], pendingAction: null };
+                              return [...updated, { role: 'ai', content: "Action cancelled." }];
+                            });
+                          }} 
+                          className="bg-slate-100 dark:bg-slate-800 text-text-secondary px-4 py-2 rounded-xl text-xs font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Inline Config UI */}
+                    {m.requiresConfig && (
+                      <div className="mt-4 p-4 rounded-xl bg-slate-900/5 dark:bg-white/5 border border-primary/20">
+                        <div className="flex items-center justify-between mb-2">
+                          <p className="text-xs font-bold">Quick Configuration</p>
+                        </div>
+                        <p className="text-[10px] text-text-secondary mb-3">Setup your preferred AI Engine instantly without leaving the chat.</p>
+                        <div className="flex gap-2">
+                          <select 
+                            id={`inline-provider-${i}`}
+                            className="bg-white dark:bg-black/40 border border-border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-primary/60 min-w-[100px]"
+                          >
+                            <option value="groq">Groq</option>
+                            <option value="openrouter">OpenRouter</option>
+                            <option value="anthropic">Anthropic</option>
+                          </select>
+                          <input 
+                            type="password" 
+                            placeholder="Paste API Key here..." 
+                            id={`inline-key-${i}`}
+                            className="flex-1 min-w-0 bg-white dark:bg-black/40 border border-border rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-primary/60"
+                          />
+                          <button 
+                            onClick={() => {
+                              const keyInput = document.getElementById(`inline-key-${i}`) as HTMLInputElement;
+                              const providerSelect = document.getElementById(`inline-provider-${i}`) as HTMLSelectElement;
+                              
+                              if (keyInput && keyInput.value && providerSelect) {
+                                const provider = providerSelect.value;
+                                localStorage.setItem(`user_${provider}_key`, keyInput.value.trim());
+                                toast.success(`${provider} key saved! Try your query again.`);
+                                
+                                const updatedMessages = [...messages];
+                                updatedMessages[i].requiresConfig = false;
+                                setMessages(updatedMessages);
+                              }
+                            }}
+                            className="bg-primary shrink-0 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/90 transition-colors"
+                          >
+                            Save Key
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Executed Smart Actions Visual Cards */}
                     {m.actions && m.actions.length > 0 && (
@@ -473,10 +675,18 @@ export default function SmartSearch() {
                             </div>
                             <div className="min-w-0">
                               <span className="font-bold text-[10px] text-green-600 dark:text-green-400 uppercase tracking-widest block">
-                                {act.type === 'CREATE_TASK' ? 'Task Created' : 'Observation Logged'}
+                                {act.type === 'CREATE_TASK' ? 'Task Created' :
+                                 act.type === 'LOG_OBSERVATION' ? 'Observation Logged' :
+                                 act.type === 'UPDATE_RESIDENT' ? 'Profile Updated' :
+                                 act.type === 'REGISTER_RESIDENT' ? 'Resident Registered' :
+                                 act.type === 'DELETE_RESIDENT' ? 'Resident Deleted' :
+                                 act.type === 'ADD_MEDICATION' ? 'Medication Added' :
+                                 act.type === 'CHANGE_THEME' ? 'Theme Changed' :
+                                 act.type === 'NAVIGATE_TO' ? 'Navigation' : 
+                                 act.type === 'UPDATE_API_KEY' ? 'API Key Updated' : 'Action Executed'}
                               </span>
                               <span className="font-bold text-xs text-text-primary mt-0.5 block">
-                                {act.title || act.action_type || 'Success'}
+                                {act.title || act.action_type || act.name || act.medication_name || act.theme || act.url || act.provider || 'Success'}
                               </span>
                               {act.description && (
                                 <p className="text-[10px] text-text-secondary mt-1 leading-relaxed">
@@ -506,12 +716,20 @@ export default function SmartSearch() {
           {/* Input Area */}
           <form onSubmit={handleSend} className="p-4 bg-white/20 dark:bg-black/10 border-t border-border backdrop-blur-md">
             <div className="relative flex items-center">
-              <input
-                type="text"
+              <textarea
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Ask about a resident or log an observation..."
-                className="w-full h-12 bg-surface-solid border border-border rounded-full pl-5 pr-12 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-text-primary placeholder-text-secondary shadow-inner"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if (query.trim() && !isLoading) {
+                      handleSend(e);
+                    }
+                  }
+                }}
+                placeholder="Ask about a resident... (Shift+Enter for new line)"
+                className="w-full min-h-[48px] max-h-[120px] bg-surface-solid border border-border rounded-2xl pl-5 pr-12 py-3 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-text-primary placeholder-text-secondary shadow-inner resize-none scrollbar-hide"
+                rows={1}
               />
               <button 
                 type="submit" 

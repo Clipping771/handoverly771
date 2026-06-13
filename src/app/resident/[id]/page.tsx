@@ -49,7 +49,7 @@ interface Insights {
   optimizations: OptimizationSuggestion[];
 }
 
-const MotionLink = motion(Link);
+const MotionLink = motion.create(Link);
 
 export default function ResidentProfile() {
   const { user, facility, isLoading: authLoading } = useAuth();

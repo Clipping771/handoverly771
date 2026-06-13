@@ -470,9 +470,20 @@ export default function MyShift() {
 
   useEffect(() => {
     fetchData();
+
+    const handleRefresh = () => fetchData();
+    window.addEventListener('refresh_data', handleRefresh);
+
     // Poll alerts every 30 seconds as a fallback
     const interval = setInterval(fetchData, 30000);
     
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('refresh_data', handleRefresh);
+    };
+  }, [facility, router]);
+
+  useEffect(() => {
     if (!facility) return;
 
     // Real-time subscription for instant updates when tasks are added
@@ -495,7 +506,6 @@ export default function MyShift() {
       .subscribe();
 
     return () => {
-      clearInterval(interval);
       supabase.removeChannel(shiftSubscription);
     };
   }, [facility]);
@@ -1217,15 +1227,16 @@ function EditResidentModal({ isOpen, onClose, resident, wings, theme, onEditSucc
         updateData.status_reason = statusReason.trim();
       }
 
-      const { data, error: updateError } = await supabase
-        .from('residents')
-        .update(updateData)
-        .eq('id', resident.id)
-        .select()
-        .single();
+      const res = await fetch('/api/resident/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: resident.id, updates: updateData })
+      });
 
-      if (updateError) throw updateError;
-      onEditSuccess(data);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to update resident.');
+
+      onEditSuccess(json.data);
       onClose();
     } catch (err: any) {
       console.error(err);

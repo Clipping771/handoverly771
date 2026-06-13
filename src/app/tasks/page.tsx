@@ -551,20 +551,27 @@ export default function TasksPage() {
                               {activeLoggingTaskId === task.id && (
                                 <div className="mt-4 p-4 border-t border-border bg-surface-solid rounded-2xl space-y-3">
                                   <div className="text-[10px] font-bold text-text-secondary uppercase tracking-wider">Record Care Outcome (Quick Select)</div>
-                                  <div className="flex flex-wrap gap-2">
-                                    {getPresetsForTask(task).map(preset => (
-                                      <button
-                                        key={preset}
-                                        onClick={() => {
-                                          const isDeclinedVal = preset.toLowerCase().includes('refused') || preset.toLowerCase().includes('declined') || preset.toLowerCase().includes('slept through');
-                                          toggleTaskStatus(task.id, isCompleted, isDeclinedVal ? 'declined' : 'completed', preset);
-                                          setActiveLoggingTaskId(null);
-                                        }}
-                                        className="px-3 py-1.5 bg-surface hover:bg-slate-50 border border-border hover:border-indigo-300 rounded-xl text-xs font-semibold text-text-primary transition-all cursor-pointer"
-                                      >
-                                        {preset}
-                                      </button>
-                                    ))}
+                                  <div className="flex flex-wrap gap-2.5">
+                                    {getPresetsForTask(task).map(preset => {
+                                      const isNegative = preset.toLowerCase().includes('refused') || preset.toLowerCase().includes('declined') || preset.toLowerCase().includes('distressed');
+                                      return (
+                                        <button
+                                          key={preset}
+                                          onClick={() => {
+                                            const isDeclinedVal = preset.toLowerCase().includes('refused') || preset.toLowerCase().includes('declined') || preset.toLowerCase().includes('slept through');
+                                            toggleTaskStatus(task.id, isCompleted, isDeclinedVal ? 'declined' : 'completed', preset);
+                                            setActiveLoggingTaskId(null);
+                                          }}
+                                          className={`px-4 py-2 rounded-full text-xs font-bold transition-all duration-300 cursor-pointer shadow-sm hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 backdrop-blur-md ${
+                                            isNegative 
+                                              ? 'bg-white/40 text-rose-600 border border-white/50 hover:bg-white/60 hover:border-rose-300 dark:bg-black/20 dark:text-rose-400 dark:border-white/10 dark:hover:bg-black/40 dark:hover:border-rose-500/30' 
+                                              : 'bg-white/40 text-indigo-700 border border-white/50 hover:bg-white/60 hover:border-indigo-300 dark:bg-black/20 dark:text-indigo-400 dark:border-white/10 dark:hover:bg-black/40 dark:hover:border-indigo-500/30'
+                                          }`}
+                                        >
+                                          {preset}
+                                        </button>
+                                      );
+                                    })}
                                   </div>
                                   <div className="flex flex-col gap-2.5 w-full">
                                     <input
@@ -590,7 +597,7 @@ export default function TasksPage() {
                                           toggleTaskStatus(task.id, isCompleted, isDeclinedVal ? 'declined' : 'completed', val);
                                           setActiveLoggingTaskId(null);
                                         }}
-                                        className="flex-1 px-5 bg-[#1f1f1f] dark:bg-white hover:bg-black dark:hover:bg-slate-200 text-white dark:text-[#1f1f1f] rounded-xl text-[13px] font-bold shadow-sm transition-all cursor-pointer"
+                                        className="flex-1 px-5 bg-primary hover:opacity-90 text-white rounded-xl text-[13px] font-bold shadow-sm transition-all cursor-pointer"
                                       >
                                         Save
                                       </button>
@@ -735,10 +742,10 @@ export default function TasksPage() {
         ) : (
           <div className="space-y-6">
             {/* Pending Tasks */}
-            <div className="apple-card animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
+            <div className="apple-card rounded-[24px] overflow-hidden animate-fade-in-up shadow-sm border border-white/40 dark:border-white/10" style={{ animationDelay: '0.1s' }}>
               <button
                 onClick={() => setPendingExpanded(p => !p)}
-                className="w-full flex items-center justify-between px-6 py-5 bg-surface-solid border-b border-border text-left hover:bg-surface-hover transition-colors"
+                className="w-full flex items-center justify-between px-6 py-5 bg-transparent hover:bg-white/40 dark:hover:bg-white/5 transition-all text-left border-b border-white/20 dark:border-white/5 cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
               >
                 <div className="flex items-center gap-3">
                   <Clock className="w-5 h-5 text-indigo-500" />
@@ -765,10 +772,10 @@ export default function TasksPage() {
             </div>
 
             {/* Completed Tasks */}
-            <div className="apple-card animate-fade-in-up" style={{ animationDelay: '0.2s' }}>
+            <div className="apple-card rounded-[24px] overflow-hidden animate-fade-in-up shadow-sm border border-white/40 dark:border-white/10" style={{ animationDelay: '0.2s' }}>
               <button
                 onClick={() => setCompletedExpanded(c => !c)}
-                className="w-full flex items-center justify-between px-6 py-5 bg-surface-solid border-b border-border text-left hover:bg-surface-hover transition-colors"
+                className="w-full flex items-center justify-between px-6 py-5 bg-transparent hover:bg-white/40 dark:hover:bg-white/5 transition-all text-left border-b border-white/20 dark:border-white/5 cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
               >
                 <div className="flex items-center gap-3">
                   <CheckCircle2 className="w-5 h-5 text-emerald-500" />
@@ -793,10 +800,10 @@ export default function TasksPage() {
             </div>
 
             {/* Declined Tasks */}
-            <div className="apple-card animate-fade-in-up" style={{ animationDelay: '0.3s' }}>
+            <div className="apple-card rounded-[24px] overflow-hidden animate-fade-in-up shadow-sm border border-white/40 dark:border-white/10" style={{ animationDelay: '0.3s' }}>
               <button
                 onClick={() => setDeclinedExpanded(d => !d)}
-                className="w-full flex items-center justify-between px-6 py-5 bg-surface-solid border-b border-border text-left hover:bg-surface-hover transition-colors"
+                className="w-full flex items-center justify-between px-6 py-5 bg-transparent hover:bg-white/40 dark:hover:bg-white/5 transition-all text-left border-b border-white/20 dark:border-white/5 cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
               >
                 <div className="flex items-center gap-3">
                   <XCircle className="w-5 h-5 text-rose-500" />

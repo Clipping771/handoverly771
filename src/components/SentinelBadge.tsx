@@ -138,32 +138,44 @@ export default function SentinelBadge({
                 className="fixed right-0 top-0 bottom-0 z-[110] w-full max-w-[400px] bg-white/95 dark:bg-[#020617]/90 backdrop-blur-3xl border-l border-white/20 dark:border-white/10 shadow-[0_0_60px_-15px_rgba(0,0,0,0.5)] flex flex-col"
               >
               {/* Panel Header */}
-              <div className="p-6 border-b border-slate-200/50 dark:border-white/10 flex items-center justify-between bg-white/40 dark:bg-white/5 backdrop-blur-md">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-600 p-[1.5px] shadow-sm">
-                    <div className="w-full h-full bg-white dark:bg-slate-900 rounded-[10px] flex items-center justify-center">
-                      <ShieldAlert className="w-5 h-5 text-indigo-500" />
+              <div className="relative overflow-hidden p-6 border-b border-slate-200/50 dark:border-white/5 bg-gradient-to-br from-blue-50/50 via-white/50 to-cyan-50/50 dark:from-blue-950/20 dark:via-black/20 dark:to-cyan-950/20 backdrop-blur-xl">
+                {/* Decorative background glow */}
+                <div className="absolute -top-10 -right-10 w-32 h-32 bg-blue-500/10 dark:bg-blue-500/20 rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-cyan-500/10 dark:bg-cyan-500/20 rounded-full blur-3xl pointer-events-none" />
+                
+                <div className="relative z-10 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="relative flex-shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-500 p-[1px] shadow-lg shadow-blue-500/20">
+                      <div className="w-full h-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-[15px] flex items-center justify-center">
+                        <ShieldAlert className="w-6 h-6 text-blue-500 dark:text-blue-400 drop-shadow-sm" />
+                      </div>
+                      {/* Pulse ring around icon */}
+                      <div className="absolute inset-0 rounded-2xl border-2 border-blue-500/30 animate-ping" style={{ animationDuration: '3s' }}></div>
+                    </div>
+                    <div>
+                      <h3 className="text-base font-black text-slate-800 dark:text-white flex items-center gap-2 tracking-tight">
+                        Sentinel AI
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-500/20 border border-blue-200 dark:border-blue-500/30 shadow-sm shadow-blue-500/10">
+                          <span className="flex h-1.5 w-1.5 relative">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-500 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-blue-600 dark:bg-blue-400"></span>
+                          </span>
+                          <span className="text-[9px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-300">Live</span>
+                        </div>
+                      </h3>
+                      <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 mt-1 flex items-center gap-1.5">
+                        <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600"></span>
+                        Real-time Monitoring Chain
+                      </p>
                     </div>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2 tracking-tight">
-                      Sentinel Alerts Chain
-                      <span className="flex h-1.5 w-1.5 relative">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-indigo-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-indigo-500"></span>
-                      </span>
-                    </h3>
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 mt-0.5">
-                      Real-time AI Monitoring
-                    </p>
-                  </div>
+                  <button
+                    onClick={() => setIsOpen(false)}
+                    className="p-2.5 rounded-full bg-white/80 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 text-slate-400 hover:text-slate-700 dark:hover:text-white transition-all border border-slate-200/50 dark:border-white/5 shadow-sm hover:shadow-md hover:scale-105 active:scale-95"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
                 </div>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="p-2 rounded-xl bg-slate-100/50 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors border border-transparent hover:border-slate-300 dark:hover:border-white/10"
-                >
-                  <X className="w-4 h-4" />
-                </button>
               </div>
 
               {/* Panel Content */}
@@ -230,7 +242,7 @@ export default function SentinelBadge({
                     })}
 
                     {/* Proactive Critical Alerts */}
-                    {proactiveAlerts.filter(a => a.severity === 'critical').map(alert => (
+                    {proactiveAlerts.filter(a => a.severity === 'critical' && !dismissedIds.has(a.id)).map(alert => (
                       <div key={alert.id} className="p-4 bg-rose-500/5 dark:bg-rose-500/10 border border-rose-500/20 rounded-2xl space-y-2 backdrop-blur-sm shadow-sm hover:border-rose-500/40 transition-colors">
                         <div className="flex items-start gap-3">
                           <div className="w-8 h-8 rounded-full bg-rose-500/20 flex items-center justify-center shrink-0">
@@ -243,10 +255,13 @@ export default function SentinelBadge({
                             </p>
                           </div>
                         </div>
-                        {onAcknowledgeAlert && (
+                        {onAcknowledgeAlert && !dismissedIds.has(alert.id) && (
                           <div className="flex justify-end pt-2">
                             <button
-                              onClick={() => onAcknowledgeAlert(alert.id, alert.message, alert.residentId)}
+                              onClick={() => {
+                                setDismissedIds(prev => new Set(prev).add(alert.id));
+                                onAcknowledgeAlert(alert.id, alert.message, alert.residentId);
+                              }}
                               className="px-4 py-1.5 bg-[#E8445A] hover:bg-[#d63b50] text-white text-[11px] font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-rose-500/20 hover:shadow-lg"
                             >
                               Acknowledge
@@ -265,7 +280,7 @@ export default function SentinelBadge({
                       <span className="w-2 h-2 rounded-full bg-[#F5A623] animate-pulse"></span>
                       Warning / Emerging ({warningCount})
                     </h4>
-                    {proactiveAlerts.filter(a => a.severity === 'warning').map(alert => (
+                    {proactiveAlerts.filter(a => a.severity === 'warning' && !dismissedIds.has(a.id)).map(alert => (
                       <div key={alert.id} className="p-4 bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 rounded-2xl space-y-2 backdrop-blur-sm shadow-sm hover:border-amber-500/40 transition-colors">
                         <div className="flex items-start gap-3">
                           <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
@@ -278,10 +293,13 @@ export default function SentinelBadge({
                             </p>
                           </div>
                         </div>
-                        {onAcknowledgeAlert && (
+                        {onAcknowledgeAlert && !dismissedIds.has(alert.id) && (
                           <div className="flex justify-end pt-2">
                             <button
-                              onClick={() => onAcknowledgeAlert(alert.id, alert.message, alert.residentId)}
+                              onClick={() => {
+                                setDismissedIds(prev => new Set(prev).add(alert.id));
+                                onAcknowledgeAlert(alert.id, alert.message, alert.residentId);
+                              }}
                               className="px-4 py-1.5 bg-[#F5A623] hover:bg-[#e09418] text-white text-[11px] font-bold rounded-xl flex items-center gap-1.5 transition-all shadow-md shadow-amber-500/20 hover:shadow-lg"
                             >
                               Acknowledge

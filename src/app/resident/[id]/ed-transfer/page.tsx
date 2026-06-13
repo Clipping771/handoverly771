@@ -32,13 +32,21 @@ export default function EDTransferPage() {
         const { data: resData } = await supabase.from('residents').select('*').eq('id', residentId).single();
         if (resData) setResident(resData);
 
-        // Meds
-        const { data: medData, error: medErr } = await supabase.from('medication_profiles').select('*').eq('resident_id', residentId).eq('status', 'active');
-        if (!medErr && medData) setMeds(medData);
-
+        // Meds - Bypass RLS via API
+        const res = await fetch(`/api/medications?residentId=${residentId}`);
+        const medJson = await res.json();
+        if (res.ok && medJson.success && medJson.data) {
+          setMeds(medJson.data.filter((m: any) => m.status === 'active'));
+        }
         // Latest Handover (ISBAR)
         const { data: hData } = await supabase.from('handovers').select('*').eq('resident_id', residentId).order('created_at', { ascending: false }).limit(1).single();
-        if (hData) setLatestHandover(hData);
+        if (hData) {
+          if (hData.submitted_by) {
+            const { data: staffData } = await supabase.from('staff').select('name').eq('id', hData.submitted_by).single();
+            if (staffData) hData.submitted_by_name = staffData.name;
+          }
+          setLatestHandover(hData);
+        }
 
       } catch (err) {
         console.error(err);
@@ -116,10 +124,41 @@ export default function EDTransferPage() {
           </h2>
           {latestHandover ? (
             <div className="bg-slate-50 p-6 rounded-2xl print:bg-transparent print:border print:border-slate-300 print:rounded-none">
-              <div className="text-sm font-bold text-slate-500 mb-4">
-                Recorded by {latestHandover.submitted_by} on {new Date(latestHandover.created_at).toLocaleString()}
+              <div className="text-sm font-bold text-slate-500 mb-6">
+                Recorded by {latestHandover.submitted_by_name || 'Staff'} on {new Date(latestHandover.created_at).toLocaleString()}
               </div>
-              <div className="prose prose-sm max-w-none text-slate-800" dangerouslySetInnerHTML={{ __html: latestHandover.rn_summary }} />
+              <div className="space-y-4">
+                {latestHandover.rn_summary ? (
+                  <>
+                    {latestHandover.rn_summary.situation && (
+                      <div>
+                        <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Situation</h3>
+                        <p className="text-sm font-medium text-slate-800 whitespace-pre-wrap">{latestHandover.rn_summary.situation}</p>
+                      </div>
+                    )}
+                    {latestHandover.rn_summary.background && (
+                      <div>
+                        <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Background</h3>
+                        <p className="text-sm font-medium text-slate-800 whitespace-pre-wrap">{latestHandover.rn_summary.background}</p>
+                      </div>
+                    )}
+                    {latestHandover.rn_summary.assessment && (
+                      <div>
+                        <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Assessment</h3>
+                        <p className="text-sm font-medium text-slate-800 whitespace-pre-wrap">{latestHandover.rn_summary.assessment}</p>
+                      </div>
+                    )}
+                    {latestHandover.rn_summary.recommendation && (
+                      <div>
+                        <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Recommendation</h3>
+                        <p className="text-sm font-medium text-slate-800 whitespace-pre-wrap">{latestHandover.rn_summary.recommendation}</p>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-sm font-medium text-slate-800 whitespace-pre-wrap">{latestHandover.raw_input || 'No summary entered.'}</p>
+                )}
+              </div>
               
               {latestHandover.risk_flags && latestHandover.risk_flags.length > 0 && (
                 <div className="mt-6 p-4 bg-rose-50 border border-rose-200 rounded-xl print:border-rose-400">

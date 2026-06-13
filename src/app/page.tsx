@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { User2, LogOut, Clock, ShieldAlert, Sparkles, Brain, CheckCircle2, Sun, Moon, Activity, Inbox, Volume2, Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight } from 'lucide-react';
+import { User2, LogOut, Clock, ShieldAlert, Sparkles, Brain, CheckCircle2, Sun, Moon, Activity, Inbox, Volume2, Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, HeartHandshake } from 'lucide-react';
 import Link from 'next/link';
 import AdvancedCalendar from '@/components/AdvancedCalendar';
 import OnboardingTour from '@/components/OnboardingTour';
@@ -298,6 +298,13 @@ export default function Dashboard() {
     fetchAvailableDates();
     fetchSentinelData();
 
+    const handleRefresh = () => {
+      fetchHandovers();
+      fetchAvailableDates();
+      fetchSentinelData();
+    };
+    window.addEventListener('refresh_data', handleRefresh);
+
     const channel = supabase
       .channel('handover-updates')
       .on(
@@ -470,7 +477,7 @@ export default function Dashboard() {
                     ? 'bg-white shadow-md border border-white/50 text-primary dark:bg-slate-800'
                     : 'glass-pill text-text-secondary group-hover:bg-white/80'
                 }`}>
-                  <Sparkles className="w-6 h-6" />
+                  <HeartHandshake className="w-6 h-6" />
                 </div>
                 <span className={`text-[10px] font-bold uppercase tracking-widest ${filterRole === 'carer' ? 'text-primary' : 'text-text-secondary'}`}>Carer</span>
               </button>

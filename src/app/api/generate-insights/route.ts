@@ -56,7 +56,7 @@ export async function POST(request: Request) {
 
     const { data: timeline } = await supabase
       .from('activity_timeline')
-      .select('action_type, description, created_at')
+      .select('action_type, description, created_at, metadata')
       .eq('resident_id', residentId)
       .gte('created_at', fourteenDaysAgoStr)
       .order('created_at', { ascending: false });
@@ -72,6 +72,18 @@ export async function POST(request: Request) {
       if (!insightsData.proactive_alerts) {
         insightsData.proactive_alerts = [];
       }
+
+      // Strictly filter out any alerts that have been acknowledged in the timeline
+      const ackedAlertIds = new Set(
+        (timeline || [])
+          .filter(t => t.action_type === 'insight_acknowledged')
+          .map(t => t.metadata?.alert_id || null)
+          .filter(Boolean)
+      );
+
+      insightsData.proactive_alerts = insightsData.proactive_alerts.filter(
+        (alert: any) => !ackedAlertIds.has(alert.id)
+      );
 
       // Fetch facility config for feature flags
       const { data: facData } = await supabase
