@@ -20,21 +20,21 @@
   --green: #10B981; /* Soft Green */
 }
 
-/* Dark Mode (Deep Frosted Glass) */
+/* Dark Mode (Premium Deep Navy/OLED) */
 .dark {
-  --background: rgba(15, 23, 42, 0.6); 
-  --surface: rgba(30, 41, 59, 0.6); 
-  --surface-solid: #1E293B;
-  --border: rgba(255, 255, 255, 0.05);
-  --border-solid: #334155;
+  --background: #020617; /* Deep slate / OLED black feel */
+  --surface: rgba(15, 23, 42, 0.75); /* Rich translucent slate-900 */
+  --surface-solid: #0f172a;
+  --border: rgba(255, 255, 255, 0.08); /* Crisp subtle border */
+  --border-solid: #1e293b;
   
-  --text-1: #F8FAFC;
-  --text-2: #94A3B8;
+  --text-1: #f8fafc;
+  --text-2: #94a3b8;
   
-  --primary: #60A5FA;
-  --amber: #FCD34D;
-  --red: #F87171;
-  --green: #34D399;
+  --primary: #3b82f6; /* Vibrant professional blue */
+  --amber: #f59e0b;
+  --red: #ef4444;
+  --green: #10b981;
 }
 
 @theme inline {
@@ -93,8 +93,8 @@ body {
 }
 
 .dark .glass-pill {
-  background-color: rgba(30, 41, 59, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background-color: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 /* Custom Scrollbar */

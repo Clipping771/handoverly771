@@ -168,6 +168,29 @@ export default function TasksPage() {
 
   useEffect(() => {
     fetchTasks();
+
+    if (!facility) return;
+
+    // Real-time subscription to instantly update UI when tasks are added or changed
+    const taskSubscription = supabase
+      .channel('tasks-channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tasks', filter: `facility_id=eq.${facility.id}` },
+        (payload) => {
+          console.log('Realtime task update received!', payload);
+          // When a task is added/updated by someone else, show a toast and refetch
+          if (payload.eventType === 'INSERT') {
+            toast('New task assigned!', { icon: '🔔' });
+          }
+          fetchTasks();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(taskSubscription);
+    };
   }, [facility]);
 
   const toggleTaskStatus = async (

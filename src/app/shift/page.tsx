@@ -435,14 +435,15 @@ export default function MyShift() {
       
       toast.success('Alert acknowledged and muted.');
       
-      // Invalidate insights cache row so it updates
-      await fetch('/api/generate-insights', {
+      // Optimistically update UI so the badge clears instantly
+      setFacilityProactiveAlerts(prev => prev.filter(a => a.id !== alertId));
+      
+      // Invalidate insights cache row so it updates in the background (fire and forget)
+      fetch('/api/generate-insights', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ residentId, userKeys: {}, forceRefresh: true })
       });
-
-      fetchData();
     } catch (e: any) {
       console.error('Failed to acknowledge alert:', e);
       toast.error('Failed to acknowledge alert.');
@@ -460,6 +461,10 @@ export default function MyShift() {
       if (error) throw error;
       
       toast.success('Task marked as completed.');
+      
+      // Optimistically update UI so the task disappears instantly
+      setFacilityUnacknowledgedTasks(prev => prev.filter(t => t.id !== taskId));
+      
       fetchData();
     } catch (e: any) {
       console.error('Failed to complete task:', e);
@@ -469,9 +474,41 @@ export default function MyShift() {
 
   useEffect(() => {
     fetchData();
-    // Poll alerts every 30 seconds
+    // Poll alerts every 30 seconds as a fallback
     const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
+    
+    if (!facility) return;
+
+    // Real-time subscription for instant updates when tasks are added
+    const shiftSubscription = supabase
+      .channel('shift-tasks-channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tasks', filter: `facility_id=eq.${facility.id}` },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            toast('New task assigned!', { icon: '📋' });
+          }
+          fetchData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'resident_insights', filter: `facility_id=eq.${facility.id}` },
+        (payload) => {
+          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+            console.log('Insights updated via Realtime!');
+            toast('AI Insights & Alerts Updated!', { icon: '🛡️' });
+          }
+          fetchData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(shiftSubscription);
+    };
   }, [facility]);
 
   const handleLogout = async () => {

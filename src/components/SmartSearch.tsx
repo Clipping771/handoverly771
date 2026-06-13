@@ -320,7 +320,7 @@ export default function SmartSearch() {
 
       {/* Premium Glassmorphic Chat Drawer */}
       {isOpen && (
-        <div className="fixed bottom-6 right-6 w-[430px] h-[640px] max-h-[85vh] bg-white dark:bg-slate-900 border border-border rounded-[32px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.12)] z-50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
+        <div className="fixed bottom-6 right-6 w-[430px] h-[640px] max-h-[85vh] bg-white/95 dark:bg-[#0f172a]/85 backdrop-blur-3xl border border-border rounded-[32px] shadow-[0_25px_60px_-15px_rgba(0,0,0,0.3)] dark:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.7)] z-50 flex flex-col overflow-hidden animate-in slide-in-from-bottom-5 duration-300">
           
           {/* Accent colored top strip */}
           <div className="h-[3px] w-full bg-gradient-to-r from-primary via-indigo-500 to-primary"></div>
