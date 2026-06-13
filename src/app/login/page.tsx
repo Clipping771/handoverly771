@@ -167,20 +167,20 @@ export default function Login() {
           <div className="flex p-1 glass-pill rounded-full mb-6 border-white/60">
             <button
               onClick={() => { setIsLoginMode(true); setError(''); }}
-              className={`flex-1 py-2 text-xs font-bold rounded-full transition-all duration-300 tracking-widest uppercase focus:outline-none ${
+              className={`flex-1 py-2 text-xs font-bold rounded-full transition-transform active:scale-[0.98] tracking-widest uppercase focus:outline-none ${
                 isLoginMode
-                  ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 shadow-sm border border-white/50'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-white/50'
+                  ? 'bg-primary text-white shadow-md'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-white/50 dark:hover:bg-white/10'
               }`}
             >
               Sign In
             </button>
             <button
               onClick={() => { setIsLoginMode(false); setError(''); }}
-              className={`flex-1 py-2 text-xs font-bold rounded-full transition-all duration-300 tracking-widest uppercase focus:outline-none ${
+              className={`flex-1 py-2 text-xs font-bold rounded-full transition-transform active:scale-[0.98] tracking-widest uppercase focus:outline-none ${
                 !isLoginMode
-                  ? 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 shadow-sm border border-white/50'
-                  : 'text-text-secondary hover:text-text-primary hover:bg-white/50'
+                  ? 'bg-primary text-white shadow-md'
+                  : 'text-text-secondary hover:text-text-primary hover:bg-white/50 dark:hover:bg-white/10'
               }`}
             >
               Register
