@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Bell, X, ShieldAlert, AlertTriangle, AlertCircle, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -20,6 +21,11 @@ export default function SentinelBadge({
   const [isOpen, setIsOpen] = useState(false);
   const [seenIds, setSeenIds] = useState<Set<string>>(new Set());
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Load seen IDs on mount
   useEffect(() => {
@@ -56,22 +62,20 @@ export default function SentinelBadge({
   }, [isOpen, unacknowledgedTasks, proactiveAlerts, userId]);
 
   // Group alerts (For the panel view - shows everything)
-  const criticalCount = unacknowledgedTasks.length + proactiveAlerts.filter(a => a.severity === 'critical').length;
+  const criticalCount = unacknowledgedTasks.filter(t => !dismissedIds.has(t.id)).length + proactiveAlerts.filter(a => a.severity === 'critical').length;
   const warningCount = proactiveAlerts.filter(a => a.severity === 'warning').length;
 
   // Unseen counts (For the bell badge - shows only unseen)
-  const unseenCriticalCount = unacknowledgedTasks.filter(t => !seenIds.has(t.id)).length + 
+  const unseenCriticalCount = unacknowledgedTasks.filter(t => !seenIds.has(t.id) && !dismissedIds.has(t.id)).length + 
                               proactiveAlerts.filter(a => a.severity === 'critical' && !seenIds.has(a.id)).length;
   const unseenWarningCount = proactiveAlerts.filter(a => a.severity === 'warning' && !seenIds.has(a.id)).length;
   const unseenTotalCount = unseenCriticalCount + unseenWarningCount;
 
   // Badge configuration based ONLY on unseen alerts
   let badgeColor = '';
-  let pulseClass = '';
 
   if (unseenCriticalCount > 0) {
     badgeColor = 'bg-[#E8445A]'; // Red
-    pulseClass = 'animate-pulse scale-110';
   } else if (unseenWarningCount > 0) {
     badgeColor = 'bg-[#F5A623]'; // Amber
   } else if (unseenTotalCount > 0) {
@@ -115,23 +119,24 @@ export default function SentinelBadge({
       </div>
 
       {/* Slide-in Sidebar Panel */}
-      <AnimatePresence>
-        {isOpen && (
-          <>
-            {/* Backdrop */}
-            <div
-              className="fixed inset-0 z-40 bg-slate-900/30 dark:bg-black/60 backdrop-blur-xs transition-opacity"
-              onClick={() => setIsOpen(false)}
-            ></div>
+      {mounted && createPortal(
+        <AnimatePresence>
+          {isOpen && (
+            <>
+              {/* Backdrop */}
+              <div
+                className="fixed inset-0 z-[100] bg-slate-900/30 dark:bg-black/60 backdrop-blur-xs transition-opacity"
+                onClick={() => setIsOpen(false)}
+              ></div>
 
-            {/* Panel */}
-            <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-[400px] bg-white/95 dark:bg-[#020617]/90 backdrop-blur-3xl border-l border-white/20 dark:border-white/10 shadow-[0_0_60px_-15px_rgba(0,0,0,0.5)] flex flex-col"
-            >
+              {/* Panel */}
+              <motion.div
+                initial={{ x: '100%' }}
+                animate={{ x: 0 }}
+                exit={{ x: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="fixed right-0 top-0 bottom-0 z-[110] w-full max-w-[400px] bg-white/95 dark:bg-[#020617]/90 backdrop-blur-3xl border-l border-white/20 dark:border-white/10 shadow-[0_0_60px_-15px_rgba(0,0,0,0.5)] flex flex-col"
+              >
               {/* Panel Header */}
               <div className="p-6 border-b border-slate-200/50 dark:border-white/10 flex items-center justify-between bg-white/40 dark:bg-white/5 backdrop-blur-md">
                 <div className="flex items-center gap-3">
@@ -339,7 +344,9 @@ export default function SentinelBadge({
             </motion.div>
           </>
         )}
-      </AnimatePresence>
+        </AnimatePresence>,
+        document.body
+      )}
     </>
   );
 }
