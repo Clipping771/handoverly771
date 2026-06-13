@@ -3,6 +3,7 @@ import { Bell, X, ShieldAlert, AlertTriangle, AlertCircle, Check } from 'lucide-
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface SentinelBadgeProps {
+  userId: string;
   unacknowledgedTasks: any[];
   proactiveAlerts: any[];
   onAcknowledgeAlert?: (alertId: string, alertMessage: string, residentId?: string) => Promise<void>;
@@ -10,6 +11,7 @@ interface SentinelBadgeProps {
 }
 
 export default function SentinelBadge({
+  userId,
   unacknowledgedTasks = [],
   proactiveAlerts = [],
   onAcknowledgeAlert,
@@ -21,11 +23,11 @@ export default function SentinelBadge({
 
   // Load seen IDs on mount
   useEffect(() => {
-    const saved = localStorage.getItem('sentinel_seen_ids');
+    const saved = localStorage.getItem(`sentinel_seen_ids_${userId}`);
     if (saved) {
       try { setSeenIds(new Set(JSON.parse(saved))); } catch(e){}
     }
-  }, []);
+  }, [userId]);
 
   // When opening the panel, mark all current alerts/tasks as seen
   useEffect(() => {
@@ -46,12 +48,12 @@ export default function SentinelBadge({
         });
         
         if (changed) {
-          localStorage.setItem('sentinel_seen_ids', JSON.stringify(Array.from(newSet)));
+          localStorage.setItem(`sentinel_seen_ids_${userId}`, JSON.stringify(Array.from(newSet)));
         }
         return newSet;
       });
     }
-  }, [isOpen, unacknowledgedTasks, proactiveAlerts]);
+  }, [isOpen, unacknowledgedTasks, proactiveAlerts, userId]);
 
   // Group alerts (For the panel view - shows everything)
   const criticalCount = unacknowledgedTasks.length + proactiveAlerts.filter(a => a.severity === 'critical').length;

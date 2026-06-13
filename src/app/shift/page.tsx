@@ -736,6 +736,7 @@ function formatHandoverTime(dateStr?: string) {
               </button>
 
               <SentinelBadge
+                userId={user.id}
                 unacknowledgedTasks={facilityUnacknowledgedTasks}
                 proactiveAlerts={facilityProactiveAlerts}
                 onAcknowledgeAlert={handleAcknowledgeAlert}
@@ -778,6 +779,7 @@ function formatHandoverTime(dateStr?: string) {
                   </button>
                   <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200/60 dark:border-white/10 shadow-sm flex items-center justify-center">
                     <SentinelBadge
+                      userId={user.id}
                       unacknowledgedTasks={facilityUnacknowledgedTasks}
                       proactiveAlerts={facilityProactiveAlerts}
                       onAcknowledgeAlert={handleAcknowledgeAlert}
