@@ -768,44 +768,10 @@ export default function SmartSearch() {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Image Preview */}
-          {attachedImage && (
-            <div className="px-4 pb-2 pt-2 border-t border-border bg-white/20 dark:bg-black/10 backdrop-blur-md">
-              <div className="relative inline-block border border-border rounded-xl bg-surface/50 shadow-sm p-1">
-                <img src={attachedImage} alt="Preview" className="h-16 w-16 object-cover rounded-lg" />
-                <button 
-                  onClick={() => setAttachedImage(null)}
-                  className="absolute -top-2 -right-2 bg-slate-800 hover:bg-red-500 text-white rounded-full p-1 shadow-md transition-colors cursor-pointer"
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            </div>
-          )}
-
           {/* Input Area */}
           <form onSubmit={handleSend} className="p-4 bg-white/20 dark:bg-black/10 border-t border-border backdrop-blur-md">
-            <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileSelect} />
-            <input type="file" accept="image/*" capture="environment" className="hidden" ref={cameraInputRef} onChange={handleFileSelect} />
             
             <div className="relative flex items-center gap-2">
-              <button 
-                type="button" 
-                onClick={() => fileInputRef.current?.click()} 
-                className="p-2.5 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary rounded-full border border-border hover:border-primary/40 shadow-sm transition-all flex-shrink-0 cursor-pointer" 
-                title="Attach Image"
-              >
-                <Paperclip className="w-4 h-4" />
-              </button>
-              <button 
-                type="button" 
-                onClick={() => cameraInputRef.current?.click()} 
-                className="p-2.5 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary rounded-full border border-border hover:border-primary/40 shadow-sm transition-all flex-shrink-0 cursor-pointer" 
-                title="Take Photo"
-              >
-                <Camera className="w-4 h-4" />
-              </button>
-              
               <div className="flex-1 flex items-end bg-surface-solid border border-border rounded-2xl focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all shadow-inner py-1.5 pl-5 pr-1.5">
                 <textarea
                   value={query}

@@ -12,6 +12,7 @@ import toast from 'react-hot-toast';
 import { getAdelaideMidnightISO } from '@/lib/taskUtils';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
+import HeaderThemeSelector from '@/components/HeaderThemeSelector';
 
 interface Task {
   id: string;
@@ -694,12 +695,7 @@ export default function TasksPage() {
             <h1 className="font-bold text-xl tracking-tight">Shift Tasks</h1>
           </div>
           
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-full hover:bg-surface-hover text-text-secondary transition-colors"
-          >
-            {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4" />}
-          </button>
+          <HeaderThemeSelector />
         </div>
       </header>
 

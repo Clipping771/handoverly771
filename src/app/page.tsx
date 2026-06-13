@@ -3,9 +3,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContextProvider';
+import { motion, AnimatePresence } from 'framer-motion';
+import HeaderThemeSelector from '@/components/HeaderThemeSelector';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { User2, LogOut, Clock, ShieldAlert, Sparkles, Brain, CheckCircle2, Sun, Moon, Activity, Inbox, Volume2, Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, HeartHandshake } from 'lucide-react';
+import { User2, LogOut, Clock, ShieldAlert, Sparkles, Brain, CheckCircle2, Activity, Inbox, Volume2, Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, HeartHandshake } from 'lucide-react';
 import Link from 'next/link';
 import AdvancedCalendar from '@/components/AdvancedCalendar';
 import OnboardingTour from '@/components/OnboardingTour';
@@ -306,13 +308,26 @@ export default function Dashboard() {
     window.addEventListener('refresh_data', handleRefresh);
 
     const channel = supabase
-      .channel('handover-updates')
+      .channel('home-dashboard-updates')
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'handovers', filter: `facility_id=eq.${facility.id}` },
         () => {
           fetchHandovers();
           fetchAvailableDates();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'tasks', filter: `facility_id=eq.${facility.id}` },
+        () => {
+          fetchSentinelData();
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'resident_insights', filter: `facility_id=eq.${facility.id}` },
+        () => {
           fetchSentinelData();
         }
       )
@@ -353,29 +368,13 @@ export default function Dashboard() {
       <header className="sticky top-0 z-40 bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-2xl border-b border-slate-200/60 dark:border-white/10 px-6 md:px-8 py-4 transition-colors duration-300">
         <div className="max-w-[1400px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
-            {/* Themed Brand Logo Box */}
-            <div className="relative w-12 h-12 rounded-[18px] bg-gradient-to-br from-indigo-500 via-primary to-emerald-400 p-[1px] shadow-lg shadow-primary/20 shrink-0 group hover:scale-105 transition-transform duration-300">
-              <div className="w-full h-full bg-white/90 dark:bg-slate-900/90 rounded-[17px] flex items-center justify-center backdrop-blur-xl relative overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-primary/5"></div>
-                <span className="font-black text-xl bg-gradient-to-br from-indigo-600 to-primary bg-clip-text text-transparent relative z-10">H</span>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center font-bold text-lg text-primary border border-primary/20">
+                H
               </div>
-              <div className="absolute -inset-1 bg-gradient-to-br from-indigo-500 via-primary to-emerald-400 rounded-[20px] blur-md opacity-20 group-hover:opacity-40 transition-opacity duration-300 -z-10"></div>
-            </div>
-            <div className="flex flex-col justify-center">
-              <h1 className="text-[22px] font-black text-slate-800 dark:text-white tracking-tight leading-none mb-1.5">
+              <h1 className="text-[18px] font-bold text-text-primary tracking-tight">
                 {facility.name}
               </h1>
-              <div className="flex items-center gap-2">
-                <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200/60 dark:border-emerald-500/20 shadow-sm shadow-emerald-500/5">
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75 duration-1000"></span>
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
-                  </span>
-                  <span className="text-[9px] font-extrabold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest leading-none pt-[1px]">
-                    Live Handover
-                  </span>
-                </div>
-              </div>
             </div>
           </div>
 
@@ -391,14 +390,9 @@ export default function Dashboard() {
               onAcknowledgeTask={handleAcknowledgeTask}
             />
 
-            <button
-              id="tour-theme-toggle"
-              onClick={toggleTheme}
-              className="p-2 rounded-lg border border-transparent hover:border-border bg-surface-solid/50 hover:bg-surface-solid text-text-secondary hover:text-text-primary transition-all duration-200 shadow-sm"
-              title={theme === 'dark' ? "Switch to Day Mode" : "Switch to Night Mode"}
-            >
-              {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4" />}
-            </button>
+            <div id="tour-theme-toggle">
+              <HeaderThemeSelector />
+            </div>
 
             {isCarer ? (
               <Link
