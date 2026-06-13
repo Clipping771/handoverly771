@@ -332,8 +332,7 @@ export default function MyShift() {
       });
       setHandovers(statusMap);
 
-      // 3. Fetch Sentinel Alert Data: facility-wide unacknowledged tasks (>2 hours old)
-      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+      // 3. Fetch Sentinel Alert Data: facility-wide unacknowledged priority tasks (No time limit, immediate alerts)
       const { data: facilityTasks } = await supabase
         .from('tasks')
         .select(`
@@ -343,15 +342,12 @@ export default function MyShift() {
         `)
         .eq('facility_id', facility.id)
         .or('is_completed.is.null,is_completed.eq.false')
-        .lt('created_at', twoHoursAgo);
+        .order('created_at', { ascending: false });
 
       const filteredTasks = (facilityTasks || []).filter((t: any) => {
         const resObj = Array.isArray(t.resident) ? t.resident[0] : t.resident;
         if (!resObj || !resObj.is_active) return false;
-        
-        const urgency = t.handover?.urgency || 'routine';
-        const hasPriorityTag = t.tags?.includes('medication') || t.tags?.includes('incidents');
-        return urgency === 'critical' || urgency === 'attention' || hasPriorityTag;
+        return true; // Show all uncompleted tasks immediately as alerts for testing/visibility
       });
       setFacilityUnacknowledgedTasks(filteredTasks);
 
@@ -485,21 +481,14 @@ export default function MyShift() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'tasks', filter: `facility_id=eq.${facility.id}` },
-        (payload) => {
-          if (payload.eventType === 'INSERT') {
-            toast('New task assigned!', { icon: '📋' });
-          }
+        () => {
           fetchData();
         }
       )
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'resident_insights', filter: `facility_id=eq.${facility.id}` },
-        (payload) => {
-          if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
-            console.log('Insights updated via Realtime!');
-            toast('AI Insights & Alerts Updated!', { icon: '🛡️' });
-          }
+        () => {
           fetchData();
         }
       )

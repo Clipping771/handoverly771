@@ -177,12 +177,7 @@ export default function TasksPage() {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'tasks', filter: `facility_id=eq.${facility.id}` },
-        (payload) => {
-          console.log('Realtime task update received!', payload);
-          // When a task is added/updated by someone else, show a toast and refetch
-          if (payload.eventType === 'INSERT') {
-            toast('New task assigned!', { icon: '🔔' });
-          }
+        () => {
           fetchTasks();
         }
       )
