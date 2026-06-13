@@ -176,7 +176,18 @@ export default function SentinelBadge({
                             <AlertCircle className="w-4 h-4 text-[#E8445A]" />
                           </div>
                           <div>
-                            <span className="text-[13px] font-bold text-slate-800 dark:text-slate-200 leading-tight block mb-1">{t.title}</span>
+                            <div className="flex items-center flex-wrap gap-2 mb-1">
+                              <span className="text-[13px] font-bold text-slate-800 dark:text-slate-200 leading-tight">{t.title}</span>
+                              <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border ${
+                                t.assigned_role === 'rn' 
+                                  ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/10 dark:text-purple-300 dark:border-purple-500/20' 
+                                  : t.assigned_role === 'all'
+                                    ? 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                                    : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/20'
+                              }`}>
+                                {t.assigned_role === 'rn' ? 'For RNs' : t.assigned_role === 'all' ? 'For All Staff' : 'For Carers'}
+                              </span>
+                            </div>
                             <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">{t.description}</p>
                           </div>
                         </div>
