@@ -105,6 +105,10 @@ export default function ResidentProfile() {
     };
 
     fetchResident();
+
+    const handleRefresh = () => fetchResident();
+    window.addEventListener('refresh_data', handleRefresh);
+    return () => window.removeEventListener('refresh_data', handleRefresh);
   }, [residentId]);
 
   // Fetch wings when resident loads

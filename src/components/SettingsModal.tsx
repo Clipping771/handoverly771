@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Key, Server, Cpu, Eye, EyeOff } from 'lucide-react';
+import { X, Key, Server, Cpu, Eye, EyeOff, Globe, Shield, Link as LinkIcon, Zap, HardDrive } from 'lucide-react';
 import CustomModelSelector from './CustomModelSelector';
 import { motion } from 'framer-motion';
 
@@ -18,6 +18,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [groqModel, setGroqModel] = useState('');
   const [ollamaUrl, setOllamaUrl] = useState('');
   const [ollamaModel, setOllamaModel] = useState('');
+  const [activeProvider, setActiveProvider] = useState<'auto'|'smart_auto'|'anthropic'|'openrouter'|'groq'|'ollama'>('auto');
   
   const [showAnthropic, setShowAnthropic] = useState(false);
   const [showOpenrouter, setShowOpenrouter] = useState(false);
@@ -32,6 +33,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       setGroqModel(localStorage.getItem('user_groq_model') || 'llama-3.3-70b-versatile');
       setOllamaUrl(localStorage.getItem('user_ollama_url') || 'http://127.0.0.1:11434');
       setOllamaModel(localStorage.getItem('user_ollama_model') || 'llama3');
+      const savedProvider = localStorage.getItem('user_active_provider');
+      if (savedProvider) setActiveProvider(savedProvider as any);
     }
   }, [isOpen]);
 
@@ -43,6 +46,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     localStorage.setItem('user_groq_model', groqModel.trim() || 'llama-3.3-70b-versatile');
     localStorage.setItem('user_ollama_url', ollamaUrl.trim() || 'http://127.0.0.1:11434');
     localStorage.setItem('user_ollama_model', ollamaModel.trim() || 'llama3');
+    localStorage.setItem('user_active_provider', activeProvider);
     onClose();
   };
 
@@ -196,6 +200,44 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               <h4 className="text-[10.5px] font-sans font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
                 Active Engine Routing
               </h4>
+            </div>
+
+            {/* Provider Selection */}
+            <div className="space-y-2 mb-4">
+              <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Primary AI Engine</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: 'auto', label: 'Global Default', sub: 'Admin Settings', icon: Globe },
+                  { id: 'smart_auto', label: 'Smart Auto', sub: 'Fallback Logic', icon: Cpu },
+                  { id: 'anthropic', label: 'Anthropic', sub: 'Claude', icon: Shield },
+                  { id: 'openrouter', label: 'OpenRouter', sub: 'Any Model', icon: LinkIcon },
+                  { id: 'groq', label: 'Groq', sub: 'Ultra-Fast', icon: Zap },
+                  { id: 'ollama', label: 'Ollama', sub: 'Local AI', icon: HardDrive }
+                ].map(p => {
+                  const Icon = p.icon;
+                  return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setActiveProvider(p.id as any)}
+                    className={`flex flex-col items-start p-2.5 rounded-[14px] border text-left transition-all ${
+                      activeProvider === p.id 
+                        ? 'border-primary bg-primary/5 shadow-sm ring-1 ring-primary/20'
+                        : 'border-slate-200/50 dark:border-white/5 bg-white/40 dark:bg-black/20 hover:bg-white/80 dark:hover:bg-white/5'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Icon className={`w-3.5 h-3.5 ${activeProvider === p.id ? 'text-primary' : 'text-slate-400 dark:text-slate-500'}`} />
+                      <span className={`text-[11px] font-extrabold tracking-tight ${activeProvider === p.id ? 'text-primary' : 'text-slate-700 dark:text-slate-300'}`}>
+                        {p.label}
+                      </span>
+                    </div>
+                    <span className="text-[9px] font-semibold text-slate-500 dark:text-slate-500 truncate w-full">
+                      {p.sub}
+                    </span>
+                  </button>
+                )})}
+              </div>
             </div>
 
             {/* OpenRouter Model Selector */}

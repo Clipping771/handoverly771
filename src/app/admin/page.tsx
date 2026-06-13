@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { ShieldCheck, Plus, Trash2, Building, Users, AlertCircle, RefreshCw, Sun, Moon, Search, ChevronDown, LogOut, UserPlus, Edit3, Save, X, Eye, EyeOff } from 'lucide-react';
+import { ShieldCheck, Plus, Trash2, Building, Users, AlertCircle, AlertOctagon, RefreshCw, Sun, Moon, Search, ChevronDown, LogOut, UserPlus, Edit3, Save, X, Eye, EyeOff, Key, Server, Cpu } from 'lucide-react';
 import Link from 'next/link';
 import CustomModelSelector from '@/components/CustomModelSelector';
 
@@ -42,10 +42,10 @@ export default function AdminSetup() {
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
 
-  // Seeding states
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [residents, setResidents] = useState<Resident[]>([]);
   const [wings, setWings] = useState<Wing[]>([]);
+  const [sirsReports, setSirsReports] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Wings Form
@@ -86,6 +86,10 @@ export default function AdminSetup() {
   const [groqModel, setGroqModel] = useState('llama-3.3-70b-versatile');
   const [activeProvider, setActiveProvider] = useState<'auto' | 'anthropic' | 'openrouter' | 'groq' | 'ollama' | 'mock'>('auto');
   
+  const [showAnthropic, setShowAnthropic] = useState(false);
+  const [showOpenrouter, setShowOpenrouter] = useState(false);
+  const [showGroq, setShowGroq] = useState(false);
+  
   // Module Feature Flags
   const [sentinelEnabled, setSentinelEnabled] = useState(true);
   const [chronicleEnabled, setChronicleEnabled] = useState(true);
@@ -94,6 +98,7 @@ export default function AdminSetup() {
   const [feedback, setFeedback] = useState('');
   const [error, setError] = useState('');
   const [showToast, setShowToast] = useState(false);
+  const [showSirsReports, setShowSirsReports] = useState(true);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -205,6 +210,14 @@ export default function AdminSetup() {
         .eq('facility_id', facility.id)
         .eq('is_active', true);
       setResidents(resData || []);
+
+      // Fetch SIRS Reports
+      const { data: sirsData } = await supabase
+        .from('sirs_reports')
+        .select('id, incident_type, description, priority, status, created_at, resident_id, reporter_id')
+        .eq('facility_id', facility.id)
+        .order('created_at', { ascending: false });
+      setSirsReports(sirsData || []);
 
       // Fetch AI Config
       const { data: facilityData } = await supabase
@@ -537,6 +550,80 @@ export default function AdminSetup() {
         <div className="grid gap-8">
           
           
+          {/* SIRS INCIDENT REPORTS */}
+          <div className="space-y-6 bg-white/40 dark:bg-slate-800/40 backdrop-blur-3xl p-8 rounded-[32px] border border-white/60 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.06)] relative overflow-hidden group">
+            <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-rose-500/10 dark:from-rose-500/5 to-transparent pointer-events-none"></div>
+            
+            <button 
+              onClick={() => setShowSirsReports(!showSirsReports)}
+              className="w-full text-left text-xl font-bold flex items-center gap-3 border-b border-rose-200/50 dark:border-rose-900/30 pb-4 text-slate-800 dark:text-white relative hover:opacity-80 transition-opacity"
+            >
+              <div className="w-10 h-10 rounded-[14px] bg-rose-50 dark:bg-rose-500/10 shadow-sm border border-rose-100 dark:border-rose-500/20 flex items-center justify-center shrink-0">
+                <AlertOctagon className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+              </div>
+              SIRS Incident Reports
+              <div className="ml-auto flex items-center gap-3">
+                <span className="px-3 py-1 bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400 text-xs font-bold rounded-full">
+                  {sirsReports.length} Reports
+                </span>
+                {showSirsReports ? <ChevronDown className="w-5 h-5 text-slate-400 transition-transform" /> : <ChevronDown className="w-5 h-5 text-slate-400 -rotate-90 transition-transform" />}
+              </div>
+            </button>
+
+            {showSirsReports && (
+              <>
+                {sirsReports.length === 0 ? (
+              <div className="p-8 text-center bg-white/30 dark:bg-black/10 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
+                <AlertOctagon className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+                <p className="text-slate-500 font-medium">No SIRS reports have been submitted yet.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto rounded-[24px] border border-white/45 dark:border-white/5 shadow-inner bg-white/30 dark:bg-black/10">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-white/40 dark:bg-white/5 border-b border-white/50 dark:border-white/10">
+                      <th className="py-4 px-6 text-[10px] font-bold uppercase tracking-widest text-slate-500">Date/Time</th>
+                      <th className="py-4 px-6 text-[10px] font-bold uppercase tracking-widest text-slate-500">Category</th>
+                      <th className="py-4 px-6 text-[10px] font-bold uppercase tracking-widest text-slate-500">Priority</th>
+                      <th className="py-4 px-6 text-[10px] font-bold uppercase tracking-widest text-slate-500">Description</th>
+                      <th className="py-4 px-6 text-[10px] font-bold uppercase tracking-widest text-slate-500">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/40 dark:divide-white/5">
+                    {sirsReports.map((report) => (
+                      <tr key={report.id} className="hover:bg-white/50 dark:hover:bg-white/5 transition-colors">
+                        <td className="py-4 px-6 text-sm text-slate-600 dark:text-slate-400 font-medium whitespace-nowrap">
+                          {new Date(report.created_at).toLocaleString()}
+                        </td>
+                        <td className="py-4 px-6 text-sm font-bold text-slate-800 dark:text-slate-200">
+                          {report.incident_type}
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className={`px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full ${
+                            report.priority === 'critical' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30' : 'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 border border-amber-200 dark:border-amber-500/30'
+                          }`}>
+                            {report.priority === 'critical' ? 'Critical (24h)' : 'High (30d)'}
+                          </span>
+                        </td>
+                        <td className="py-4 px-6 text-sm text-slate-600 dark:text-slate-400 max-w-xs truncate" title={report.description}>
+                          {report.description}
+                        </td>
+                        <td className="py-4 px-6">
+                          <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-widest rounded-full bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                            {report.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            </>
+          )}
+          </div>
+
+          
           {/* STAFF MANAGEMENT */}
           <div className="space-y-8 bg-white/40 dark:bg-slate-800/40 backdrop-blur-3xl p-8 rounded-[32px] border border-white/60 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.06)] relative overflow-hidden group">
             <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-white/20 dark:from-white/5 to-transparent pointer-events-none"></div>
@@ -864,31 +951,55 @@ export default function AdminSetup() {
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">Anthropic Claude (Official)</h4>
+              <div className="space-y-3 bg-white/30 dark:bg-black/10 p-6 rounded-[24px] border border-white/40 dark:border-white/5 shadow-inner">
+                <div className="flex items-center gap-2 mb-2 border-b border-white/50 dark:border-white/5 pb-2">
+                  <Key className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Anthropic Claude (Official)</h4>
+                </div>
                 <div>
                   <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block mb-1.5 pl-1">API Key</label>
-                  <input
-                    type="password"
-                    value={anthropicKey}
-                    onChange={(e) => setAnthropicKey(e.target.value)}
-                    placeholder="sk-ant-..."
-                    className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showAnthropic ? "text" : "password"}
+                      value={anthropicKey}
+                      onChange={(e) => setAnthropicKey(e.target.value)}
+                      placeholder="sk-ant-..."
+                      className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] pl-4 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowAnthropic(!showAnthropic)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 cursor-pointer outline-none focus:outline-none"
+                    >
+                      {showAnthropic ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">OpenRouter (Cloud Models)</h4>
+              <div className="space-y-3 bg-white/30 dark:bg-black/10 p-6 rounded-[24px] border border-white/40 dark:border-white/5 shadow-inner">
+                <div className="flex items-center gap-2 mb-2 border-b border-white/50 dark:border-white/5 pb-2">
+                  <Server className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">OpenRouter (Cloud Models)</h4>
+                </div>
                 <div>
                   <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block mb-1.5 pl-1">API Key</label>
-                  <input
-                    type="password"
-                    value={openrouterKey}
-                    onChange={(e) => setOpenrouterKey(e.target.value)}
-                    placeholder="sk-or-v1-..."
-                    className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner mb-3"
-                  />
+                  <div className="relative mb-3">
+                    <input
+                      type={showOpenrouter ? "text" : "password"}
+                      value={openrouterKey}
+                      onChange={(e) => setOpenrouterKey(e.target.value)}
+                      placeholder="sk-or-v1-..."
+                      className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] pl-4 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowOpenrouter(!showOpenrouter)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 cursor-pointer outline-none focus:outline-none"
+                    >
+                      {showOpenrouter ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                   <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block mb-1.5 pl-1">Model</label>
                   <CustomModelSelector
                     value={openrouterModel}
@@ -899,17 +1010,29 @@ export default function AdminSetup() {
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">Groq (Llama 3 / Mixtral)</h4>
+              <div className="space-y-3 bg-white/30 dark:bg-black/10 p-6 rounded-[24px] border border-white/40 dark:border-white/5 shadow-inner">
+                <div className="flex items-center gap-2 mb-2 border-b border-white/50 dark:border-white/5 pb-2">
+                  <Cpu className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Groq (Llama 3 / Mixtral)</h4>
+                </div>
                 <div>
                   <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block mb-1.5 pl-1">API Key</label>
-                  <input
-                    type="password"
-                    value={groqKey}
-                    onChange={(e) => setGroqKey(e.target.value)}
-                    placeholder="gsk_..."
-                    className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner mb-3"
-                  />
+                  <div className="relative mb-3">
+                    <input
+                      type={showGroq ? "text" : "password"}
+                      value={groqKey}
+                      onChange={(e) => setGroqKey(e.target.value)}
+                      placeholder="gsk_..."
+                      className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] pl-4 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowGroq(!showGroq)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 cursor-pointer outline-none focus:outline-none"
+                    >
+                      {showGroq ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                   <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block mb-1.5 pl-1">Model</label>
                   <CustomModelSelector
                     value={groqModel}
@@ -920,9 +1043,12 @@ export default function AdminSetup() {
                 </div>
               </div>
 
-              <div className="space-y-3">
-                <h4 className="text-sm font-bold text-slate-700 dark:text-slate-300">Ollama (Local Offline)</h4>
-                <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-3 bg-white/30 dark:bg-black/10 p-6 rounded-[24px] border border-white/40 dark:border-white/5 shadow-inner">
+                <div className="flex items-center gap-2 mb-2 border-b border-white/50 dark:border-white/5 pb-2">
+                  <Server className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Ollama (Local Offline)</h4>
+                </div>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
                   <div>
                     <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block mb-1.5 pl-1">Server URL</label>
                     <input
@@ -930,7 +1056,7 @@ export default function AdminSetup() {
                       value={ollamaUrl}
                       onChange={(e) => setOllamaUrl(e.target.value)}
                       placeholder="http://localhost:11434"
-                      className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner"
+                      className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner font-mono"
                     />
                   </div>
                   <div>
@@ -940,7 +1066,7 @@ export default function AdminSetup() {
                       value={ollamaModel}
                       onChange={(e) => setOllamaModel(e.target.value)}
                       placeholder="llama3"
-                      className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner"
+                      className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] px-4 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner font-mono"
                     />
                   </div>
                 </div>

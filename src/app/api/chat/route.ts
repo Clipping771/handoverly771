@@ -6,24 +6,21 @@ import { parseUntilDate, getAdelaideTodayStr } from '@/lib/taskUtils';
 
 export async function POST(request: Request) {
   try {
-    const { query, facilityId, userRole, userId, userKeys: clientUserKeys, chatHistory = [] } = await request.json();
+    const { query, facilityId, userRole, userId, userKeys: clientUserKeys, chatHistory = [], image } = await request.json();
 
     if (!query || !facilityId) {
       return NextResponse.json({ error: 'Query and Facility ID are required' }, { status: 400 });
     }
 
-    const { data: facilityData, error: facilityError } = await supabase
-      .from('facilities')
-      .select('ai_config')
-      .eq('id', facilityId)
-      .single();
-
-    if (facilityError) {
-      return NextResponse.json({ error: 'Failed to fetch facility configuration' }, { status: 500 });
-    }
-
-    const aiConfig = facilityData?.ai_config || {};
-    const provider = aiConfig.activeProvider || 'auto';
+    // Fetch Global Facility Config
+    const { data: facilityConf } = await supabaseAdmin.from('facility_configurations').select('ai_config').eq('facility_id', facilityId).single();
+    const aiConfig = facilityConf?.ai_config || {};
+    const globalProvider = aiConfig.activeProvider || 'auto';
+    
+    // User preference overrides global, unless user is set to 'auto'
+    let provider = clientUserKeys?.activeProvider && clientUserKeys.activeProvider !== 'auto' ? clientUserKeys.activeProvider : globalProvider;
+    
+    if (provider === 'smart_auto') provider = 'auto';
     const userKeys = { ...(aiConfig.keys || {}), ...(clientUserKeys || {}) };
 
     // Prepare full conversation messages payload
@@ -150,20 +147,22 @@ RECENT CLINICAL HISTORY (Last 14 days):
 ${contextStr}
 
 CAPABILITIES & ACTION PROTOCOL:
-You possess the ability to perform EXACTLY NINE autonomous actions in the system via JSON outputs.
+You possess the ability to perform EXACTLY ELEVEN autonomous actions in the system via JSON outputs.
 1. CREATE_TASK: Create a clinical task for a resident.
 2. LOG_OBSERVATION: Log a clinical event or observation in the resident's timeline.
 3. UPDATE_RESIDENT: Update basic profile details of an existing resident (requires resident_id and an 'updates' object containing fields like name, room_number, care_level, is_active, status_reason, wing_id).
 4. REGISTER_RESIDENT: Register a new resident to the facility directory (requires name, room_number, dob, care_level, wing_id).
 5. DELETE_RESIDENT: Permanently remove a resident profile from the system (requires resident_id).
 6. ADD_MEDICATION: Add a new medication to a resident's active profile (requires resident_id, medication_name, dosage, frequency, route).
-7. CHANGE_THEME: Switch the application's UI theme (theme can be "light" or "dark").
-8. NAVIGATE_TO: Redirect the user to a specific page URL (e.g. /shift, /resident/[uuid], /tasks).
-9. UPDATE_API_KEY: Save or update the user's API key for an AI provider (requires 'provider' which must be anthropic, openrouter, or groq, and 'key').
+7. REMOVE_MEDICATION: Discontinue or remove a medication from a resident's profile (requires resident_id and medication_name).
+8. RECONCILE_MEDICATION: Mark a resident's medication as verified and reconciled (requires resident_id and medication_name).
+9. CHANGE_THEME: Switch the application's UI theme (theme can be "light" or "dark").
+10. NAVIGATE_TO: Redirect the user to a specific page URL (e.g. /shift, /resident/[uuid], /tasks).
+11. UPDATE_API_KEY: Save or update the user's API key for an AI provider (requires 'provider' which must be anthropic, openrouter, or groq, and 'key').
 
-IMPORTANT NOTIFICATION: Before executing ANY destructive or modifying action (UPDATE_RESIDENT, REGISTER_RESIDENT, DELETE_RESIDENT, ADD_MEDICATION), you MUST output a JSON block wrapped in <confirm_action> tags INSTEAD of <action> tags. Do NOT ask the user to type "yes" or "do it". Just output the <confirm_action> block at the VERY END of your response and the UI will present a confirmation button to the user automatically. 
+IMPORTANT NOTIFICATION: Before executing ANY destructive or modifying action (UPDATE_RESIDENT, REGISTER_RESIDENT, DELETE_RESIDENT, ADD_MEDICATION, REMOVE_MEDICATION, RECONCILE_MEDICATION), you MUST output a JSON block wrapped in <confirm_action> tags INSTEAD of <action> tags. Do NOT ask the user to type "yes" or "do it". Just output the <confirm_action> block at the VERY END of your response and the UI will present a confirmation button to the user automatically. 
 
-CRITICAL PROTOCOL: YOU ARE NEVER ALLOWED TO USE <action> FOR UPDATE_RESIDENT, REGISTER_RESIDENT, DELETE_RESIDENT, OR ADD_MEDICATION. IF YOU USE <action> FOR THESE, THE SYSTEM WILL FAIL. YOU MUST EXCLUSIVELY USE <confirm_action>.
+CRITICAL PROTOCOL: YOU ARE NEVER ALLOWED TO USE <action> FOR UPDATE_RESIDENT, REGISTER_RESIDENT, DELETE_RESIDENT, ADD_MEDICATION, REMOVE_MEDICATION, OR RECONCILE_MEDICATION. IF YOU USE <action> FOR THESE, THE SYSTEM WILL FAIL. YOU MUST EXCLUSIVELY USE <confirm_action>.
 
 For all other non-destructive actions (CREATE_TASK, LOG_OBSERVATION, CHANGE_THEME, NAVIGATE_TO, UPDATE_API_KEY), use standard <action> tags at the VERY END of your response.
 
@@ -187,6 +186,24 @@ Example to add medication:
   "dosage": "500mg",
   "frequency": "Twice daily",
   "route": "Oral"
+}
+</confirm_action>
+
+Example to remove medication:
+<confirm_action>
+{
+  "type": "REMOVE_MEDICATION",
+  "resident_id": "uuid",
+  "medication_name": "Paracetamol"
+}
+</confirm_action>
+
+Example to reconcile medication:
+<confirm_action>
+{
+  "type": "RECONCILE_MEDICATION",
+  "resident_id": "uuid",
+  "medication_name": "Paracetamol"
 }
 </confirm_action>
 
@@ -224,6 +241,9 @@ COGNITIVE & BEHAVIORAL PROTOCOL (HUMAN-LIKE AGENCY):
 5. SENSE OF URGENCY: Prioritize tasks and handovers flagged with 'High' urgency. Treat the clinical data as real, critical health information where human lives are involved. Be highly professional, empathetic, and exceptionally sharp.
 
 RESPONSE GUIDELINES:
+- MULTILINGUAL & NATIVE FLUENCY: You MUST reply in the exact language, dialect, and script the user uses.
+  - CRITICAL FOR BENGALI/BANGLISH: NEVER use highly formal, robotic, or literal bookish Bengali (e.g. do not translate "Incident" to "ইনসিডেন্ট" or "Resident" to "রিজিডেন্ট" in pure script if it sounds unnatural). Instead, speak colloquially, warmly, and naturally, just like a real person from Bangladesh would speak. It is highly encouraged to use English clinical terms natively within the Bengali/Banglish sentences (e.g., "Resident-এর incident report", "Fall risk", "Handover") rather than translating them into awkward Bengali script. If the user writes in English script (Banglish), you MUST reply in Banglish. 
+- DEEP EMPATHY & INTELLIGENCE: Be exceptionally brainy, clever, and highly responsive. Read between the lines to truly understand what the user needs. Make the user feel deeply understood and supported. Do not be a generic robot; inject warm personality and deep clinical wisdom into your responses.
 - Be highly professional, clever, and concise. Speak like a senior clinical coordinator. Do not use repetitive phrasing.
 - GRAPHS AND CHARTS: If the user asks for a visual graph or chart, you MUST use Mermaid.js markdown code blocks. You are ONLY allowed to use 'pie' charts, 'graph TD' (flowcharts), or 'xychart-beta' (for bar charts). 
   - For bar charts, you MUST start exactly with 'xychart-beta' (not 'bar'). Example:
@@ -254,12 +274,27 @@ RESPONSE GUIDELINES:
     if ((targetProvider === 'auto' || targetProvider === 'anthropic') && anthropicKey && !answerStr) {
       try {
         const client = new Anthropic({ apiKey: anthropicKey });
+        // Format for Anthropic Vision
+        let anthropicMessages = [...providerMessages];
+        if (image) {
+          const match = image.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+          if (match) {
+            anthropicMessages[anthropicMessages.length - 1] = {
+              role: 'user',
+              content: [
+                { type: 'image', source: { type: 'base64', media_type: match[1], data: match[2] } },
+                { type: 'text', text: query }
+              ]
+            };
+          }
+        }
+
         const msg = await client.messages.create({
           model: 'claude-3-5-haiku-20241022',
           max_tokens: 2000,
           temperature: 0.1,
           system: systemPrompt,
-          messages: providerMessages,
+          messages: anthropicMessages,
         });
         answerStr = msg.content[0].type === 'text' ? msg.content[0].text : '';
       } catch (err: any) {
@@ -272,6 +307,18 @@ RESPONSE GUIDELINES:
     if ((targetProvider === 'auto' || targetProvider === 'openrouter') && openrouterKey && !answerStr) {
       try {
         const model = userKeys?.openrouterModel || process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash';
+        // Format for OpenRouter/OpenAI Vision
+        let openRouterMessages = [...providerMessages];
+        if (image) {
+          openRouterMessages[openRouterMessages.length - 1] = {
+            role: 'user',
+            content: [
+              { type: 'text', text: query },
+              { type: 'image_url', image_url: { url: image } }
+            ]
+          };
+        }
+
         const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -284,7 +331,7 @@ RESPONSE GUIDELINES:
             model,
             messages: [
               { role: 'system', content: systemPrompt },
-              ...providerMessages
+              ...openRouterMessages
             ],
             temperature: 0.1
           })
@@ -293,7 +340,20 @@ RESPONSE GUIDELINES:
         if (res.ok && data.choices && data.choices[0]) {
           answerStr = data.choices[0].message?.content || '';
         } else {
-          throw new Error(data.error?.message || 'OpenRouter error');
+          console.error("OpenRouter Error Data:", JSON.stringify(data, null, 2));
+          let errorMsg = data.error?.message || 'OpenRouter error';
+          if (errorMsg === 'Provider returned error' && data.error?.metadata?.raw) {
+            try {
+              const rawObj = JSON.parse(data.error.metadata.raw);
+              if (rawObj.error?.message) {
+                errorMsg = `Upstream AI Error: ${rawObj.error.message}`;
+              }
+            } catch (e) {}
+          }
+          if (image && errorMsg.toLowerCase().includes('provider')) {
+            errorMsg = `Vision Error: The selected OpenRouter model may not support images. (${errorMsg})`;
+          }
+          throw new Error(errorMsg);
         }
       } catch (err: any) {
         if (targetProvider !== 'auto') throw err;
@@ -336,6 +396,19 @@ RESPONSE GUIDELINES:
     if ((targetProvider === 'auto' || targetProvider === 'ollama') && !answerStr) {
       try {
         const model = userKeys?.ollamaModel || process.env.OLLAMA_MODEL || 'llama3';
+        // Format for Ollama Vision
+        let ollamaMessages = [...providerMessages];
+        if (image) {
+          const match = image.match(/^data:image\/[a-zA-Z+]+;base64,(.+)$/);
+          if (match) {
+            ollamaMessages[ollamaMessages.length - 1] = {
+              role: 'user',
+              content: query,
+              images: [match[1]]
+            };
+          }
+        }
+
         const res = await fetch(`${ollamaUrl}/api/chat`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -343,7 +416,7 @@ RESPONSE GUIDELINES:
             model,
             messages: [
               { role: 'system', content: systemPrompt },
-              ...providerMessages
+              ...ollamaMessages
             ],
             options: { temperature: 0.1 },
             stream: false
@@ -376,7 +449,11 @@ RESPONSE GUIDELINES:
     
     for (const match of matches) {
       try {
-        const rawJson = match[1].replace(/```json/gi, '').replace(/```/g, '').trim();
+        let rawJson = match[1].replace(/```json/gi, '').replace(/```/g, '').trim();
+        const jsonMatch = rawJson.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          rawJson = jsonMatch[0];
+        }
         const actionPayload = JSON.parse(rawJson);
 
         // Execute the action in Supabase
@@ -402,7 +479,7 @@ RESPONSE GUIDELINES:
             resident_id: actionPayload.resident_id,
             staff_id: userId,
             action_type: actionPayload.action_type || 'clinical_observation',
-            description: actionPayload.description,
+            description: actionPayload.description || actionPayload.notes || actionPayload.content || 'Clinical Observation Logged',
             metadata: actionPayload.metadata || {}
           });
 
@@ -477,6 +554,29 @@ RESPONSE GUIDELINES:
             console.error('Add Medication Action Error:', error);
             answerStr = answerStr.replace('Action executed successfully.', `Failed to execute action: ${error.message}`);
           }
+        } else if (actionPayload.type === 'REMOVE_MEDICATION') {
+          const { error } = await supabaseAdmin.from('medication_profiles')
+            .delete()
+            .eq('resident_id', actionPayload.resident_id)
+            .ilike('medication_name', actionPayload.medication_name);
+          if (!error) executedActions.push(actionPayload);
+          else {
+            console.error('Remove Medication Action Error:', error);
+            answerStr = answerStr.replace('Action executed successfully.', `Failed to execute action: ${error.message}`);
+          }
+        } else if (actionPayload.type === 'RECONCILE_MEDICATION') {
+          const { error } = await supabaseAdmin.from('medication_profiles')
+            .update({
+              last_reconciled_at: new Date().toISOString(),
+              last_reconciled_by: userId
+            })
+            .eq('resident_id', actionPayload.resident_id)
+            .ilike('medication_name', actionPayload.medication_name);
+          if (!error) executedActions.push(actionPayload);
+          else {
+            console.error('Reconcile Medication Action Error:', error);
+            answerStr = answerStr.replace('Action executed successfully.', `Failed to execute action: ${error.message}`);
+          }
         } else if (actionPayload.type === 'CHANGE_THEME' || actionPayload.type === 'NAVIGATE_TO' || actionPayload.type === 'UPDATE_API_KEY') {
           // Client-side actions, just pass them back to the frontend
           executedActions.push(actionPayload);
@@ -497,12 +597,16 @@ RESPONSE GUIDELINES:
     const confirmMatches = Array.from(cleanAnswer.matchAll(confirmRegex));
     if (confirmMatches.length > 0) {
       try {
-        const rawJson = confirmMatches[0][1].replace(/```json/gi, '').replace(/```/g, '').trim();
+        let rawJson = confirmMatches[0][1].replace(/```json/gi, '').replace(/```/g, '').trim();
+        const jsonMatch = rawJson.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          rawJson = jsonMatch[0];
+        }
         pendingAction = JSON.parse(rawJson);
         cleanAnswer = cleanAnswer.replace(/<confirm_action>[\s\S]*?<\/confirm_action>/g, '').trim();
       } catch (e) {
         console.error('Failed to parse confirm_action JSON:', e, confirmMatches[0][1]);
-        // Do not strip the block if parsing fails, so the user/developer can see what went wrong
+        cleanAnswer = "⚠️ The AI attempted to perform an action but failed to generate valid parameters. Please try again.";
       }
     }
 

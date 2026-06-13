@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { CheckCircle2, Circle, Clock, Sun, Moon, ArrowLeft, Stethoscope, User, HeartHandshake, ChevronDown, ChevronUp, XCircle } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, Sun, Moon, ArrowLeft, Stethoscope, User, HeartHandshake, ChevronDown, ChevronUp, XCircle, Calendar } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -54,7 +54,8 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterTab, setFilterTab] = useState<'my_tasks' | 'all_tasks'>('my_tasks');
-  const [pendingExpanded, setPendingExpanded] = useState(true);
+  const [carePlansExpanded, setCarePlansExpanded] = useState(true);
+  const [pendingExpanded, setPendingExpanded] = useState(false);
   const [completedExpanded, setCompletedExpanded] = useState(false);
   const [declinedExpanded, setDeclinedExpanded] = useState(false);
   const [expandedRooms, setExpandedRooms] = useState<Record<string, boolean>>({});
@@ -67,31 +68,10 @@ export default function TasksPage() {
     }
   }, [user, authLoading, router]);
 
-  useGSAP(() => {
-    const cards = gsap.utils.toArray('.apple-card');
-    cards.forEach((card: any) => {
-      const enter = () => gsap.to(card, { boxShadow: '0 10px 40px -10px rgba(15,118,110,0.08)', y: -2, duration: 0.25 });
-      const leave = () => gsap.to(card, { boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 10px 30px -10px rgba(0, 0, 0, 0.02)', y: 0, duration: 0.25 });
-      
-      card.addEventListener('mouseenter', enter);
-      card.addEventListener('mouseleave', leave);
-      return () => {
-        card.removeEventListener('mouseenter', enter);
-        card.removeEventListener('mouseleave', leave);
-      };
-    });
-  }, { dependencies: [tasks, filterTab, pendingExpanded, completedExpanded, declinedExpanded, expandedRooms] });
+
 
   const handleGsapTaskCompletion = (taskId: string, e: React.MouseEvent) => {
-    const target = e.currentTarget as HTMLElement;
-    const icon = target.querySelector('svg');
-    
-    // Give satisfying feedback on the icon, then show the outcome input
-    gsap.timeline()
-      .to(icon, { scale: 1.3, duration: 0.15, color: '#0F766E' })
-      .to(icon, { scale: 1, duration: 0.15, onComplete: () => {
-        setActiveLoggingTaskId(taskId);
-      } });
+    setActiveLoggingTaskId(taskId);
   };
 
   const fetchTasks = async () => {
@@ -320,9 +300,13 @@ export default function TasksPage() {
     }
   };
 
-  // Filter tasks based on the active tab
   const filteredTasks = useMemo(() => {
     return tasks.filter(t => {
+      // Short-Term Care Plans are global, everyone should always see them
+      if (t.carry_until_date != null) {
+        return true;
+      }
+
       if (filterTab === 'my_tasks') {
         if (!user) return false;
 
@@ -342,17 +326,30 @@ export default function TasksPage() {
     });
   }, [tasks, filterTab, user, completions, isRN, isCarer]);
 
+  const carryOverTasks = useMemo(() => filteredTasks.filter(t => t.carry_until_date != null), [filteredTasks]);
+
   const pendingTasks = useMemo(() => filteredTasks.filter(t => {
-    const isCompleted = t.carry_until_date ? (completions[t.id]?.status === 'completed') : t.is_completed;
+    if (t.carry_until_date != null) return false;
+    const isCompleted = t.is_completed;
     return !isCompleted && completions[t.id]?.status !== 'declined';
   }), [filteredTasks, completions]);
 
   const completedTasks = useMemo(() => filteredTasks.filter(t => {
-    const isCompleted = t.carry_until_date ? (completions[t.id]?.status === 'completed') : t.is_completed;
+    if (t.carry_until_date != null) return false;
+    const isCompleted = t.is_completed || completions[t.id]?.status === 'completed';
     return isCompleted && completions[t.id]?.status !== 'declined';
   }), [filteredTasks, completions]);
 
-  const declinedTasks = useMemo(() => filteredTasks.filter(t => completions[t.id]?.status === 'declined'), [filteredTasks, completions]);
+  const declinedTasks = useMemo(() => filteredTasks.filter(t => {
+    if (t.carry_until_date != null) return false;
+    return completions[t.id]?.status === 'declined';
+  }), [filteredTasks, completions]);
+
+  const incompleteCarryOverCount = useMemo(() => carryOverTasks.filter(task => {
+    const isCompleted = completions[task.id]?.status === 'completed';
+    const isDeclined = completions[task.id]?.status === 'declined';
+    return !isCompleted && !isDeclined;
+  }).length, [carryOverTasks, completions]);
 
   // Group tasks by resident room
   // Group tasks by resident ID to handle shared rooms properly
@@ -370,6 +367,7 @@ export default function TasksPage() {
     return Object.entries(groups).sort((a, b) => a[1].room.localeCompare(b[1].room));
   };
 
+  const groupedCarePlans = useMemo(() => groupTasksByResident(carryOverTasks), [carryOverTasks]);
   const groupedPending = useMemo(() => groupTasksByResident(pendingTasks), [pendingTasks]);
   const groupedCompleted = useMemo(() => groupTasksByResident(completedTasks), [completedTasks]);
   const groupedDeclined = useMemo(() => groupTasksByResident(declinedTasks), [declinedTasks]);
@@ -456,14 +454,13 @@ export default function TasksPage() {
                         return (
                           <motion.div 
                             key={task.id} 
-                            layout
                             className={`task-row-container apple-card ${
                               isDeclined
                                 ? 'border-rose-200 dark:border-rose-900/30'
                                 : isCompleted
                                 ? 'border-emerald-200 dark:border-emerald-900/30'
                                 : ''
-                            } rounded-[24px] p-5 flex items-start gap-4 shadow-sm hover:shadow-md transition-all group relative overflow-hidden`}
+                            } rounded-[24px] p-5 flex items-start gap-4 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden`}
                           >
                             {/* Status Toggle */}
                             <div className="flex items-center gap-1">
@@ -654,7 +651,7 @@ export default function TasksPage() {
                                     By: <strong>{completions[task.id]?.completedBy || 'Staff'}</strong>
                                   </span>
                                   {task.outcome && (
-                                    <div className="mt-2 text-[11px] font-semibold text-emerald-800 bg-emerald-50/50 p-2.5 rounded-xl border border-emerald-100/45">
+                                    <div className="mt-2 text-[11px] font-semibold text-emerald-800 bg-emerald-100/80 px-3 py-1.5 rounded-full border border-emerald-200/50 inline-block">
                                       Outcome: {task.outcome}
                                     </div>
                                   )}
@@ -741,6 +738,41 @@ export default function TasksPage() {
           </div>
         ) : (
           <div className="space-y-6">
+            {/* Short-Term Care Plans (Carry Overs) */}
+            {carryOverTasks.length > 0 && (
+              <div className="apple-card rounded-[24px] overflow-hidden animate-fade-in-up shadow-md border-2 border-amber-200/50 dark:border-amber-900/30" style={{ animationDelay: '0.05s' }}>
+                <button
+                  onClick={() => setCarePlansExpanded(p => !p)}
+                  className="w-full flex items-center justify-between px-6 py-5 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 hover:from-amber-100 hover:to-orange-100 dark:hover:from-amber-900/30 dark:hover:to-orange-900/30 transition-all text-left border-b border-amber-200/50 dark:border-amber-900/30 cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="relative flex items-center justify-center w-8 h-8 -ml-1.5">
+                      {incompleteCarryOverCount > 0 && (
+                        <>
+                          <div className="absolute inset-0 rounded-full bg-amber-400 opacity-20 animate-ping"></div>
+                          <div className="absolute inset-[-4px] rounded-full bg-amber-300/30 animate-pulse"></div>
+                        </>
+                      )}
+                      <Calendar className="relative z-10 w-5 h-5 text-amber-600 dark:text-amber-500" />
+                    </div>
+                    <div>
+                      <span className="font-black text-[15px] tracking-wide uppercase text-amber-900 dark:text-amber-400">
+                        Short-Term Care Plans ({carryOverTasks.length})
+                      </span>
+                      <p className="text-[10px] font-bold text-amber-700/70 dark:text-amber-500/70 uppercase tracking-widest mt-0.5">Active until expiry date</p>
+                    </div>
+                  </div>
+                  {carePlansExpanded ? <ChevronUp className="w-4 h-4 text-amber-700" /> : <ChevronDown className="w-4 h-4 text-amber-700" />}
+                </button>
+                
+                {carePlansExpanded && (
+                  <div className="p-6 bg-amber-50/30 dark:bg-amber-950/10">
+                    {renderGroupedTasksList(groupedCarePlans, 'pending')}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Pending Tasks */}
             <div className="apple-card rounded-[24px] overflow-hidden animate-fade-in-up shadow-sm border border-white/40 dark:border-white/10" style={{ animationDelay: '0.1s' }}>
               <button
@@ -748,7 +780,15 @@ export default function TasksPage() {
                 className="w-full flex items-center justify-between px-6 py-5 bg-transparent hover:bg-white/40 dark:hover:bg-white/5 transition-all text-left border-b border-white/20 dark:border-white/5 cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
               >
                 <div className="flex items-center gap-3">
-                  <Clock className="w-5 h-5 text-indigo-500" />
+                  <div className="relative flex items-center justify-center w-8 h-8 -ml-1.5">
+                    {pendingTasks.length > 0 && (
+                      <>
+                        <div className="absolute inset-0 rounded-full bg-indigo-400 opacity-20 animate-ping"></div>
+                        <div className="absolute inset-[-4px] rounded-full bg-indigo-300/30 animate-pulse"></div>
+                      </>
+                    )}
+                    <Clock className="relative z-10 w-5 h-5 text-indigo-500" />
+                  </div>
                   <span className="font-bold text-sm tracking-wide uppercase text-text-primary">
                     Pending Actions ({pendingTasks.length})
                   </span>
@@ -760,7 +800,9 @@ export default function TasksPage() {
                 <div className="p-6">
                   {pendingTasks.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
-                      <CheckCircle2 className="w-12 h-12 text-emerald-400 mb-3 animate-pulse" />
+                      <motion.div initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={{ type: "spring", stiffness: 200, damping: 15 }}>
+                        <CheckCircle2 className="w-12 h-12 text-emerald-400 mb-3 drop-shadow-sm" />
+                      </motion.div>
                       <p className="text-sm font-semibold text-text-primary">All caught up!</p>
                       <p className="text-xs text-text-secondary mt-0.5">No pending tasks for this list.</p>
                     </div>

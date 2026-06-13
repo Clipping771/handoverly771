@@ -354,21 +354,27 @@ export default function Dashboard() {
         <div className="max-w-[1400px] mx-auto flex items-center justify-between">
           <div className="flex items-center gap-4">
             {/* Themed Brand Logo Box */}
-            <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shadow-inner transition-colors">
-              <span className="font-extrabold text-lg text-primary">H</span>
+            <div className="relative w-12 h-12 rounded-[18px] bg-gradient-to-br from-indigo-500 via-primary to-emerald-400 p-[1px] shadow-lg shadow-primary/20 shrink-0 group hover:scale-105 transition-transform duration-300">
+              <div className="w-full h-full bg-white/90 dark:bg-slate-900/90 rounded-[17px] flex items-center justify-center backdrop-blur-xl relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-primary/5"></div>
+                <span className="font-black text-xl bg-gradient-to-br from-indigo-600 to-primary bg-clip-text text-transparent relative z-10">H</span>
+              </div>
+              <div className="absolute -inset-1 bg-gradient-to-br from-indigo-500 via-primary to-emerald-400 rounded-[20px] blur-md opacity-20 group-hover:opacity-40 transition-opacity duration-300 -z-10"></div>
             </div>
-            <div className="flex flex-col">
-              <h1 className="text-lg font-extrabold text-slate-900 dark:text-white tracking-tight leading-none mb-1">
+            <div className="flex flex-col justify-center">
+              <h1 className="text-[22px] font-black text-slate-800 dark:text-white tracking-tight leading-none mb-1.5">
                 {facility.name}
               </h1>
               <div className="flex items-center gap-2">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-teal-accent opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-teal-accent"></span>
-                </span>
-                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest leading-none">
-                  Live Handover
-                </p>
+                <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200/60 dark:border-emerald-500/20 shadow-sm shadow-emerald-500/5">
+                  <span className="relative flex h-1.5 w-1.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75 duration-1000"></span>
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
+                  </span>
+                  <span className="text-[9px] font-extrabold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest leading-none pt-[1px]">
+                    Live Handover
+                  </span>
+                </div>
               </div>
             </div>
           </div>

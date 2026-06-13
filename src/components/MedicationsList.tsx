@@ -34,6 +34,11 @@ export default function MedicationsList({ residentId, facilityId }: { residentId
 
   useEffect(() => {
     fetchMeds();
+    
+    // Listen for AI assistant updates
+    const handleRefresh = () => fetchMeds();
+    window.addEventListener('refresh_data', handleRefresh);
+    return () => window.removeEventListener('refresh_data', handleRefresh);
   }, [residentId]);
 
   const handleSubmit = async (e: React.FormEvent) => {

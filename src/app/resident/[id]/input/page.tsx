@@ -9,7 +9,6 @@ import { Mic, MicOff, ChevronLeft, ChevronDown, Sparkles, AlertCircle, Sun, Moon
 import Link from 'next/link';
 import { saveDraft, getDraft, clearDraft } from '@/lib/db';
 import { getAdelaideTodayStr } from '@/lib/taskUtils';
-import AriaInputModal from '@/components/AriaInputModal';
 import toast from 'react-hot-toast';
 import { motion } from 'framer-motion';
 
@@ -35,10 +34,6 @@ export default function ResidentInput() {
 
   const [resident, setResident] = useState<Resident | null>(null);
   const [loadingResident, setLoadingResident] = useState(true);
-
-  // Aria Voice Assistant feature flags and modal states
-  const [ariaEnabled, setAriaEnabled] = useState(true);
-  const [isAriaModalOpen, setIsAriaModalOpen] = useState(false);
 
   const [tasks, setTasks] = useState<TaskNode[]>([
     { id: Date.now().toString(), tag: '', description: '' }
@@ -226,8 +221,7 @@ export default function ResidentInput() {
           if (data?.ai_config) {
             if (data.ai_config.keys) setDbUserKeys(data.ai_config.keys);
             if (data.ai_config.activeProvider) setAiProvider(data.ai_config.activeProvider);
-            const flags = data.ai_config.featureFlags || {};
-            setAriaEnabled(flags.ariaEnabled !== false);
+            const flags = data.feature_flags || {};
           }
         } catch (e) {
           console.error('Failed to fetch facility AI config', e);
@@ -628,61 +622,29 @@ export default function ResidentInput() {
         </div>
       </header>
 
+      {/* Premium Dark Mode Ambient Background */}
+      <div className="hidden dark:block fixed inset-0 z-0 pointer-events-none overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] w-[600px] h-[600px] bg-indigo-600/10 rounded-full blur-[140px] mix-blend-screen" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[120px] mix-blend-screen" />
+      </div>
+
       {/* Main Container */}
       <main className="max-w-xl mx-auto w-full px-4 mt-8 flex-1 flex flex-col relative z-10">
         <div className="mb-6 flex justify-between items-end">
           <div>
             <div className="flex items-center gap-1.5 mb-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-slate-650 dark:bg-slate-450"></span>
-              <span className="text-[10px] font-semibold tracking-wider uppercase text-slate-500 dark:text-slate-400">Node Based Tasks</span>
+              <span className="w-1.5 h-1.5 rounded-full bg-slate-650 dark:bg-slate-450 shadow-[0_0_8px_rgba(148,163,184,0.6)]"></span>
+              <span className="text-[10px] font-bold tracking-wider uppercase text-slate-500 dark:text-slate-400">Node Based Tasks</span>
             </div>
-            <h2 className="text-2xl font-semibold tracking-tight text-text-primary">Record Shift Notes</h2>
+            <h2 className="text-2xl font-bold tracking-tight text-text-primary">Record Shift Notes</h2>
           </div>
 
           <div className="flex gap-2">
-            {ariaEnabled && (
-              <motion.div className="relative flex items-center justify-center">
-                {/* Continuous Glowing Aura */}
-                <motion.div
-                  className="absolute inset-0 rounded-full bg-blue-500 blur-md"
-                  animate={{
-                    scale: [1, 1.25, 1],
-                    opacity: [0.2, 0.5, 0.2],
-                  }}
-                  transition={{
-                    duration: 3,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                />
-                
-                {/* Main Premium Button */}
-                <motion.button
-                  type="button"
-                  whileHover={{ scale: 1.05, y: -2 }}
-                  whileTap={{ scale: 0.96 }}
-                  onClick={() => setIsAriaModalOpen(true)}
-                  className="relative flex items-center gap-2 px-5 py-2.5 bg-blue-500 text-white rounded-full text-[11px] font-sans font-medium tracking-wide shadow-[0_4px_15px_rgba(59,130,246,0.4)] hover:shadow-[0_8px_25px_rgba(59,130,246,0.6)] hover:bg-blue-600 transition-all cursor-pointer border border-blue-400/40 outline-none focus:outline-none"
-                  style={{
-                    boxShadow: "inset 0 1px 2px rgba(255, 255, 255, 0.4), 0 4px 15px rgba(59,130,246,0.4)"
-                  }}
-                >
-                  <motion.div
-                    animate={{ rotate: [0, -6, 6, -6, 0], scale: [1, 1.1, 1] }}
-                    transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-                  >
-                    <Mic className="w-3.5 h-3.5 text-white drop-shadow-sm" />
-                  </motion.div>
-                  <span className="relative z-10 text-white/95 drop-shadow-sm">Aria Vitals</span>
-                </motion.button>
-              </motion.div>
-            )}
             <motion.button
-              type="button"
               whileHover={{ scale: 1.04, y: -1 }}
               whileTap={{ scale: 0.96 }}
               onClick={addTaskNode}
-              className="flex items-center gap-1.5 px-4 py-2 bg-text-primary hover:bg-slate-700 text-white rounded-full text-xs font-semibold tracking-wide transition-all shadow-sm cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
+              className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-200 dark:text-slate-900 rounded-full text-xs font-bold tracking-wide transition-all shadow-[0_4px_12px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_15px_rgba(255,255,255,0.15)] cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
             >
               <Plus className="w-4 h-4" />
               Add Task
@@ -749,9 +711,9 @@ export default function ResidentInput() {
             )}
           </div>
         )}
-             {/* Pending Tasks Carryover Alert */}
+        {/* Pending Tasks Carryover Alert */}
         {pendingTasks.length > 0 && (
-          <div className="mb-6 p-5 rounded-[24px] border border-amber-200 bg-amber-50/30 dark:border-amber-900/30 dark:bg-amber-950/10">
+          <div className="mb-6 p-5 rounded-[24px] border border-amber-200/60 bg-amber-50/40 dark:border-amber-500/20 dark:bg-[#1A1105]/80 backdrop-blur-xl shadow-lg shadow-amber-500/5">
             <h4 className="text-xs font-bold text-amber-800 dark:text-amber-400 uppercase tracking-wider mb-2.5 flex items-center gap-1.5 font-sans">
               <Clock className="w-4 h-4" />
               Incomplete Tasks Carrying Forward:
@@ -862,7 +824,7 @@ export default function ResidentInput() {
               const isListening = activeMicNodeId === task.id;
               const isEnhancing = enhancingNodeId === task.id;
               return (
-                <div key={task.id} className={`group relative apple-card p-5 transition-shadow hover:shadow-md overflow-hidden ${isEnhancing ? 'border-violet-300' : ''}`}>
+                <div key={task.id} className={`group relative apple-card bg-surface dark:bg-[#121214]/80 p-5 transition-all hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_8px_30px_rgba(255,255,255,0.03)] overflow-hidden ${isEnhancing ? 'border-violet-300 dark:border-violet-500/40' : 'dark:border-white/5'}`}>
                   {/* Task Header: Tag Input & Actions */}
                   <div className="flex items-center gap-3 mb-4">
                     <div className="flex-1">
@@ -962,7 +924,7 @@ export default function ResidentInput() {
             <button
               type="submit"
               disabled={tasks.every(t => !t.tag.trim() && !t.description.trim()) || activeMicNodeId !== null}
-              className="w-full h-14 bg-text-primary hover:bg-slate-700 text-white text-sm font-semibold tracking-wider uppercase rounded-full shadow-md disabled:opacity-40 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-200 dark:text-slate-900 text-sm font-bold tracking-wider uppercase rounded-[20px] shadow-[0_8px_25px_rgba(0,0,0,0.15)] dark:shadow-[0_8px_25px_rgba(255,255,255,0.15)] disabled:opacity-30 dark:disabled:opacity-20 disabled:shadow-none transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
             >
               <Sparkles className="w-5 h-5" />
               Generate Handover Draft
@@ -977,18 +939,6 @@ export default function ResidentInput() {
           </div>
         </form>
       </main>
-
-      {/* Aria Voice Assistant Input Modal */}
-      {facility && resident && (
-        <AriaInputModal
-          isOpen={isAriaModalOpen}
-          onClose={() => setIsAriaModalOpen(false)}
-          residentId={residentId}
-          residentName={resident.name}
-          facilityId={facility.id}
-          onApproveVitals={handleApproveVitals}
-        />
-      )}
     </div>
   );
 }

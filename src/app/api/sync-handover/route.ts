@@ -220,16 +220,8 @@ export async function POST(req: Request) {
 
     // Insert Tasks
     if (tasksToSync && tasksToSync.length > 0) {
-      // If we are overwriting (is_update_action is false/undefined), delete any tasks already registered to this handover
-      if (existingHandover && !is_update_action) {
-        const { error: deleteError } = await supabase
-          .from('tasks')
-          .delete()
-          .eq('handover_id', existingHandover.id);
-        if (deleteError) {
-          console.error('Failed to delete old tasks for overwrite:', deleteError);
-        }
-      }
+      // We no longer delete tasks here because it destroys Carry Over tasks from earlier in the shift.
+      // Duplicates are already prevented below using the activeTitles Set.
 
       const taskRecords = tasksToSync.map((t: any) => {
         const carryUntil = t.carry_until_date || parseUntilDate(t.description) || parseUntilDate(t.title);
@@ -269,12 +261,13 @@ export async function POST(req: Request) {
         
       if (!tasksError) {
         // Mark all previous incomplete tasks for this resident as completed/superseded
-        // since they have now been successfully carried forward to this new shift
+        // (excluding Carry Over tasks, which must remain active until their expiry date)
         await supabase
           .from('tasks')
           .update({ is_completed: true })
           .eq('resident_id', handoverRecord.resident_id)
           .eq('is_completed', false)
+          .is('carry_until_date', null)
           .neq('handover_id', insertedHandover.id);
       } else {
         console.error('Tasks Insert/Merge Error:', tasksError);

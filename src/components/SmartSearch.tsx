@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
-import { Send, X, Loader2, CheckCircle2, Trash2, Stethoscope } from 'lucide-react';
+import { Send, X, Loader2, CheckCircle2, Trash2, Stethoscope, Paperclip, Camera, Image as ImageIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import toast from 'react-hot-toast';
@@ -163,10 +163,33 @@ export default function SmartSearch() {
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [messages, setMessages] = useState<{ role: 'user' | 'ai'; content: string; actions?: any[]; pendingAction?: any; requiresConfig?: boolean }[]>([]);
+  const [messages, setMessages] = useState<{ role: 'user' | 'ai'; content: string; image?: string; actions?: any[]; pendingAction?: any; requiresConfig?: boolean }[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [residents, setResidents] = useState<{ name: string; room_number: string }[]>([]);
+  const [attachedImage, setAttachedImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Check size (< 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be less than 5MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setAttachedImage(event.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+    // Reset input
+    e.target.value = '';
+  };
 
   // Auto-scroll to bottom of chat
   const scrollToBottom = () => {
@@ -221,7 +244,12 @@ export default function SmartSearch() {
 
   const clearChat = () => {
     if (window.confirm('Are you sure you want to clear the chat history?')) {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
       setMessages([]);
+      setIsLoading(false);
       localStorage.removeItem(`handoverly_chat_${user.id}`);
     }
   };
@@ -231,9 +259,16 @@ export default function SmartSearch() {
     if (!query.trim() || !facility) return;
 
     const userQuery = query.trim();
-    setMessages(prev => [...prev, { role: 'user', content: userQuery }]);
+    const currentImage = attachedImage;
+    setMessages(prev => [...prev, { role: 'user', content: userQuery, image: currentImage || undefined }]);
     setQuery('');
+    setAttachedImage(null);
     setIsLoading(true);
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
 
     try {
       const userKeys = {
@@ -243,7 +278,8 @@ export default function SmartSearch() {
         groqKey: localStorage.getItem('user_groq_key') || '',
         groqModel: localStorage.getItem('user_groq_model') || 'llama-3.3-70b-versatile',
         ollamaUrl: localStorage.getItem('user_ollama_url') || 'http://127.0.0.1:11434',
-        ollamaModel: localStorage.getItem('user_ollama_model') || 'llama3'
+        ollamaModel: localStorage.getItem('user_ollama_model') || 'llama3',
+        activeProvider: localStorage.getItem('user_active_provider') || 'auto'
       };
 
       // Extract last 6 messages for context
@@ -255,13 +291,15 @@ export default function SmartSearch() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: abortControllerRef.current.signal,
         body: JSON.stringify({ 
           query: userQuery, 
           facilityId: facility.id,
           userRole: user.role,
           userId: user.id,
-          userKeys: userKeys,
-          chatHistory: chatHistory
+          userKeys,
+          chatHistory,
+          image: currentImage
         })
       });
 
@@ -293,6 +331,7 @@ export default function SmartSearch() {
 
       setMessages(prev => [...prev, { role: 'ai', content: data.answer, actions: data.executedActions, pendingAction: data.pendingAction, requiresConfig }]);
     } catch (err: any) {
+      if (err.name === 'AbortError') return;
       toast.error(`Smart Assistant Error: ${err.message}`);
       setMessages(prev => [...prev, { role: 'ai', content: `Error: ${err.message}` }]);
     } finally {
@@ -352,6 +391,11 @@ export default function SmartSearch() {
     setMessages(prev => [...prev, { role: 'user', content: displayMessage }]);
     setIsLoading(true);
 
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
     try {
       const userKeys = {
         anthropicKey: localStorage.getItem('user_anthropic_key') || '',
@@ -360,7 +404,8 @@ export default function SmartSearch() {
         groqKey: localStorage.getItem('user_groq_key') || '',
         groqModel: localStorage.getItem('user_groq_model') || 'llama-3.3-70b-versatile',
         ollamaUrl: localStorage.getItem('user_ollama_url') || 'http://127.0.0.1:11434',
-        ollamaModel: localStorage.getItem('user_ollama_model') || 'llama3'
+        ollamaModel: localStorage.getItem('user_ollama_model') || 'llama3',
+        activeProvider: localStorage.getItem('user_active_provider') || 'auto'
       };
 
       // Extract last 6 messages for context
@@ -372,8 +417,9 @@ export default function SmartSearch() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: abortControllerRef.current.signal,
         body: JSON.stringify({ 
-          query: text, 
+          query: isDirectExecution ? text : text, 
           facilityId: facility.id,
           userRole: user.role,
           userId: user.id,
@@ -411,6 +457,8 @@ export default function SmartSearch() {
 
       setMessages(prev => [...prev, { role: 'ai', content: data.answer, actions: data.executedActions, pendingAction: data.pendingAction }]);
     } catch (err: any) {
+      if (err.name === 'AbortError') return;
+      toast.error(`Smart Assistant Error: ${err.message}`);
       setMessages(prev => [...prev, { role: 'ai', content: `Error: ${err.message}` }]);
     } finally {
       setIsLoading(false);
@@ -552,6 +600,11 @@ export default function SmartSearch() {
                       : 'bg-white/60 dark:bg-white/5 text-text-primary border border-border rounded-bl-none shadow-sm backdrop-blur-md'
                   }`}>
                     <div className="markdown-body max-w-none">
+                      {m.image && (
+                        <div className="mb-3">
+                          <img src={m.image} alt="User attachment" className="max-w-full rounded-lg max-h-48 object-cover shadow-sm border border-white/20 dark:border-white/10" />
+                        </div>
+                      )}
                       <ReactMarkdown
                         remarkPlugins={[remarkGfm]}
                         components={{
@@ -681,6 +734,8 @@ export default function SmartSearch() {
                                  act.type === 'REGISTER_RESIDENT' ? 'Resident Registered' :
                                  act.type === 'DELETE_RESIDENT' ? 'Resident Deleted' :
                                  act.type === 'ADD_MEDICATION' ? 'Medication Added' :
+                                 act.type === 'REMOVE_MEDICATION' ? 'Medication Removed' :
+                                 act.type === 'RECONCILE_MEDICATION' ? 'Medication Reconciled' :
                                  act.type === 'CHANGE_THEME' ? 'Theme Changed' :
                                  act.type === 'NAVIGATE_TO' ? 'Navigation' : 
                                  act.type === 'UPDATE_API_KEY' ? 'API Key Updated' : 'Action Executed'}
@@ -713,31 +768,68 @@ export default function SmartSearch() {
             <div ref={messagesEndRef} />
           </div>
 
+          {/* Image Preview */}
+          {attachedImage && (
+            <div className="px-4 pb-2 pt-2 border-t border-border bg-white/20 dark:bg-black/10 backdrop-blur-md">
+              <div className="relative inline-block border border-border rounded-xl bg-surface/50 shadow-sm p-1">
+                <img src={attachedImage} alt="Preview" className="h-16 w-16 object-cover rounded-lg" />
+                <button 
+                  onClick={() => setAttachedImage(null)}
+                  className="absolute -top-2 -right-2 bg-slate-800 hover:bg-red-500 text-white rounded-full p-1 shadow-md transition-colors cursor-pointer"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Input Area */}
           <form onSubmit={handleSend} className="p-4 bg-white/20 dark:bg-black/10 border-t border-border backdrop-blur-md">
-            <div className="relative flex items-center">
-              <textarea
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    if (query.trim() && !isLoading) {
-                      handleSend(e);
-                    }
-                  }
-                }}
-                placeholder="Ask about a resident... (Shift+Enter for new line)"
-                className="w-full min-h-[48px] max-h-[120px] bg-surface-solid border border-border rounded-2xl pl-5 pr-12 py-3 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-text-primary placeholder-text-secondary shadow-inner resize-none scrollbar-hide"
-                rows={1}
-              />
+            <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleFileSelect} />
+            <input type="file" accept="image/*" capture="environment" className="hidden" ref={cameraInputRef} onChange={handleFileSelect} />
+            
+            <div className="relative flex items-center gap-2">
               <button 
-                type="submit" 
-                disabled={!query.trim() || isLoading}
-                className="absolute right-1.5 w-9 h-9 bg-primary hover:opacity-90 disabled:opacity-50 text-white rounded-full flex items-center justify-center transition-all active:scale-95 shadow-md shadow-primary/20 cursor-pointer"
+                type="button" 
+                onClick={() => fileInputRef.current?.click()} 
+                className="p-2.5 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary rounded-full border border-border hover:border-primary/40 shadow-sm transition-all flex-shrink-0 cursor-pointer" 
+                title="Attach Image"
               >
-                <Send className="w-3.5 h-3.5 text-white" />
+                <Paperclip className="w-4 h-4" />
               </button>
+              <button 
+                type="button" 
+                onClick={() => cameraInputRef.current?.click()} 
+                className="p-2.5 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-primary dark:hover:text-primary rounded-full border border-border hover:border-primary/40 shadow-sm transition-all flex-shrink-0 cursor-pointer" 
+                title="Take Photo"
+              >
+                <Camera className="w-4 h-4" />
+              </button>
+              
+              <div className="flex-1 flex items-end bg-surface-solid border border-border rounded-2xl focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all shadow-inner py-1.5 pl-5 pr-1.5">
+                <textarea
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      if (query.trim() && !isLoading) {
+                        handleSend(e);
+                      }
+                    }
+                  }}
+                  placeholder="Ask about a resident... (Shift+Enter for new line)"
+                  className="flex-1 bg-transparent min-h-[36px] max-h-[120px] py-1.5 text-xs font-medium focus:outline-none text-text-primary placeholder-text-secondary resize-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
+                  rows={1}
+                />
+                <button 
+                  type="submit" 
+                  disabled={(!query.trim() && !attachedImage) || isLoading}
+                  className="w-9 h-9 ml-2 shrink-0 bg-primary hover:opacity-90 disabled:opacity-50 text-white rounded-full flex items-center justify-center transition-all active:scale-95 shadow-md shadow-primary/20 cursor-pointer"
+                >
+                  <Send className="w-3.5 h-3.5 text-white" />
+                </button>
+              </div>
             </div>
           </form>
         </div>
