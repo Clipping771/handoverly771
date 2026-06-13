@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme } from '@/context/ThemeContextProvider';
 import { Send, X, Loader2, CheckCircle2, Trash2, Stethoscope, Paperclip, Camera, Image as ImageIcon } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';

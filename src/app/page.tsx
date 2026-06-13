@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme } from '@/context/ThemeContextProvider';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { User2, LogOut, Clock, ShieldAlert, Sparkles, Brain, CheckCircle2, Sun, Moon, Activity, Inbox, Volume2, Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, HeartHandshake } from 'lucide-react';

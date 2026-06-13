@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme } from '@/context/ThemeContextProvider';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Settings, FileCheck, Users, Search, Plus, X, Sun, Moon, LogOut, ArrowRight, Activity, Trash2, ShieldAlert, FileWarning, AlertCircle, ListTodo, Clock, RotateCcw, Pencil, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Maximize, PanelLeft, Columns, Square, LayoutTemplate, LayoutGrid } from 'lucide-react';
+import HeaderThemeSelector from '@/components/HeaderThemeSelector';
 import Link from 'next/link';
 import SettingsModal from '@/components/SettingsModal';
 import OnboardingTour from '@/components/OnboardingTour';
@@ -739,12 +740,7 @@ function formatHandoverTime(dateStr?: string) {
               </span>
             </div>
             <div className="flex items-center gap-3">
-              <button
-                onClick={toggleTheme}
-                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400 transition-colors cursor-pointer"
-              >
-                {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-[#1f1f1f]" />}
-              </button>
+              <HeaderThemeSelector />
 
               <SentinelBadge
                 userId={user.id}
@@ -781,13 +777,9 @@ function formatHandoverTime(dateStr?: string) {
               </div>
               <div className="flex items-center gap-3">
                 <div className="hidden lg:flex items-center gap-3 mr-2">
-                  <button
-                    onClick={toggleTheme}
-                    className="p-3 rounded-full bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-600 dark:text-slate-400 transition-colors cursor-pointer border border-slate-200/60 dark:border-white/10 shadow-sm flex items-center justify-center"
-                    title="Toggle Theme"
-                  >
-                    {theme === 'dark' ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-[#1f1f1f]" />}
-                  </button>
+                  <div className="mr-2">
+                    <HeaderThemeSelector />
+                  </div>
                   <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200/60 dark:border-white/10 shadow-sm flex items-center justify-center">
                     <SentinelBadge
                       userId={user.id}

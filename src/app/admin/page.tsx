@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme } from '@/context/ThemeContextProvider';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { ShieldCheck, Plus, Trash2, Building, Users, AlertCircle, AlertOctagon, RefreshCw, Sun, Moon, Search, ChevronDown, LogOut, UserPlus, Edit3, Save, X, Eye, EyeOff, Key, Server, Cpu } from 'lucide-react';

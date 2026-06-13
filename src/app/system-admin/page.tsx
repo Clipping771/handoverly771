@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme } from '@/context/ThemeContextProvider';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { ShieldCheck, Plus, Building, UserPlus, AlertCircle, RefreshCw, Sun, Moon, Lock, Eye, EyeOff, Edit3, Trash2, Save, X } from 'lucide-react';

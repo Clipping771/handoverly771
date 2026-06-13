@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme } from '@/context/ThemeContextProvider';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Mic, MicOff, AlertTriangle, ArrowRight, ChevronLeft, Sun, Moon, Sparkles } from 'lucide-react';

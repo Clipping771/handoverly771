@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme } from '@/context/ThemeContextProvider';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ShieldAlert, LogIn, User, Lock, Sun, Moon, HeartPulse, UserPlus, Mail, BadgeCent, ChevronDown, Eye, EyeOff } from 'lucide-react';

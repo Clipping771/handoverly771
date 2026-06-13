@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme } from '@/context/ThemeContextProvider';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { ChevronLeft, Brain, Activity, TrendingUp, AlertTriangle, Play, FileText, Sun, Moon, History, RotateCcw, Pencil, X, AlertCircle } from 'lucide-react';

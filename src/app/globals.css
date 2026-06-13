@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant dark (&:where(.dark, .tokyo-night, .abyss, .dark *, .tokyo-night *, .abyss *));
 
 /* Hourglass Soft Glassmorphism Aesthetic */
 
@@ -35,6 +35,51 @@
   --amber: #f59e0b;
   --red: #ef4444;
   --green: #10b981;
+}
+
+/* Tokyo Night Theme */
+.tokyo-night {
+  --background: #1a1b26;
+  --surface: rgba(36, 40, 59, 0.75);
+  --surface-solid: #24283b;
+  --border: rgba(192, 202, 245, 0.1);
+  --border-solid: #414868;
+  --text-1: #c0caf5;
+  --text-2: #9aa5ce;
+  --primary: #7aa2f7;
+  --amber: #ff9e64;
+  --red: #f7768e;
+  --green: #9ece6a;
+}
+
+/* Solarized Light Theme */
+.solarized {
+  --background: #fdf6e3;
+  --surface: rgba(238, 232, 213, 0.75);
+  --surface-solid: #eee8d5;
+  --border: rgba(101, 123, 131, 0.2);
+  --border-solid: #93a1a1;
+  --text-1: #657b83;
+  --text-2: #839496;
+  --primary: #268bd2;
+  --amber: #b58900;
+  --red: #dc322f;
+  --green: #859900;
+}
+
+/* Abyss Theme */
+.abyss {
+  --background: #000c18;
+  --surface: rgba(0, 18, 36, 0.75);
+  --surface-solid: #001224;
+  --border: rgba(35, 110, 184, 0.2);
+  --border-solid: #1b273b;
+  --text-1: #6688cc;
+  --text-2: #4a6b99;
+  --primary: #225588;
+  --amber: #dcb36b;
+  --red: #dd6666;
+  --green: #44b366;
 }
 
 @theme inline {

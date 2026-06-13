@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme } from '@/context/ThemeContextProvider';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { ChevronLeft, FileCheck, Brain, Sparkles, Plus, Trash2, ShieldAlert, Sun, Moon, Volume2 } from 'lucide-react';

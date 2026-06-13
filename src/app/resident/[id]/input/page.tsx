@@ -2,10 +2,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme } from '@/context/ThemeContextProvider';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Mic, MicOff, ChevronLeft, ChevronDown, Sparkles, AlertCircle, Sun, Moon, Settings, Plus, Trash2, Save, Clock, Loader2, Pencil, Check, X } from 'lucide-react';
+import HeaderThemeSelector from '@/components/HeaderThemeSelector';
 import Link from 'next/link';
 import { saveDraft, getDraft, clearDraft } from '@/lib/db';
 import { getAdelaideTodayStr } from '@/lib/taskUtils';
@@ -221,7 +222,7 @@ export default function ResidentInput() {
           if (data?.ai_config) {
             if (data.ai_config.keys) setDbUserKeys(data.ai_config.keys);
             if (data.ai_config.activeProvider) setAiProvider(data.ai_config.activeProvider);
-            const flags = data.feature_flags || {};
+
           }
         } catch (e) {
           console.error('Failed to fetch facility AI config', e);
@@ -605,14 +606,7 @@ export default function ResidentInput() {
             Shift List
           </Link>
           <div className="flex items-center gap-3">
-            <button
-              onClick={toggleTheme}
-              className="p-2 rounded-xl bg-surface-solid hover:bg-surface-hover text-text-secondary transition-all duration-100 cursor-pointer"
-              title={theme === 'dark' ? "Switch to Day Mode" : "Switch to Night Mode"}
-              type="button"
-            >
-              {theme === 'dark' ? <Sun className="w-3.5 h-3.5 text-amber-500" /> : <Moon className="w-3.5 h-3.5 text-[#1f1f1f]" />}
-            </button>
+            <HeaderThemeSelector />
 
             <div className="text-right">
               <h1 className="text-sm font-semibold text-[#1f1f1f] dark:text-white tracking-tight">{resident.name}</h1>

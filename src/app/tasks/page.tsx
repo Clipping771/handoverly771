@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme } from '@/context/ThemeContextProvider';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { CheckCircle2, Circle, Clock, Sun, Moon, ArrowLeft, Stethoscope, User, HeartHandshake, ChevronDown, ChevronUp, XCircle, Calendar } from 'lucide-react';

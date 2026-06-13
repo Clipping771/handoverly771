@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
-import { ThemeProvider } from "@/context/ThemeContext";
+import { ThemeProvider } from "@/context/ThemeContextProvider";
 import { SyncProvider } from "@/context/SyncContext";
 import SmartSearch from "@/components/SmartSearch";
 import SyncBanner from "@/components/SyncBanner";

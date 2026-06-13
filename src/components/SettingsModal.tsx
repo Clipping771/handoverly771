@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, Key, Server, Cpu, Eye, EyeOff, Globe, Shield, Link as LinkIcon, Zap, HardDrive } from 'lucide-react';
 import CustomModelSelector from './CustomModelSelector';
+import ThemeSelector from './ThemeSelector';
 import { motion } from 'framer-motion';
 
 interface SettingsModalProps {
@@ -191,6 +192,9 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 </div>
               </div>
             </div>
+
+            {/* Visual Theme Settings */}
+            <ThemeSelector />
           </div>
 
           {/* Right Column: AI Engine Routing */}

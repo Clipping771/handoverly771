@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Joyride, STATUS, Step, TooltipRenderProps, EventData } from 'react-joyride';
 import { useAuth } from '@/context/AuthContext';
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme } from '@/context/ThemeContextProvider';
 import { usePathname } from 'next/navigation';
 
 const getTourKey = (userId: string, pageType: string) => `handoverly_onboarding_v3_${userId}_${pageType}`;
