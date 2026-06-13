@@ -9,7 +9,7 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 
 export default function PhoneHandoverPage() {
-  const { user, facility, authLoading } = useAuth();
+  const { user, facility, isLoading: authLoading } = useAuth();
   const { theme } = useTheme();
   const router = useRouter();
   
