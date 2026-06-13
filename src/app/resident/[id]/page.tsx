@@ -8,6 +8,8 @@ import { supabase } from '@/lib/supabase';
 import { ChevronLeft, Brain, Activity, TrendingUp, AlertTriangle, Play, FileText, Sun, Moon, History, RotateCcw, Pencil, X, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import ActivityTimeline from '@/components/ActivityTimeline';
+import MedicationsList from '@/components/MedicationsList';
+import ExternalCommsLog from '@/components/ExternalCommsLog';
 import toast from 'react-hot-toast';
 import { ShieldAlert, CheckCircle2, Lightbulb } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -61,7 +63,7 @@ export default function ResidentProfile() {
   const [loading, setLoading] = useState(true);
   const [loadingInsights, setLoadingInsights] = useState(false);
   const [error, setError] = useState('');
-  const [activeBottomTab, setActiveBottomTab] = useState<'timeline' | 'history'>('timeline');
+  const [activeBottomTab, setActiveBottomTab] = useState<'timeline' | 'history' | 'medications' | 'comms'>('timeline');
   const [unacknowledgedTasks, setUnacknowledgedTasks] = useState<any[]>([]);
 
   // Edit modal state
@@ -339,15 +341,26 @@ export default function ResidentProfile() {
             </h1>
           </div>
           
-          <MotionLink
-            href={`/resident/${resident.id}/input`}
-            whileHover={{ scale: 1.03, y: -2 }}
-            whileTap={{ scale: 0.97 }}
-            className="px-6 py-3 rounded-full bg-primary hover:opacity-95 text-white font-bold text-xs tracking-widest uppercase transition-all duration-300 flex items-center gap-2 shadow-md hover:shadow-lg whitespace-nowrap cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
-          >
-            <Play className="w-4 h-4" />
-            Start New Handover
-          </MotionLink>
+          <div className="flex flex-col sm:flex-row items-center gap-3">
+            <MotionLink
+              href={`/resident/${resident.id}/ed-transfer`}
+              whileHover={{ scale: 1.03, y: -2 }}
+              whileTap={{ scale: 0.97 }}
+              className="px-6 py-3 rounded-full bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-bold text-xs tracking-widest uppercase transition-all duration-300 flex items-center gap-2 shadow-sm whitespace-nowrap cursor-pointer"
+            >
+              <AlertCircle className="w-4 h-4" />
+              ED Transfer Pack
+            </MotionLink>
+            <MotionLink
+              href={`/resident/${resident.id}/input`}
+              whileHover={{ scale: 1.03, y: -2 }}
+              whileTap={{ scale: 0.97 }}
+              className="px-6 py-3 rounded-full bg-primary hover:opacity-95 text-white font-bold text-xs tracking-widest uppercase transition-all duration-300 flex items-center gap-2 shadow-md hover:shadow-lg whitespace-nowrap cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
+            >
+              <Play className="w-4 h-4" />
+              Start New Handover
+            </MotionLink>
+          </div>
         </div>
 
         {/* Unacknowledged Escalation Warning Banner */}
@@ -531,8 +544,7 @@ export default function ResidentProfile() {
 
         {/* Lower Section Tabs: Activity Timeline vs Handover Version History */}
         <section className="mt-12 mb-10">
-          {/* Pill Segmented Tabs */}
-          <div className="flex p-1 bg-slate-100/60 dark:bg-slate-800/40 backdrop-blur-md rounded-full border border-slate-200/50 dark:border-white/5 relative z-10 w-[380px] shadow-sm mb-6">
+          <div className="flex p-1 bg-slate-100/60 dark:bg-slate-800/40 backdrop-blur-md rounded-full border border-slate-200/50 dark:border-white/5 relative z-10 w-full max-w-[600px] shadow-sm mb-6">
             <button
               onClick={() => setActiveBottomTab('timeline')}
               className="flex-1 py-2 text-xs font-bold rounded-full relative transition-colors duration-300 tracking-wider uppercase outline-none focus:outline-none focus-visible:outline-none cursor-pointer z-20 text-center"
@@ -549,27 +561,41 @@ export default function ResidentProfile() {
               </span>
             </button>
             <button
-              onClick={() => setActiveBottomTab('history')}
+              onClick={() => setActiveBottomTab('medications')}
               className="flex-1 py-2 text-xs font-bold rounded-full relative transition-colors duration-300 tracking-wider uppercase outline-none focus:outline-none focus-visible:outline-none cursor-pointer z-20 text-center"
             >
-              {activeBottomTab === 'history' && (
+              {activeBottomTab === 'medications' && (
                 <motion.div
                   layoutId="activeTabIndicator"
                   className="absolute inset-0 bg-white dark:bg-slate-700 rounded-full z-[-1] shadow-xs"
                   transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                 />
               )}
-              <span className={`transition-colors duration-300 ${activeBottomTab === 'history' ? 'text-primary' : 'text-slate-500 hover:text-slate-850 dark:text-slate-400 dark:hover:text-slate-200'}`}>
-                Version History
+              <span className={`transition-colors duration-300 ${activeBottomTab === 'medications' ? 'text-primary' : 'text-slate-500 hover:text-slate-850 dark:text-slate-400 dark:hover:text-slate-200'}`}>
+                Medications
+              </span>
+            </button>
+            <button
+              onClick={() => setActiveBottomTab('comms')}
+              className="flex-1 py-2 text-xs font-bold rounded-full relative transition-colors duration-300 tracking-wider uppercase outline-none focus:outline-none focus-visible:outline-none cursor-pointer z-20 text-center"
+            >
+              {activeBottomTab === 'comms' && (
+                <motion.div
+                  layoutId="activeTabIndicator"
+                  className="absolute inset-0 bg-white dark:bg-slate-700 rounded-full z-[-1] shadow-xs"
+                  transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                />
+              )}
+              <span className={`transition-colors duration-300 ${activeBottomTab === 'comms' ? 'text-primary' : 'text-slate-500 hover:text-slate-850 dark:text-slate-400 dark:hover:text-slate-200'}`}>
+                External Comms
               </span>
             </button>
           </div>
 
-          {activeBottomTab === 'timeline' ? (
-            <ActivityTimeline residentId={residentId} />
-          ) : (
-            <HandoverHistory residentId={residentId} />
-          )}
+          {activeBottomTab === 'timeline' && <ActivityTimeline residentId={residentId} />}
+          {activeBottomTab === 'history' && <HandoverHistory residentId={residentId} />}
+          {activeBottomTab === 'medications' && <MedicationsList residentId={residentId} facilityId={resident?.facility_id} />}
+          {activeBottomTab === 'comms' && <ExternalCommsLog residentId={residentId} facilityId={resident?.facility_id} />}
         </section>
 
       </main>
