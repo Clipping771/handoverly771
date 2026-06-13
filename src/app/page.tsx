@@ -198,7 +198,6 @@ export default function Dashboard() {
   const fetchSentinelData = async () => {
     if (!facility) return;
     try {
-      const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
       const { data: facilityTasks } = await supabase
         .from('tasks')
         .select(`
@@ -207,16 +206,12 @@ export default function Dashboard() {
           handover:handovers(urgency)
         `)
         .eq('facility_id', facility.id)
-        .or('is_completed.is.null,is_completed.eq.false')
-        .lt('created_at', twoHoursAgo);
+        .or('is_completed.is.null,is_completed.eq.false');
 
       const filteredTasks = (facilityTasks || []).filter((t: any) => {
         const resObj = Array.isArray(t.resident) ? t.resident[0] : t.resident;
         if (!resObj || !resObj.is_active) return false;
-        
-        const urgency = t.handover?.urgency || 'routine';
-        const hasPriorityTag = t.tags?.includes('medication') || t.tags?.includes('incidents');
-        return urgency === 'critical' || urgency === 'attention' || hasPriorityTag;
+        return true; // Show all uncompleted tasks immediately
       });
       setFacilityUnacknowledgedTasks(filteredTasks);
 
@@ -373,6 +368,7 @@ export default function Dashboard() {
 
           <div className="flex items-center gap-2.5">
             <SentinelBadge 
+              userId={user.id}
               unacknowledgedTasks={facilityUnacknowledgedTasks}
               proactiveAlerts={facilityProactiveAlerts}
               onAcknowledgeAlert={(id, msg) => {
