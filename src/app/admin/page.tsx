@@ -809,12 +809,12 @@ export default function AdminSetup() {
                       onClick={() => setActiveProvider(prov.id as any)}
                       className={`flex flex-col items-center justify-center text-center py-4 px-2 rounded-[20px] border transition-all duration-300 cursor-pointer ${
                         activeProvider === prov.id
-                          ? 'border-white/60 dark:border-white/20 bg-white/85 dark:bg-black/40 text-slate-900 dark:text-white shadow-md scale-105'
-                          : 'border-white/30 dark:border-white/5 bg-white/30 dark:bg-black/20 hover:bg-white/50 dark:hover:bg-black/30 text-slate-650 dark:text-slate-350 hover:-translate-y-1'
+                          ? 'border-primary bg-primary/10 dark:bg-primary/20 shadow-[0_4px_20px_rgba(13,148,136,0.15)] ring-1 ring-primary scale-105'
+                          : 'border-white/40 dark:border-white/5 bg-white/40 dark:bg-black/20 hover:bg-white/60 dark:hover:bg-black/30 hover:-translate-y-1'
                       }`}
                     >
-                      <span className="font-bold text-sm">{prov.label}</span>
-                      <span className="text-[10px] text-slate-450 dark:text-slate-500 mt-1 font-medium tracking-wide uppercase">{prov.desc}</span>
+                      <span className={`font-bold text-sm ${activeProvider === prov.id ? 'text-primary' : 'text-slate-700 dark:text-slate-300'}`}>{prov.label}</span>
+                      <span className={`text-[10px] mt-1 font-medium tracking-wide uppercase ${activeProvider === prov.id ? 'text-primary/80' : 'text-slate-500 dark:text-slate-400'}`}>{prov.desc}</span>
                     </button>
                   ))}
                 </div>

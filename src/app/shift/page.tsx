@@ -11,6 +11,7 @@ import SettingsModal from '@/components/SettingsModal';
 import OnboardingTour from '@/components/OnboardingTour';
 import { motion, AnimatePresence } from 'framer-motion';
 import SentinelBadge from '@/components/SentinelBadge';
+import HandoverFeedbackWidget from '@/components/HandoverFeedbackWidget';
 import toast from 'react-hot-toast';
 import { Check } from 'lucide-react';
 import { getPendingQueue } from '@/lib/db';
@@ -808,6 +809,8 @@ function formatHandoverTime(dateStr?: string) {
                 </button>
               </div>
             </div>
+
+            <HandoverFeedbackWidget />
 
             {/* Facility Pulse / Clinical Notice Board */}
             <div className="mb-8 apple-card rounded-[24px] p-6 flex flex-col gap-5">

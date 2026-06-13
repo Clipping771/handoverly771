@@ -5,12 +5,14 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { Plus, Pill, RefreshCw, X, AlertCircle, Trash2, Edit2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import MedicationReconciliationModal from './MedicationReconciliationModal';
 
 export default function MedicationsList({ residentId, facilityId }: { residentId: string; facilityId?: string }) {
   const { user } = useAuth();
   const [meds, setMeds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showReconciliationModal, setShowReconciliationModal] = useState(false);
   const [editingMedId, setEditingMedId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ medication_name: '', dosage: '', frequency: '', route: 'Oral', status: 'active' });
 
@@ -123,30 +125,10 @@ export default function MedicationsList({ residentId, facilityId }: { residentId
     }
   };
 
-  const handleReconcile = async () => {
-    if (!user) return;
-    try {
-      const activeMedIds = meds.filter(m => m.status === 'active').map(m => m.id);
-      if (activeMedIds.length === 0) return toast.error('No active medications to reconcile');
-
-      const res = await fetch('/api/medications', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          medIds: activeMedIds,
-          userId: user.id
-        })
-      });
-
-      const json = await res.json();
-      if (!res.ok || !json.success) throw new Error(json.error || 'Failed to reconcile');
-
-      toast.success('Medications reconciled successfully');
-      fetchMeds();
-    } catch (err: any) {
-      toast.error('Failed to reconcile medications');
-      console.error(err);
-    }
+  const handleReconcile = () => {
+    const activeMedIds = meds.filter(m => m.status === 'active').map(m => m.id);
+    if (activeMedIds.length === 0) return toast.error('No active medications to reconcile');
+    setShowReconciliationModal(true);
   };
 
   return (
@@ -254,6 +236,18 @@ export default function MedicationsList({ residentId, facilityId }: { residentId
           </div>
         </div>
       )}
+
+      <MedicationReconciliationModal
+        isOpen={showReconciliationModal}
+        onClose={() => setShowReconciliationModal(false)}
+        meds={meds}
+        residentId={residentId}
+        facilityId={facilityId}
+        onSuccess={() => {
+          setShowReconciliationModal(false);
+          fetchMeds();
+        }}
+      />
     </div>
   );
 }

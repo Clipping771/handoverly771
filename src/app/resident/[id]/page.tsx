@@ -10,6 +10,7 @@ import Link from 'next/link';
 import ActivityTimeline from '@/components/ActivityTimeline';
 import MedicationsList from '@/components/MedicationsList';
 import ExternalCommsLog from '@/components/ExternalCommsLog';
+import SirsReportingForm from '@/components/SirsReportingForm';
 import toast from 'react-hot-toast';
 import { ShieldAlert, CheckCircle2, Lightbulb } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -72,6 +73,9 @@ export default function ResidentProfile() {
   const [editForm, setEditForm] = useState({ name: '', room_number: '', dob: '', care_level: 'High', wing_id: '' });
   const [editSubmitting, setEditSubmitting] = useState(false);
   const [editError, setEditError] = useState('');
+
+  // SIRS state
+  const [showSirsForm, setShowSirsForm] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -342,11 +346,20 @@ export default function ResidentProfile() {
           </div>
           
           <div className="flex flex-col sm:flex-row items-center gap-3">
+            <motion.button
+              onClick={() => setShowSirsForm(true)}
+              whileHover={{ scale: 1.03, y: -2 }}
+              whileTap={{ scale: 0.97 }}
+              className="px-6 py-3 rounded-full bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-bold text-xs tracking-widest uppercase transition-all duration-300 flex items-center gap-2 shadow-sm whitespace-nowrap cursor-pointer border border-rose-200 dark:border-rose-500/30"
+            >
+              <AlertTriangle className="w-4 h-4" />
+              Report Incident (SIRS)
+            </motion.button>
             <MotionLink
               href={`/resident/${resident.id}/ed-transfer`}
               whileHover={{ scale: 1.03, y: -2 }}
               whileTap={{ scale: 0.97 }}
-              className="px-6 py-3 rounded-full bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 font-bold text-xs tracking-widest uppercase transition-all duration-300 flex items-center gap-2 shadow-sm whitespace-nowrap cursor-pointer"
+              className="px-6 py-3 rounded-full bg-amber-50 hover:bg-amber-100 dark:bg-amber-500/10 dark:hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-bold text-xs tracking-widest uppercase transition-all duration-300 flex items-center gap-2 shadow-sm whitespace-nowrap cursor-pointer"
             >
               <AlertCircle className="w-4 h-4" />
               ED Transfer Pack
@@ -708,6 +721,14 @@ export default function ResidentProfile() {
           </div>
         </div>
       )}
+
+      {/* SIRS Reporting Form */}
+      <SirsReportingForm
+        isOpen={showSirsForm}
+        onClose={() => setShowSirsForm(false)}
+        residentId={residentId}
+        facilityId={resident?.facility_id}
+      />
     </div>
   );
 }

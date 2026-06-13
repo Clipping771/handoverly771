@@ -561,7 +561,7 @@ export default function SmartSearch() {
                           table: ({node, ...props}) => <div className="overflow-x-auto my-3 rounded-lg border border-border"><table className="min-w-full text-left border-collapse" {...props} /></div>,
                           th: ({node, ...props}) => <th className="border-b border-border px-3 py-2.5 text-[11px] font-bold uppercase tracking-wider text-text-secondary bg-surface" {...props} />,
                           td: ({node, ...props}) => <td className="border-b border-border px-3 py-2.5 text-[13px]" {...props} />,
-                          p: ({node, ...props}) => <p className="mb-3 last:mb-0 leading-relaxed text-[13px] whitespace-pre-wrap break-words" {...props} />,
+                          p: ({node, ...props}) => <div className="mb-3 last:mb-0 leading-relaxed text-[13px] whitespace-pre-wrap break-words" {...props} />,
                           ul: ({node, ...props}) => <ul className="list-disc pl-5 mb-3 text-[13px] space-y-1.5" {...props} />,
                           ol: ({node, ...props}) => <ol className="list-decimal pl-5 mb-3 text-[13px] space-y-1.5" {...props} />,
                           li: ({node, ...props}) => <li className="leading-relaxed mb-1" {...props} />,
