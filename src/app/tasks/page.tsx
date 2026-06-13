@@ -702,28 +702,30 @@ export default function TasksPage() {
       <main className="max-w-4xl mx-auto w-full px-6 mt-8 flex-1 flex flex-col">
         
         {/* Toggle Tabs */}
-        <div className="flex bg-surface-solid p-1.5 rounded-2xl mb-8 self-center sm:self-start border border-border animate-fade-in-up">
-          <button
-            onClick={() => setFilterTab('my_tasks')}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-[12px] text-xs font-semibold transition-all duration-300 ${
-              filterTab === 'my_tasks'
-                ? 'bg-surface shadow-sm text-teal-accent' 
-                : 'text-text-secondary hover:text-text-primary'
-            }`}
-          >
-            My Tasks
-          </button>
-          <button
-            onClick={() => setFilterTab('all_tasks')}
-            className={`flex items-center gap-2 px-6 py-2.5 rounded-[12px] text-xs font-semibold transition-all duration-300 ${
-              filterTab === 'all_tasks'
-                ? 'bg-surface shadow-sm text-teal-accent' 
-                : 'text-text-secondary hover:text-text-primary'
-            }`}
-          >
-            All Tasks
-          </button>
-        </div>
+        {(isRN || isAdmin) && (
+          <div className="flex bg-surface-solid p-1.5 rounded-2xl mb-8 self-center sm:self-start border border-border animate-fade-in-up">
+            <button
+              onClick={() => setFilterTab('my_tasks')}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-[12px] text-xs font-semibold transition-all duration-300 ${
+                filterTab === 'my_tasks'
+                  ? 'bg-surface shadow-sm text-teal-accent' 
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              My Tasks
+            </button>
+            <button
+              onClick={() => setFilterTab('all_tasks')}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-[12px] text-xs font-semibold transition-all duration-300 ${
+                filterTab === 'all_tasks'
+                  ? 'bg-surface shadow-sm text-teal-accent' 
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              All Tasks
+            </button>
+          </div>
+        )}
 
         {/* Tasks Lists */}
         {loading ? (
