@@ -17,6 +17,7 @@ export default function SentinelBadge({
 }: SentinelBadgeProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [seenIds, setSeenIds] = useState<Set<string>>(new Set());
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
   // Load seen IDs on mount
   useEffect(() => {
@@ -169,41 +170,57 @@ export default function SentinelBadge({
                     </h4>
                     
                     {/* Uncompleted Tasks */}
-                    {unacknowledgedTasks.map(t => (
-                      <div key={t.id} className="p-4 bg-rose-500/5 dark:bg-rose-500/10 border border-rose-500/20 rounded-2xl space-y-2 backdrop-blur-sm shadow-sm hover:border-rose-500/40 transition-colors">
-                        <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 rounded-full bg-rose-500/20 flex items-center justify-center shrink-0">
-                            <AlertCircle className="w-4 h-4 text-[#E8445A]" />
-                          </div>
-                          <div>
-                            <div className="flex items-center flex-wrap gap-2 mb-1">
-                              <span className="text-[13px] font-bold text-slate-800 dark:text-slate-200 leading-tight">{t.title}</span>
-                              <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border ${
-                                t.assigned_role === 'rn' 
-                                  ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/10 dark:text-purple-300 dark:border-purple-500/20' 
-                                  : t.assigned_role === 'all'
-                                    ? 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
-                                    : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/20'
-                              }`}>
-                                {t.assigned_role === 'rn' ? 'For RNs' : t.assigned_role === 'all' ? 'For All Staff' : 'For Carers'}
-                              </span>
+                    {unacknowledgedTasks.filter(t => !dismissedIds.has(t.id)).map(t => {
+                      const isRn = t.assigned_role === 'rn';
+                      const isCarer = !isRn && t.assigned_role !== 'all';
+                      
+                      const cardClass = isRn 
+                        ? 'bg-purple-50/50 border-purple-200 dark:bg-purple-500/10 dark:border-purple-500/20' 
+                        : isCarer 
+                          ? 'bg-blue-50/50 border-blue-200 dark:bg-blue-500/10 dark:border-blue-500/20'
+                          : 'bg-slate-50/50 border-slate-200 dark:bg-slate-800/50 dark:border-slate-700';
+                          
+                      const iconColor = isRn ? 'text-purple-500' : isCarer ? 'text-blue-500' : 'text-slate-500';
+                      const iconBg = isRn ? 'bg-purple-500/20' : isCarer ? 'bg-blue-500/20' : 'bg-slate-500/20';
+
+                      return (
+                        <motion.div 
+                          key={t.id} 
+                          drag="x"
+                          dragConstraints={{ left: 0, right: 0 }}
+                          dragElastic={0.7}
+                          onDragEnd={(e, info) => {
+                            if (info.offset.x > 100 || info.offset.x < -100) {
+                              setDismissedIds(prev => new Set(prev).add(t.id));
+                            }
+                          }}
+                          whileDrag={{ scale: 0.95, opacity: 0.8 }}
+                          layout
+                          className={`p-4 rounded-2xl space-y-2 backdrop-blur-sm shadow-sm transition-colors border cursor-grab active:cursor-grabbing ${cardClass}`}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${iconBg}`}>
+                              <AlertCircle className={`w-4 h-4 ${iconColor}`} />
                             </div>
-                            <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">{t.description}</p>
+                            <div>
+                              <div className="flex items-center flex-wrap gap-2 mb-1">
+                                <span className="text-[13px] font-bold text-slate-800 dark:text-slate-200 leading-tight">{t.title}</span>
+                                <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md border ${
+                                  isRn 
+                                    ? 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-500/10 dark:text-purple-300 dark:border-purple-500/20' 
+                                    : t.assigned_role === 'all'
+                                      ? 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700'
+                                      : 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-500/10 dark:text-blue-300 dark:border-blue-500/20'
+                                }`}>
+                                  {isRn ? 'For RNs' : t.assigned_role === 'all' ? 'For All Staff' : 'For Carers'}
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">{t.description}</p>
+                            </div>
                           </div>
-                        </div>
-                        {onAcknowledgeTask && (
-                          <div className="flex justify-end pt-2">
-                            <button
-                              onClick={() => onAcknowledgeTask(t.id)}
-                              className="px-4 py-1.5 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 text-[11px] font-bold border border-slate-200 dark:border-white/10 rounded-xl text-slate-700 dark:text-slate-300 flex items-center gap-1.5 transition-all shadow-sm hover:shadow"
-                            >
-                              <Check className="w-3.5 h-3.5 text-[#22C55E]" />
-                              Complete Task
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                        </motion.div>
+                      );
+                    })}
 
                     {/* Proactive Critical Alerts */}
                     {proactiveAlerts.filter(a => a.severity === 'critical').map(alert => (
