@@ -79,28 +79,14 @@ export default function SentinelBadge({
     <>
       {/* Icon Badge in Header */}
       <div className="relative">
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
+        <button
           onClick={() => setIsOpen(true)}
-          className={`p-2.5 rounded-xl transition-all cursor-pointer flex items-center justify-center relative overflow-hidden ${
-            unseenTotalCount > 0 
-              ? 'bg-slate-800 text-white dark:bg-white dark:text-slate-900 shadow-md border-transparent' 
-              : 'bg-slate-50 hover:bg-slate-100 text-slate-700 dark:bg-[#121214] dark:hover:bg-[#1c1c21] dark:border dark:border-[#202024] dark:text-slate-300'
-          }`}
+          className="p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 text-slate-700 transition-all dark:bg-[#121214] dark:hover:bg-[#1c1c21] dark:border dark:border-[#202024] dark:text-slate-300 cursor-pointer flex items-center justify-center relative"
           title="Sentinel Alerts"
         >
-          {unseenTotalCount > 0 && (
-            <motion.div 
-              className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-              animate={{ x: ['-200%', '200%'] }}
-              transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-            />
-          )}
-          
           <motion.div
-            animate={unseenTotalCount > 0 ? { rotate: [0, -10, 10, -10, 0] } : {}}
-            transition={{ repeat: Infinity, duration: 1.5, repeatDelay: 1 }}
+            animate={unseenTotalCount > 0 ? { rotate: [0, -20, 20, -20, 20, -10, 10, 0] } : {}}
+            transition={{ repeat: Infinity, duration: 0.6, repeatDelay: 1.5 }}
           >
             <Bell className="w-4 h-4 relative z-10" />
           </motion.div>
@@ -113,13 +99,16 @@ export default function SentinelBadge({
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0, opacity: 0 }}
                 transition={{ type: "spring", stiffness: 500, damping: 15 }}
-                className={`absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full ${badgeColor} text-[10px] font-black text-white flex items-center justify-center shadow-[0_2px_10px_rgba(0,0,0,0.3)] z-20 border-[2px] border-white dark:border-[#0f172a]`}
+                className={`absolute -top-1 -right-1 w-5 h-5 rounded-full ${badgeColor} text-[10px] font-black text-white flex items-center justify-center z-20 border-2 border-white dark:border-[#121214]`}
+                style={{
+                  boxShadow: `0 0 12px ${badgeColor === 'bg-[#E8445A]' ? '#E8445A' : badgeColor === 'bg-[#F5A623]' ? '#F5A623' : '#3B82F6'}`
+                }}
               >
                 {unseenTotalCount > 9 ? '9+' : unseenTotalCount}
               </motion.span>
             )}
           </AnimatePresence>
-        </motion.button>
+        </button>
       </div>
 
       {/* Slide-in Sidebar Panel */}
