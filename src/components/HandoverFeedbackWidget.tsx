@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/context/AuthContext';
 import { MessageSquarePlus, ThumbsUp, ThumbsDown, AlertCircle, X, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getAdelaideTodayStr } from '@/lib/taskUtils';
 
 export default function HandoverFeedbackWidget() {
   const { user, facility } = useAuth();
@@ -18,7 +19,7 @@ export default function HandoverFeedbackWidget() {
   useEffect(() => {
     if (!user || !facility) return;
     const checkExisting = async () => {
-      const today = new Date().toISOString().split('T')[0];
+      const today = getAdelaideTodayStr();
       const { data } = await supabase
         .from('handover_feedback')
         .select('id')
@@ -49,11 +50,11 @@ export default function HandoverFeedbackWidget() {
     setIsSubmitting(true);
 
     try {
-      const shiftDate = new Date().toISOString().split('T')[0];
+      const shiftDate = getAdelaideTodayStr();
       const hour = new Date().getHours();
-      let shiftType = 'morning';
-      if (hour >= 14 && hour < 22) shiftType = 'afternoon';
-      else if (hour >= 22 || hour < 6) shiftType = 'night';
+      let shiftType = 'afternoon';
+      if (hour >= 23 || hour < 7) shiftType = 'night';
+      else if (hour >= 7 && hour < 15) shiftType = 'morning';
 
       const { error } = await supabase.from('handover_feedback').insert([{
         facility_id: facility.id,

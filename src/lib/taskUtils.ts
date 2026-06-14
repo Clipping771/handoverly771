@@ -134,3 +134,43 @@ export function getAdelaideMidnightISO(): string {
   const absoluteAdelaideMidnight = new Date(adelaideMidnight.getTime() - diffMs);
   return absoluteAdelaideMidnight.toISOString();
 }
+
+/**
+ * Checks if a task is from a previous handover (different date or shift).
+ */
+export function isTaskFromPreviousHandover(task: any): boolean {
+  if (task.carry_until_date) return false;
+  if (!task.handover || !task.handover.shift_date || !task.handover.shift_type) return false;
+
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Australia/Adelaide',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    hour12: false
+  });
+  const parts = formatter.formatToParts(new Date());
+  let year = 2026, month = 1, day = 1, hour = 0;
+  parts.forEach(p => {
+    if (p.type === 'year') year = parseInt(p.value, 10);
+    if (p.type === 'month') month = parseInt(p.value, 10);
+    if (p.type === 'day') day = parseInt(p.value, 10);
+    if (p.type === 'hour') hour = parseInt(p.value, 10);
+  });
+  
+  if (hour === 24) hour = 0;
+  
+  const targetDate = new Date(year, month - 1, day);
+  if (hour >= 0 && hour < 7) {
+    targetDate.setDate(targetDate.getDate() - 1);
+  }
+  const todayStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+  
+  let currentShiftType = 'morning';
+  if (hour >= 7 && hour < 15) currentShiftType = 'morning';
+  else if (hour >= 15 && hour < 23) currentShiftType = 'afternoon';
+  else currentShiftType = 'night';
+
+  return task.handover.shift_date !== todayStr || task.handover.shift_type !== currentShiftType;
+}

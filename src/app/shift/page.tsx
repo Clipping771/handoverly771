@@ -1,18 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContextProvider';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Settings, FileCheck, Users, Search, Plus, X, Sun, Moon, LogOut, ArrowRight, Activity, Trash2, ShieldAlert, FileWarning, AlertCircle, ListTodo, Clock, RotateCcw, Pencil, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Maximize, PanelLeft, Columns, Square, LayoutTemplate, LayoutGrid } from 'lucide-react';
+import { Settings, FileCheck, Users, Search, Plus, X, Sun, Moon, LogOut, ArrowRight, Activity, Trash2, ShieldAlert, FileWarning, AlertCircle, ListTodo, Clock, RotateCcw, Pencil, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, PanelLeftClose, PanelLeftOpen, PanelRightClose, PanelRightOpen, Maximize, PanelLeft, Columns, Square, LayoutTemplate, LayoutGrid, FileText, Calendar } from 'lucide-react';
 import HeaderThemeSelector from '@/components/HeaderThemeSelector';
 import Link from 'next/link';
 import SettingsModal from '@/components/SettingsModal';
 import OnboardingTour from '@/components/OnboardingTour';
 import { motion, AnimatePresence } from 'framer-motion';
 import SentinelBadge from '@/components/SentinelBadge';
-import HandoverFeedbackWidget from '@/components/HandoverFeedbackWidget';
+import FullHandoverReport from '@/components/FullHandoverReport';
 import toast from 'react-hot-toast';
 import { Check } from 'lucide-react';
 import { getPendingQueue } from '@/lib/db';
@@ -69,6 +69,7 @@ export default function MyShift() {
   const [isLeftSidebarOpen, setIsLeftSidebarOpen] = useState(true);
   const [isRightSidebarOpen, setIsRightSidebarOpen] = useState(false);
   const [isPulseOpen, setIsPulseOpen] = useState(false);
+  const [showFullReport, setShowFullReport] = useState(false);
 
   useEffect(() => {
     if (!selectedResidentId) {
@@ -177,6 +178,36 @@ export default function MyShift() {
   const [editingResident, setEditingResident] = useState<Resident | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
 
+  // Shift Selector Modal
+  const [showShiftSelector, setShowShiftSelector] = useState(false);
+
+  const selectedDateRef = useRef<string>('');
+  const selectedShiftRef = useRef<'morning' | 'afternoon' | 'night'>('morning');
+
+  const [selectedDate, setSelectedDate] = useState<string>(() => {
+    const formatter = new Intl.DateTimeFormat('en-US', { timeZone: 'Australia/Adelaide', year: 'numeric', month: '2-digit', day: '2-digit' });
+    const parts = formatter.formatToParts(new Date());
+    let y='', m='', d='';
+    parts.forEach(p => { if(p.type==='year') y=p.value; if(p.type==='month') m=p.value; if(p.type==='day') d=p.value; });
+    return `${y}-${m}-${d}`;
+  });
+
+  const [selectedShift, setSelectedShift] = useState<'morning' | 'afternoon' | 'night'>(() => {
+    const formatter = new Intl.DateTimeFormat('en-US', { timeZone: 'Australia/Adelaide', hour: 'numeric', hour12: false });
+    const parts = formatter.formatToParts(new Date());
+    let localHour = 0;
+    parts.forEach(p => { if (p.type === 'hour') localHour = parseInt(p.value, 10); });
+    if (localHour === 24) localHour = 0;
+    if (localHour >= 23 || localHour < 7) return 'night';
+    if (localHour >= 7 && localHour < 15) return 'morning';
+    return 'afternoon';
+  });
+
+  useEffect(() => {
+    selectedDateRef.current = selectedDate;
+    selectedShiftRef.current = selectedShift;
+  }, [selectedDate, selectedShift]);
+
   const handleEditResidentSuccess = (updatedResident: Resident) => {
     if (updatedResident.is_active !== false) {
       setResidents((prev) =>
@@ -281,23 +312,19 @@ export default function MyShift() {
       setResidents(allResidents.filter(r => r.is_active !== false));
       setArchivedResidents(allResidents.filter(r => r.is_active === false));
 
-      const now = new Date();
-      const localHour = now.getHours();
-      const targetDate = new Date(now);
-      if (localHour >= 0 && localHour < 12) {
-        targetDate.setDate(targetDate.getDate() - 1);
-      }
-      const todayStr = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}-${String(targetDate.getDate()).padStart(2, '0')}`;
+      const todayStr = selectedDateRef.current || selectedDate;
+      const currentShiftType = selectedShiftRef.current || selectedShift;
 
       const { data: handData, error: handError } = await supabase
         .from('handovers')
         .select('resident_id, is_approved, urgency, shift_type, created_at, raw_input, rn_summary')
         .eq('facility_id', facility.id)
-        .eq('shift_date', todayStr);
+        .eq('shift_date', todayStr)
+        .eq('shift_type', currentShiftType);
 
       if (handError) throw handError;
 
-      const statusMap: Record<string, HandoverStatus> = {};
+      const statusMap: Record<string, HandoverStatus> = {}; console.log('FETCHING DATA', todayStr, currentShiftType, handData);
       
       // 1. Fetch offline queue items first
       try {
@@ -348,7 +375,7 @@ export default function MyShift() {
 
       const filteredTasks = (facilityTasks || []).filter((t: any) => {
         const resObj = Array.isArray(t.resident) ? t.resident[0] : t.resident;
-        if (!resObj || !resObj.is_active) return false;
+        if (!resObj || resObj.is_active === false) return false;
         return true; // Show all uncompleted tasks immediately as alerts for testing/visibility
       });
       setFacilityUnacknowledgedTasks(filteredTasks);
@@ -362,8 +389,7 @@ export default function MyShift() {
       const allAlerts: any[] = [];
       (cachedInsights || []).forEach((row: any) => {
         const resObj = Array.isArray(row.residents) ? row.residents[0] : row.residents;
-        // Only show alerts for active residents
-        if (resObj && resObj.is_active) {
+        if (resObj && resObj.is_active !== false) {
           const alertsList = row.insights?.proactive_alerts || [];
           alertsList.forEach((alert: any) => {
             allAlerts.push({
@@ -483,7 +509,7 @@ export default function MyShift() {
       clearInterval(interval);
       window.removeEventListener('refresh_data', handleRefresh);
     };
-  }, [facility, router]);
+  }, [facility, router, selectedDate, selectedShift]);
 
   useEffect(() => {
     if (!facility) return;
@@ -742,6 +768,14 @@ function formatHandoverTime(dateStr?: string) {
             <div className="flex items-center gap-3">
               <HeaderThemeSelector />
 
+              <button 
+                onClick={() => setShowFullReport(true)}
+                className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer border border-slate-200/60 dark:border-white/10 shadow-sm"
+                title="View Full Handover Report"
+              >
+                <FileText className="w-5 h-5" />
+              </button>
+
               <SentinelBadge
                 userId={user.id}
                 unacknowledgedTasks={facilityUnacknowledgedTasks}
@@ -780,6 +814,13 @@ function formatHandoverTime(dateStr?: string) {
                   <div className="mr-2">
                     <HeaderThemeSelector />
                   </div>
+                  <button 
+                    onClick={() => setShowFullReport(true)}
+                    className="mr-2 p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer border border-slate-200/60 dark:border-white/10 shadow-sm"
+                    title="View Full Handover Report"
+                  >
+                    <FileText className="w-5 h-5" />
+                  </button>
                   <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-200/60 dark:border-white/10 shadow-sm flex items-center justify-center">
                     <SentinelBadge
                       userId={user.id}
@@ -801,9 +842,7 @@ function formatHandoverTime(dateStr?: string) {
                 </button>
               </div>
             </div>
-
-            <HandoverFeedbackWidget />
-
+            
             {/* Facility Pulse / Clinical Notice Board */}
             <div className="mb-8 apple-card rounded-[24px] p-6 flex flex-col gap-5">
               <div 
@@ -937,6 +976,32 @@ function formatHandoverTime(dateStr?: string) {
             </motion.div>
                 )}
               </AnimatePresence>
+            </div>
+
+            {/* Shift Context Header (Above Residents) */}
+            <div className="flex items-center justify-between mb-4 px-1">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-text-primary">Resident Handovers</h3>
+                <span className="text-xs text-text-secondary font-medium px-2 py-0.5 bg-surface-solid rounded-md border border-border">
+                  {filteredResidents.length} Residents
+                </span>
+              </div>
+              <button
+                onClick={() => setShowShiftSelector(true)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-surface border border-border rounded-xl shadow-sm hover:shadow-md hover:border-teal-accent/50 transition-all cursor-pointer text-text-primary group"
+                title="Change Shift & Date"
+              >
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-teal-accent group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-bold">{selectedDate.split('-').reverse().join('/')}</span>
+                </div>
+                <div className="w-px h-3 bg-border"></div>
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-3.5 h-3.5 text-teal-accent group-hover:scale-110 transition-transform" />
+                  <span className="text-xs font-bold capitalize">{selectedShift} Shift</span>
+                </div>
+                <ChevronDown className="w-3.5 h-3.5 text-text-tertiary ml-1 group-hover:text-teal-accent transition-colors" />
+              </button>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -1127,6 +1192,53 @@ function formatHandoverTime(dateStr?: string) {
       />
 
       <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} />
+      
+      {showShiftSelector && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className="bg-surface border border-border rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-bold text-text-primary">Select Shift & Date</h3>
+              <button onClick={() => setShowShiftSelector(false)} className="text-text-tertiary hover:text-text-primary transition-colors cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4 mb-8">
+              <div>
+                <label className="block text-xs font-bold text-text-secondary mb-1.5 uppercase tracking-wider">Date</label>
+                <input 
+                  type="date" 
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="w-full bg-surface-solid border border-border text-sm font-bold text-text-primary rounded-xl px-4 py-3 outline-none focus:border-teal-accent/50 transition-colors"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-xs font-bold text-text-secondary mb-1.5 uppercase tracking-wider">Shift</label>
+                <select
+                  value={selectedShift}
+                  onChange={(e) => setSelectedShift(e.target.value as any)}
+                  className="w-full bg-surface-solid border border-border text-sm font-bold text-text-primary rounded-xl px-4 py-3 outline-none focus:border-teal-accent/50 transition-colors appearance-none cursor-pointer"
+                >
+                  <option value="morning">Morning Shift</option>
+                  <option value="afternoon">Afternoon Shift</option>
+                  <option value="night">Night Shift</option>
+                </select>
+              </div>
+            </div>
+            
+            <button 
+              onClick={() => setShowShiftSelector(false)}
+              className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 px-4 rounded-xl shadow-md transition-colors cursor-pointer"
+            >
+              Apply Selection
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showFullReport && <FullHandoverReport onClose={() => setShowFullReport(false)} />}
 
       <SoftDeleteModal
         isOpen={showDeleteModal}

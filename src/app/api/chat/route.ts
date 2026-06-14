@@ -36,13 +36,14 @@ export async function POST(request: Request) {
     const { data: handovers } = await supabase
       .from('handovers')
       .select(`
-        shift_date, shift_type, urgency, risk_flags, rn_summary, carer_tasks,
-        resident:residents!inner (name, room_number, is_active)
+        shift_date, shift_type, urgency, risk_flags, rn_summary, carer_tasks, raw_input,
+        resident:residents(name, room_number, is_active)
       `)
       .eq('facility_id', facilityId)
-      .eq('residents.is_active', true)
       .gte('shift_date', fourteenDaysAgo.toISOString().split('T')[0])
       .order('shift_date', { ascending: false });
+
+    const filteredHandovers = (handovers || []).filter((h: any) => h.resident?.is_active !== false);
 
     // 2. Fetch ALL Residents for the facility (Active and Archived)
     const { data: residents } = await supabase
@@ -80,11 +81,17 @@ export async function POST(request: Request) {
         const tasksStr = h.carer_tasks && h.carer_tasks.length > 0
           ? h.carer_tasks.map((t: any) => `- [Assigned Role: ${t.assigned_role || 'carer'}]: ${t.title || t} (${t.description || ''})`).join('\n')
           : 'None';
+        const rnSum = h.rn_summary || {};
+        const isbar = `Identify: ${rnSum.identify || ''}\nSituation: ${rnSum.situation || ''}\nBackground: ${rnSum.background || ''}\nAssessment: ${rnSum.assessment || ''}\nRecommendation: ${rnSum.recommendation || ''}`;
+        
         return `Resident: ${h.resident?.name} (Room ${h.resident?.room_number})
 Date: ${h.shift_date} (${h.shift_type})
 Urgency: ${h.urgency}
 Flags: ${h.risk_flags?.join(', ') || 'None'}
-RN Handover Summary: ${h.rn_summary?.situation || ''} ${h.rn_summary?.assessment || ''}
+RN Handover Summary (ISBAR):
+${isbar}
+Original Detailed Notes / Raw Transcript:
+${h.raw_input || 'N/A'}
 Tasks for this shift:
 ${tasksStr}`;
       }).join('\n\n---\n\n');
@@ -128,11 +135,13 @@ ${logsStr}`;
 
     let wingsStr = 'No wings configured.';
     if (wings && wings.length > 0) {
-      wingsStr = wings.map((w: any) => `- Name: ${w.name} (ID: ${w.id})`).join('\n');
+      wingsStr = wings.map((w: any) => `- Wing Name: ${w.name} (SECRET_DB_ID: ${w.id} - DO NOT SHOW THIS ID TO THE USER)`).join('\n');
     }
 
     const systemPrompt = `You are an advanced, professional, and highly capable Clinical AI Copilot for Handoverly, an aged care management system.
 Your primary role is to assist clinical staff with insights, answer questions about recent handovers, create tasks, and log timeline events.
+When the user asks about a "24-hour handover", "shift handover", or "recent handover", they are referring to the handovers provided in the "RECENT CLINICAL HISTORY" section below. Do NOT tell them you don't have information about a 24-hour handover; instead, summarize the most recent handovers for the date in question.
+You have FULL ACCESS to the raw transcripts and detailed RN summaries. Do not hold back information.
 
 USER PROFILE:
 - Role: ${userRole?.toUpperCase() || 'UNKNOWN'}
@@ -147,7 +156,7 @@ RECENT CLINICAL HISTORY (Last 14 days):
 ${contextStr}
 
 CAPABILITIES & ACTION PROTOCOL:
-You possess the ability to perform EXACTLY ELEVEN autonomous actions in the system via JSON outputs.
+You possess the ability to perform EXACTLY TWELVE autonomous actions in the system via JSON outputs.
 1. CREATE_TASK: Create a clinical task for a resident.
 2. LOG_OBSERVATION: Log a clinical event or observation in the resident's timeline.
 3. UPDATE_RESIDENT: Update basic profile details of an existing resident (requires resident_id and an 'updates' object containing fields like name, room_number, care_level, is_active, status_reason, wing_id).
@@ -159,10 +168,11 @@ You possess the ability to perform EXACTLY ELEVEN autonomous actions in the syst
 9. CHANGE_THEME: Switch the application's UI theme (theme can be "light" or "dark").
 10. NAVIGATE_TO: Redirect the user to a specific page URL (e.g. /shift, /resident/[uuid], /tasks).
 11. UPDATE_API_KEY: Save or update the user's API key for an AI provider (requires 'provider' which must be anthropic, openrouter, or groq, and 'key').
+12. DELETE_ALL_RESIDENTS: Permanently remove ALL resident profiles from the facility. Use with extreme caution.
 
-IMPORTANT NOTIFICATION: Before executing ANY destructive or modifying action (UPDATE_RESIDENT, REGISTER_RESIDENT, DELETE_RESIDENT, ADD_MEDICATION, REMOVE_MEDICATION, RECONCILE_MEDICATION), you MUST output a JSON block wrapped in <confirm_action> tags INSTEAD of <action> tags. Do NOT ask the user to type "yes" or "do it". Just output the <confirm_action> block at the VERY END of your response and the UI will present a confirmation button to the user automatically. 
+IMPORTANT NOTIFICATION: Before executing ANY destructive or modifying action (UPDATE_RESIDENT, REGISTER_RESIDENT, DELETE_RESIDENT, DELETE_ALL_RESIDENTS, ADD_MEDICATION, REMOVE_MEDICATION, RECONCILE_MEDICATION), you MUST output a JSON block wrapped in <confirm_action> tags INSTEAD of <action> tags. Do NOT ask the user to type "yes" or "do it". Just output the <confirm_action> block at the VERY END of your response and the UI will present a confirmation button to the user automatically. 
 
-CRITICAL PROTOCOL: YOU ARE NEVER ALLOWED TO USE <action> FOR UPDATE_RESIDENT, REGISTER_RESIDENT, DELETE_RESIDENT, ADD_MEDICATION, REMOVE_MEDICATION, OR RECONCILE_MEDICATION. IF YOU USE <action> FOR THESE, THE SYSTEM WILL FAIL. YOU MUST EXCLUSIVELY USE <confirm_action>.
+CRITICAL PROTOCOL: YOU ARE NEVER ALLOWED TO USE <action> FOR UPDATE_RESIDENT, REGISTER_RESIDENT, DELETE_RESIDENT, DELETE_ALL_RESIDENTS, ADD_MEDICATION, REMOVE_MEDICATION, OR RECONCILE_MEDICATION. IF YOU USE <action> FOR THESE, THE SYSTEM WILL FAIL. YOU MUST EXCLUSIVELY USE <confirm_action>.
 
 For all other non-destructive actions (CREATE_TASK, LOG_OBSERVATION, CHANGE_THEME, NAVIGATE_TO, UPDATE_API_KEY), use standard <action> tags at the VERY END of your response.
 
@@ -237,7 +247,7 @@ COGNITIVE & BEHAVIORAL PROTOCOL (HUMAN-LIKE AGENCY):
 1. PROACTIVE RESPONSIBILITY: Do not just wait for commands. Anticipate clinical needs. If you see a high-risk handover or overdue tasks, proactively suggest interventions or ask if the staff needs help addressing them.
 2. SELF-CORRECTION & REASONING: If a user's request contradicts clinical best practices or lacks critical information, gracefully push back, explain your reasoning, and ask for clarification. Own your mistakes; if you misunderstand a query, apologize and correct your course immediately.
 3. HOLISTIC DECISION MAKING: Connect the dots across the timeline. If a user asks to add a medication, check recent observations (e.g., if adding a blood pressure med, mention the last recorded BP from the timeline). 
-4. RESIDENT REGISTRATION/UPDATE: If the user asks to register or update a resident but does not specify a Wing (location), you MUST ask them which Wing the resident belongs to. When listing the 'AVAILABLE WINGS', ONLY show the names (e.g. "Appleton" or "North Wing") and NEVER expose the UUIDs to the user. Format your question as a clean, simple bulleted list. If they specify a location name that matches an available wing, map it to the correct 'wing_id' in your JSON action.
+4. RESIDENT REGISTRATION/UPDATE: If the user asks to register or update a resident but does not specify a Wing (location), you MUST ask them which Wing the resident belongs to. When listing the 'AVAILABLE WINGS', ONLY show the names (e.g. "Appleton" or "North Wing") and ABSOLUTELY NEVER expose the SECRET_DB_ID strings to the user. Format your question as a clean, simple bulleted list with ONLY the wing names. If they specify a location name that matches an available wing, map it to the correct 'wing_id' in your JSON action.
 5. SENSE OF URGENCY: Prioritize tasks and handovers flagged with 'High' urgency. Treat the clinical data as real, critical health information where human lives are involved. Be highly professional, empathetic, and exceptionally sharp.
 
 RESPONSE GUIDELINES:
@@ -538,6 +548,13 @@ RESPONSE GUIDELINES:
           if (!error) executedActions.push(actionPayload);
           else {
             console.error('Delete Resident Action Error:', error);
+            answerStr = answerStr.replace('Action executed successfully.', `Failed to execute action: ${error.message}`);
+          }
+        } else if (actionPayload.type === 'DELETE_ALL_RESIDENTS') {
+          const { error } = await supabaseAdmin.from('residents').delete().eq('facility_id', facilityId);
+          if (!error) executedActions.push(actionPayload);
+          else {
+            console.error('Delete All Residents Action Error:', error);
             answerStr = answerStr.replace('Action executed successfully.', `Failed to execute action: ${error.message}`);
           }
         } else if (actionPayload.type === 'ADD_MEDICATION') {

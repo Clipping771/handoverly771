@@ -43,7 +43,7 @@ export default function Dashboard() {
   const [selectedDate, setSelectedDate] = useState<Date>(() => {
     const now = new Date();
     const localHour = now.getHours();
-    if (localHour >= 0 && localHour < 12) {
+    if (localHour >= 0 && localHour < 7) {
       now.setDate(now.getDate() - 1);
     }
     return now;
@@ -165,12 +165,13 @@ export default function Dashboard() {
         `)
         .eq('facility_id', facility.id)
         .eq('is_approved', true)
-        .eq('shift_date', dateStr)
-        .eq('residents.is_active', true);
+        .eq('shift_date', dateStr);
 
       if (error) throw error;
 
-      const mapped = (data || []).map((h: any) => {
+      const mapped = (data || [])
+        .filter((h: any) => h.residents?.is_active !== false)
+        .map((h: any) => {
         const fallbackTime = h.approved_at || h.created_at;
         return {
           id: h.id,
@@ -212,7 +213,7 @@ export default function Dashboard() {
 
       const filteredTasks = (facilityTasks || []).filter((t: any) => {
         const resObj = Array.isArray(t.resident) ? t.resident[0] : t.resident;
-        if (!resObj || !resObj.is_active) return false;
+        if (!resObj || resObj.is_active === false) return false;
         return true; // Show all uncompleted tasks immediately
       });
       setFacilityUnacknowledgedTasks(filteredTasks);
@@ -225,7 +226,7 @@ export default function Dashboard() {
       const allAlerts: any[] = [];
       (cachedInsights || []).forEach((row: any) => {
         const resObj = Array.isArray(row.residents) ? row.residents[0] : row.residents;
-        if (resObj && resObj.is_active) {
+        if (resObj && resObj.is_active !== false) {
           const alertsList = row.insights?.proactive_alerts || [];
           alertsList.forEach((alert: any) => {
             allAlerts.push({

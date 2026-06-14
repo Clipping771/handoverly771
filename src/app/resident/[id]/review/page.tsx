@@ -6,6 +6,7 @@ import { useTheme } from '@/context/ThemeContextProvider';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { ChevronLeft, FileCheck, Brain, Sparkles, Plus, Trash2, ShieldAlert, Sun, Moon, Volume2 } from 'lucide-react';
+import { getAdelaideTodayStr } from '@/lib/taskUtils';
 import Link from 'next/link';
 import { addToQueue, clearDraft } from '@/lib/db';
 import { useSync } from '@/context/SyncContext';
@@ -78,25 +79,23 @@ export default function ReviewHandover() {
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [shiftDate, setShiftDate] = useState(() => {
-    const now = new Date();
-    const localHour = now.getHours();
-    const targetDate = new Date(now);
-    // 12 AM to 12 PM: Typically Night Shift submission, so date is Yesterday
-    if (localHour >= 0 && localHour < 12) {
-      targetDate.setDate(targetDate.getDate() - 1);
-    }
-    const year = targetDate.getFullYear();
-    const month = String(targetDate.getMonth() + 1).padStart(2, '0');
-    const day = String(targetDate.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
+    return getAdelaideTodayStr();
   });
   const [shiftType, setShiftType] = useState<'morning' | 'afternoon' | 'night'>(() => {
-    const localHour = new Date().getHours();
-    // 12 AM to 12 PM: Night Shift submission
-    if (localHour >= 0 && localHour < 12) return 'night';
-    // 12 PM to 5 PM (17:00): Morning Shift submission
-    if (localHour >= 12 && localHour < 17) return 'morning';
-    // 5 PM to 12 AM: Afternoon Shift submission
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Australia/Adelaide',
+      hour: 'numeric',
+      hour12: false
+    });
+    const parts = formatter.formatToParts(new Date());
+    let localHour = 0;
+    parts.forEach(p => {
+      if (p.type === 'hour') localHour = parseInt(p.value, 10);
+    });
+    if (localHour === 24) localHour = 0;
+    
+    if (localHour >= 23 || localHour < 7) return 'night';
+    if (localHour >= 7 && localHour < 15) return 'morning';
     return 'afternoon';
   });
   const { triggerSync } = useSync();

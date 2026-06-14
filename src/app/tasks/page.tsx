@@ -5,14 +5,15 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContextProvider';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { CheckCircle2, Circle, Clock, Sun, Moon, ArrowLeft, Stethoscope, User, HeartHandshake, ChevronDown, ChevronUp, XCircle, Calendar } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, Sun, Moon, ArrowLeft, Stethoscope, User, HeartHandshake, ChevronDown, ChevronUp, XCircle, Calendar, FileText, Lock } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
-import { getAdelaideMidnightISO } from '@/lib/taskUtils';
+import { getAdelaideMidnightISO, isTaskFromPreviousHandover } from '@/lib/taskUtils';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import HeaderThemeSelector from '@/components/HeaderThemeSelector';
+import FullHandoverReport from '@/components/FullHandoverReport';
 
 interface Task {
   id: string;
@@ -24,7 +25,7 @@ interface Task {
   resident_id: string;
   resident: { name: string; room_number: string };
   created_at: string;
-  handover?: { shift_type: string; approved_at: string };
+  handover?: { shift_type: string; shift_date?: string; approved_at: string };
   clinical_purpose?: string;
   outcome?: string;
   carry_until_date?: string;
@@ -62,6 +63,7 @@ export default function TasksPage() {
   const [expandedRooms, setExpandedRooms] = useState<Record<string, boolean>>({});
   const [completions, setCompletions] = useState<Record<string, { completedAt: string; completedBy: string; status: 'completed' | 'declined'; reason?: string }>>({});
   const [activeLoggingTaskId, setActiveLoggingTaskId] = useState<string | null>(null);
+  const [showFullReport, setShowFullReport] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -86,15 +88,14 @@ export default function TasksPage() {
         .select(`
           id, title, description, tags, is_completed, assigned_role, created_at, resident_id, clinical_purpose, outcome, carry_until_date,
           resident:residents!inner(name, room_number, is_active),
-          handover:handovers(shift_type, approved_at)
+          handover:handovers(shift_type, shift_date, approved_at)
         `)
         .eq('facility_id', facility.id)
-        .eq('resident.is_active', true)
         .or(`outcome.is.null,created_at.gte.${todayStr},carry_until_date.gte.${todayStr.split('T')[0]}`)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setTasks(data as any || []);
+      setTasks((data as any || []).filter((t: any) => t.resident?.is_active !== false));
 
       // Fetch completions, declines, and reopenings from activity timeline for today
       const { data: timelineData } = await supabase
@@ -192,6 +193,11 @@ export default function TasksPage() {
     
     if (!isMatchingRole) {
       toast.error(`Only RNs, Admins, or Carers can modify this task.`);
+      return;
+    }
+
+    if (isTaskFromPreviousHandover(task)) {
+      toast.error("Task locked (Previous Shift). An RN must add it to the current handover before it can be completed.");
       return;
     }
 
@@ -452,6 +458,8 @@ export default function TasksPage() {
                         const isCompleted = task.carry_until_date 
                           ? (completions[task.id]?.status === 'completed')
                           : (task.is_completed || completions[task.id]?.status === 'completed');
+                        const isPrevious = isTaskFromPreviousHandover(task);
+                        
                         return (
                           <motion.div 
                             key={task.id} 
@@ -460,6 +468,8 @@ export default function TasksPage() {
                                 ? 'border-rose-200 dark:border-rose-900/30'
                                 : isCompleted
                                 ? 'border-emerald-200 dark:border-emerald-900/30'
+                                : isPrevious
+                                ? 'opacity-80 bg-slate-50 dark:bg-slate-900/50 grayscale-[20%]'
                                 : ''
                             } rounded-[24px] p-5 flex items-start gap-4 shadow-sm hover:shadow-md transition-shadow group relative overflow-hidden`}
                           >
@@ -467,6 +477,10 @@ export default function TasksPage() {
                             <div className="flex items-center gap-1">
                                 <button
                                   onClick={(e) => {
+                                    if (isPrevious) {
+                                      toast.error("Task locked (Previous Shift). An RN must add it to the current handover before it can be completed.");
+                                      return;
+                                    }
                                     if (isDeclined || isCompleted) {
                                       toggleTaskStatus(task.id, false, 'reopened');
                                     } else {
@@ -480,14 +494,20 @@ export default function TasksPage() {
                                     (isCarer && task.assigned_role === 'rn')
                                   ))
                                 }
-                                className="mt-1 shrink-0 transition-transform active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                                className={`mt-1 shrink-0 transition-transform active:scale-90 disabled:cursor-not-allowed ${isPrevious ? 'opacity-50 cursor-not-allowed' : 'disabled:opacity-40'}`}
                                 title={
-                                  !user || (!isAdmin && !isRN && isCarer && task.assigned_role === 'rn')
-                                    ? "Only RNs and Admins can complete RN tasks."
-                                    : "Toggle status"
+                                  isPrevious
+                                    ? "Locked: From previous shift"
+                                    : !user || (!isAdmin && !isRN && isCarer && task.assigned_role === 'rn')
+                                      ? "Only RNs and Admins can complete RN tasks."
+                                      : "Toggle status"
                                 }
                               >
-                                {isDeclined ? (
+                                {isPrevious ? (
+                                  <div className="w-7 h-7 flex items-center justify-center bg-slate-200 dark:bg-slate-800 rounded-full">
+                                    <Lock className="w-4 h-4 text-slate-500" />
+                                  </div>
+                                ) : isDeclined ? (
                                   <XCircle className="w-7 h-7 text-rose-500" />
                                 ) : isCompleted ? (
                                   <CheckCircle2 className="w-7 h-7 text-emerald-500" />
@@ -496,7 +516,7 @@ export default function TasksPage() {
                                 )}
                               </button>
         
-                              {!isCompleted && !isDeclined && (
+                              {!isCompleted && !isDeclined && !isPrevious && (
                                   <button
                                     onClick={() => {
                                       setActiveLoggingTaskId(task.id);
@@ -522,8 +542,13 @@ export default function TasksPage() {
                             
                             <div className="flex-1 min-w-0">
                               <div className="flex items-start justify-between mb-2 gap-2">
-                                <h3 className={`font-bold text-[15px] leading-snug ${isCompleted ? 'text-text-secondary line-through' : 'text-text-primary'}`}>
+                                <h3 className={`font-bold text-[15px] leading-snug ${isCompleted ? 'text-text-secondary line-through' : isPrevious ? 'text-slate-500 dark:text-slate-400' : 'text-text-primary'}`}>
                                   {task.title}
+                                  {isPrevious && (
+                                    <span className="text-[9px] font-bold text-slate-500 bg-slate-200 dark:bg-slate-800 px-2 py-0.5 rounded-md ml-2 inline-flex items-center gap-1 align-middle">
+                                      <Lock className="w-2.5 h-2.5" /> PREVIOUS SHIFT
+                                    </span>
+                                  )}
                                   {task.carry_until_date && (
                                     <span className="text-[10px] font-bold text-amber-700 bg-amber-100 dark:bg-amber-950/45 dark:text-amber-400 px-2.5 py-0.5 rounded-md ml-2 inline-block leading-none align-middle">
                                       until {new Date(task.carry_until_date + 'T00:00:00').toLocaleDateString([], { day: 'numeric', month: 'short' })}
@@ -695,7 +720,16 @@ export default function TasksPage() {
             <h1 className="font-bold text-xl tracking-tight">Shift Tasks</h1>
           </div>
           
-          <HeaderThemeSelector />
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setShowFullReport(true)}
+              className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer border border-slate-200/60 dark:border-white/10 shadow-sm"
+              title="View Full Handover Report"
+            >
+              <FileText className="w-5 h-5" />
+            </button>
+            <HeaderThemeSelector />
+          </div>
         </div>
       </header>
 
@@ -866,6 +900,9 @@ export default function TasksPage() {
             </div>
           </div>
         )}
+        
+        {/* Full Handover Report Modal */}
+        {showFullReport && <FullHandoverReport onClose={() => setShowFullReport(false)} />}
       </main>
     </div>
   );
