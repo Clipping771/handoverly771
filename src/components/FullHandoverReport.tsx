@@ -43,6 +43,7 @@ interface Task {
   resident_id: string;
   created_at: string;
   carry_until_date: string | null;
+  handover_id: string | null;
 }
 
 export default function FullHandoverReport({ onClose }: FullHandoverReportProps) {
@@ -85,20 +86,32 @@ export default function FullHandoverReport({ onClose }: FullHandoverReportProps)
           
         setHandovers(handoverData as any || []);
 
-        // Fetch tasks
-        // We get tasks created on this date or active on this date
+        // Fetch tasks — use a wide ±1 day window around selectedDate to safely cover
+        // Australia/Adelaide timezone (UTC+9:30 or +10:30 DST), then rely on resident
+        // grouping to scope correctly. Carry-over tasks (carry_until_date) for this date
+        // are also included so the report shows them.
+        const prevDateObj = new Date(selectedDate);
+        prevDateObj.setDate(prevDateObj.getDate() - 1);
+        const prevDateStr = `${prevDateObj.getFullYear()}-${String(prevDateObj.getMonth() + 1).padStart(2, '0')}-${String(prevDateObj.getDate()).padStart(2, '0')}`;
+
         const nextDateObj = new Date(selectedDate);
         nextDateObj.setDate(nextDateObj.getDate() + 1);
         const nextDateStr = `${nextDateObj.getFullYear()}-${String(nextDateObj.getMonth() + 1).padStart(2, '0')}-${String(nextDateObj.getDate()).padStart(2, '0')}`;
         
         const { data: tasksData } = await supabase
           .from('tasks')
-          .select('id, title, description, is_completed, tags, resident_id, created_at, carry_until_date')
+          .select('id, title, description, is_completed, tags, resident_id, created_at, carry_until_date, handover_id')
           .eq('facility_id', facility.id)
-          .gte('created_at', selectedDate + 'T00:00:00Z')
-          .lt('created_at', nextDateStr + 'T00:00:00Z');
+          .or(`and(created_at.gte.${prevDateStr}T00:00:00Z,created_at.lt.${nextDateStr}T23:59:59Z),carry_until_date.gte.${selectedDate}`);
           
-        setTasks(tasksData || []);
+        // Only include tasks that are actually linked to a handover on selectedDate,
+        // OR carry-over tasks active on selectedDate
+        const handoverIdsForDate = new Set((handoverData || []).map((h: any) => h.id));
+        const filteredTasksData = (tasksData || []).filter((t: any) => {
+          if (t.carry_until_date && t.carry_until_date >= selectedDate) return true;
+          return t.handover_id && handoverIdsForDate.has(t.handover_id);
+        });
+        setTasks(filteredTasksData);
         
         // Expand residents with handovers by default
         const activeRes: Record<string, boolean> = {};

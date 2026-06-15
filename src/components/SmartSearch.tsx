@@ -277,6 +277,10 @@ export default function SmartSearch() {
         openrouterModel: localStorage.getItem('user_openrouter_model') || 'anthropic/claude-3.5-sonnet',
         groqKey: localStorage.getItem('user_groq_key') || '',
         groqModel: localStorage.getItem('user_groq_model') || 'llama-3.3-70b-versatile',
+        geminiKey: localStorage.getItem('user_gemini_key') || '',
+        geminiModel: localStorage.getItem('user_gemini_model') || 'gemini-2.0-flash',
+        openaiKey: localStorage.getItem('user_openai_key') || '',
+        openaiModel: localStorage.getItem('user_openai_model') || 'gpt-4o-mini',
         ollamaUrl: localStorage.getItem('user_ollama_url') || 'http://127.0.0.1:11434',
         ollamaModel: localStorage.getItem('user_ollama_model') || 'llama3',
         activeProvider: localStorage.getItem('user_active_provider') || 'auto'
@@ -403,6 +407,10 @@ export default function SmartSearch() {
         openrouterModel: localStorage.getItem('user_openrouter_model') || 'anthropic/claude-3.5-sonnet',
         groqKey: localStorage.getItem('user_groq_key') || '',
         groqModel: localStorage.getItem('user_groq_model') || 'llama-3.3-70b-versatile',
+        geminiKey: localStorage.getItem('user_gemini_key') || '',
+        geminiModel: localStorage.getItem('user_gemini_model') || 'gemini-2.0-flash',
+        openaiKey: localStorage.getItem('user_openai_key') || '',
+        openaiModel: localStorage.getItem('user_openai_model') || 'gpt-4o-mini',
         ollamaUrl: localStorage.getItem('user_ollama_url') || 'http://127.0.0.1:11434',
         ollamaModel: localStorage.getItem('user_ollama_model') || 'llama3',
         activeProvider: localStorage.getItem('user_active_provider') || 'auto'
@@ -686,8 +694,10 @@ export default function SmartSearch() {
                             className="bg-white dark:bg-black/40 border border-border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-primary/60 min-w-[100px]"
                           >
                             <option value="groq">Groq</option>
-                            <option value="openrouter">OpenRouter</option>
+                             <option value="openrouter">OpenRouter</option>
                             <option value="anthropic">Anthropic</option>
+                            <option value="gemini">Google Gemini</option>
+                            <option value="openai">OpenAI</option>
                           </select>
                           <input 
                             type="password" 

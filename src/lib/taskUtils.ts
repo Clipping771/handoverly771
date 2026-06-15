@@ -102,6 +102,49 @@ export function getAdelaideTodayStr(): string {
 }
 
 /**
+ * Calculates the next shift type and date based on current Adelaide time.
+ */
+export function getNextShiftAdelaide(): { date: string, type: 'morning' | 'afternoon' | 'night' } {
+  const formatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Australia/Adelaide',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+    hour: 'numeric',
+    hour12: false
+  });
+  const parts = formatter.formatToParts(new Date());
+  let y = 2026, m = 1, d = 1, h = 0;
+  parts.forEach(p => {
+    if (p.type === 'year') y = parseInt(p.value, 10);
+    if (p.type === 'month') m = parseInt(p.value, 10);
+    if (p.type === 'day') d = parseInt(p.value, 10);
+    if (p.type === 'hour') h = parseInt(p.value, 10);
+  });
+  if (h === 24) h = 0;
+
+  const tempDate = new Date(y, m - 1, d);
+  let nextShift: 'morning' | 'afternoon' | 'night' = 'morning';
+
+  if (h >= 23 || h < 7) {
+    nextShift = 'morning';
+    if (h >= 23) {
+      tempDate.setDate(tempDate.getDate() + 1);
+    }
+  } else if (h >= 7 && h < 15) {
+    nextShift = 'afternoon';
+  } else {
+    nextShift = 'night';
+  }
+
+  const nextY = tempDate.getFullYear();
+  const nextM = String(tempDate.getMonth() + 1).padStart(2, '0');
+  const nextD = String(tempDate.getDate()).padStart(2, '0');
+
+  return { date: `${nextY}-${nextM}-${nextD}`, type: nextShift };
+}
+
+/**
  * Returns the absolute ISO string representing midnight today in Australia/Adelaide timezone.
  */
 export function getAdelaideMidnightISO(): string {

@@ -177,6 +177,16 @@ export default function ResidentInput() {
       const urlParams = new URLSearchParams(window.location.search);
       const isUpdate = urlParams.get('update') === 'true';
       sessionStorage.setItem('handover_is_update', isUpdate ? 'true' : 'false');
+      
+      const shiftDate = urlParams.get('date');
+      const shiftType = urlParams.get('shift');
+      if (shiftDate && shiftType) {
+        sessionStorage.setItem('handover_shift_date', shiftDate);
+        sessionStorage.setItem('handover_shift_type', shiftType);
+      } else {
+        sessionStorage.removeItem('handover_shift_date');
+        sessionStorage.removeItem('handover_shift_type');
+      }
     }
   }, []);
 

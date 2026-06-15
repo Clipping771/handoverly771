@@ -138,10 +138,50 @@ ${logsStr}`;
       wingsStr = wings.map((w: any) => `- Wing Name: ${w.name} (SECRET_DB_ID: ${w.id} - DO NOT SHOW THIS ID TO THE USER)`).join('\n');
     }
 
+    // Build rich datetime context for the AI
+    const nowAdelaide = new Date(new Date().toLocaleString('en-US', { timeZone: 'Australia/Adelaide' }));
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    const dayOfWeek = dayNames[nowAdelaide.getDay()];
+    const dayNum = nowAdelaide.getDate();
+    const monthName = monthNames[nowAdelaide.getMonth()];
+    const year = nowAdelaide.getFullYear();
+    const hour = nowAdelaide.getHours();
+    const minute = String(nowAdelaide.getMinutes()).padStart(2, '0');
+    const ampm = hour < 12 ? 'AM' : 'PM';
+    const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+    const timeStr = `${hour12}:${minute} ${ampm}`;
+
+    // Yesterday
+    const yesterday = new Date(nowAdelaide);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = `${dayNames[yesterday.getDay()]}, ${yesterday.getDate()} ${monthNames[yesterday.getMonth()]} ${yesterday.getFullYear()}`;
+
+    // Current shift
+    let currentShift = 'Day Shift';
+    if (hour >= 22 || hour < 6) currentShift = 'Night Shift';
+    else if (hour >= 14) currentShift = 'Afternoon Shift';
+
+    // "Last night" = evening/night of yesterday into early hours of today
+    const lastNightStr = `the evening/night of ${yesterdayStr} through the early hours of ${dayOfWeek} ${dayNum} ${monthName} ${year}`;
+
+    const datetimeContext = `CURRENT DATE & TIME (Australia/Adelaide, ACST):
+- Full Date: ${dayOfWeek}, ${dayNum} ${monthName} ${year}
+- Current Time: ${timeStr} ACST
+- Current Shift: ${currentShift}
+- "Today" means: ${dayOfWeek} ${dayNum} ${monthName} ${year}
+- "Yesterday" means: ${yesterdayStr}
+- "Last night" means: ${lastNightStr}
+- "This morning" means: the morning of ${dayOfWeek} ${dayNum} ${monthName} ${year}
+- "Tonight" means: the night of ${dayOfWeek} ${dayNum} going into the next day
+CRITICAL: Always use this datetime context to interpret relative time references ("last night", "yesterday", "this morning", "tonight", "earlier today"). Never ask the user what date it is. Never apologise for not knowing the date — you always know it.`;
+
     const systemPrompt = `You are an advanced, professional, and highly capable Clinical AI Copilot for Handoverly, an aged care management system.
 Your primary role is to assist clinical staff with insights, answer questions about recent handovers, create tasks, and log timeline events.
 When the user asks about a "24-hour handover", "shift handover", or "recent handover", they are referring to the handovers provided in the "RECENT CLINICAL HISTORY" section below. Do NOT tell them you don't have information about a 24-hour handover; instead, summarize the most recent handovers for the date in question.
 You have FULL ACCESS to the raw transcripts and detailed RN summaries. Do not hold back information.
+
+${datetimeContext}
 
 USER PROFILE:
 - Role: ${userRole?.toUpperCase() || 'UNKNOWN'}
@@ -167,7 +207,7 @@ You possess the ability to perform EXACTLY TWELVE autonomous actions in the syst
 8. RECONCILE_MEDICATION: Mark a resident's medication as verified and reconciled (requires resident_id and medication_name).
 9. CHANGE_THEME: Switch the application's UI theme (theme can be "light" or "dark").
 10. NAVIGATE_TO: Redirect the user to a specific page URL (e.g. /shift, /resident/[uuid], /tasks).
-11. UPDATE_API_KEY: Save or update the user's API key for an AI provider (requires 'provider' which must be anthropic, openrouter, or groq, and 'key').
+11. UPDATE_API_KEY: Save or update the user's API key for an AI provider (requires 'provider' which must be anthropic, openrouter, groq, gemini, or openai, and 'key').
 12. DELETE_ALL_RESIDENTS: Permanently remove ALL resident profiles from the facility. Use with extreme caution.
 
 IMPORTANT NOTIFICATION: Before executing ANY destructive or modifying action (UPDATE_RESIDENT, REGISTER_RESIDENT, DELETE_RESIDENT, DELETE_ALL_RESIDENTS, ADD_MEDICATION, REMOVE_MEDICATION, RECONCILE_MEDICATION), you MUST output a JSON block wrapped in <confirm_action> tags INSTEAD of <action> tags. Do NOT ask the user to type "yes" or "do it". Just output the <confirm_action> block at the VERY END of your response and the UI will present a confirmation button to the user automatically. 
@@ -399,6 +439,74 @@ RESPONSE GUIDELINES:
       } catch (err: any) {
         if (targetProvider !== 'auto') throw err;
         errors.push(`Groq failed: ${err.message || err}`);
+      }
+    }
+
+    const geminiKey = userKeys?.geminiKey || process.env.GEMINI_API_KEY || '';
+    if ((targetProvider === 'auto' || targetProvider === 'gemini') && geminiKey && !answerStr) {
+      try {
+        const geminiModel = userKeys?.geminiModel || process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+        // Build Gemini contents array (no separate system role — prepend as first user turn)
+        const geminiContents = [
+          { role: 'user', parts: [{ text: systemPrompt }] },
+          { role: 'model', parts: [{ text: 'Understood. I am ready to assist.' }] },
+          ...providerMessages.map((m: any) => ({
+            role: m.role === 'assistant' ? 'model' : 'user',
+            parts: [{ text: m.content }]
+          }))
+        ];
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: geminiContents,
+              generationConfig: { temperature: 0.1, maxOutputTokens: 2000 }
+            })
+          }
+        );
+        const data = await res.json();
+        if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+          answerStr = data.candidates[0].content.parts[0].text;
+        } else {
+          throw new Error(data.error?.message || 'Gemini error');
+        }
+      } catch (err: any) {
+        if (targetProvider !== 'auto') throw err;
+        errors.push(`Gemini failed: ${err.message || err}`);
+      }
+    }
+
+    const openaiKey = userKeys?.openaiKey || process.env.OPENAI_API_KEY || '';
+    if ((targetProvider === 'auto' || targetProvider === 'openai') && openaiKey && !answerStr) {
+      try {
+        const openaiModel = userKeys?.openaiModel || process.env.OPENAI_MODEL || 'gpt-4o-mini';
+        const res = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openaiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: openaiModel,
+            messages: [
+              { role: 'system', content: systemPrompt },
+              ...providerMessages
+            ],
+            temperature: 0.1,
+            max_tokens: 2000
+          })
+        });
+        const data = await res.json();
+        if (res.ok && data.choices?.[0]) {
+          answerStr = data.choices[0].message?.content || '';
+        } else {
+          throw new Error(data.error?.message || 'OpenAI error');
+        }
+      } catch (err: any) {
+        if (targetProvider !== 'auto') throw err;
+        errors.push(`OpenAI failed: ${err.message || err}`);
       }
     }
 

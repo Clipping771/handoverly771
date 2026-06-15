@@ -6,12 +6,11 @@ import { useTheme } from '@/context/ThemeContextProvider';
 import { useRouter, useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { ChevronLeft, FileCheck, Brain, Sparkles, Plus, Trash2, ShieldAlert, Sun, Moon, Volume2 } from 'lucide-react';
-import { getAdelaideTodayStr } from '@/lib/taskUtils';
+import { getAdelaideTodayStr, getNextShiftAdelaide, parseUntilDate } from '@/lib/taskUtils';
 import Link from 'next/link';
 import { addToQueue, clearDraft } from '@/lib/db';
 import { useSync } from '@/context/SyncContext';
 import toast from 'react-hot-toast';
-import { parseUntilDate } from '@/lib/taskUtils';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import gsap from 'gsap';
@@ -79,9 +78,23 @@ export default function ReviewHandover() {
   const [isConfirmed, setIsConfirmed] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [shiftDate, setShiftDate] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const storedDate = sessionStorage.getItem('handover_shift_date');
+      const isUpdate = sessionStorage.getItem('handover_is_update') === 'true';
+      if (storedDate) return storedDate;
+      if (!isUpdate) return getNextShiftAdelaide().date;
+    }
     return getAdelaideTodayStr();
   });
+  
   const [shiftType, setShiftType] = useState<'morning' | 'afternoon' | 'night'>(() => {
+    if (typeof window !== 'undefined') {
+      const storedType = sessionStorage.getItem('handover_shift_type');
+      const isUpdate = sessionStorage.getItem('handover_is_update') === 'true';
+      if (storedType) return storedType as 'morning' | 'afternoon' | 'night';
+      if (!isUpdate) return getNextShiftAdelaide().type;
+    }
+    
     const formatter = new Intl.DateTimeFormat('en-US', {
       timeZone: 'Australia/Adelaide',
       hour: 'numeric',

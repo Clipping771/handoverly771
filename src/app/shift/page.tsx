@@ -1089,7 +1089,7 @@ function formatHandoverTime(dateStr?: string) {
                        {user?.role !== 'carer' && (
                          <Link
                            onClick={(e) => e.stopPropagation()}
-                           href={`/resident/${res.id}/input`}
+                           href={`/resident/${res.id}/input?update=${hasHandover ? 'true' : 'false'}&date=${selectedDate}&shift=${selectedShift}`}
                            className={`px-3 py-1.5 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-300 flex items-center gap-1 cursor-pointer z-10 border shrink-0 ${
                              hasHandover 
                                ? 'bg-surface-solid border-border text-text-primary hover:border-teal-accent/50 hover:text-teal-accent shadow-sm' 
@@ -1724,7 +1724,7 @@ function SoftDeleteModal({ isOpen, onClose, resident, theme, canPermanentDelete,
 
     if (isPermanent) {
       // Permanent delete flow
-      if (confirmName !== resident.name) {
+      if (confirmName.toLowerCase() !== resident.name.toLowerCase()) {
         setError('Confirmation name does not match.');
         return;
       }
@@ -1897,7 +1897,7 @@ function SoftDeleteModal({ isOpen, onClose, resident, theme, canPermanentDelete,
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting || (isPermanent && confirmName !== resident.name)}
+                  disabled={submitting || (isPermanent && confirmName.toLowerCase() !== resident.name.toLowerCase())}
                   className={`flex-1 h-11 rounded-full text-xs font-semibold tracking-wider uppercase transition-all duration-300 shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 ${
                     isPermanent
                       ? 'bg-rose-600 hover:bg-rose-700 text-white'
@@ -1940,7 +1940,7 @@ function PermanentDeleteModal({ isOpen, onClose, resident, staffId, theme, onDel
     e.preventDefault();
     if (!resident) return;
 
-    if (confirmName !== resident.name) {
+    if (confirmName.toLowerCase() !== resident.name.toLowerCase()) {
       setError('Confirmation name does not match.');
       return;
     }
@@ -2040,7 +2040,7 @@ function PermanentDeleteModal({ isOpen, onClose, resident, staffId, theme, onDel
                 </button>
                 <button
                   type="submit"
-                  disabled={submitting || confirmName !== resident.name}
+                  disabled={submitting || confirmName.toLowerCase() !== resident.name.toLowerCase()}
                   className="flex-1 h-11 rounded-full bg-rose-600 hover:bg-rose-700 dark:bg-rose-600 dark:hover:bg-rose-700 text-white text-xs font-semibold tracking-wider uppercase transition-all duration-300 shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                 >
                   {submitting ? (

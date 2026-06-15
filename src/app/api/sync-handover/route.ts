@@ -67,6 +67,7 @@ export async function POST(req: Request) {
 
     let insertedHandover;
     let newVersion = 1;
+    let isNewHandoverRecord = false; // Track if this is a truly new DB record (new shift) vs. an update
 
     if (existingHandover) {
       if (is_update_action) {
@@ -122,6 +123,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: handoverError.message, code: handoverError.code }, { status });
       }
       insertedHandover = updated;
+      // isNewHandoverRecord stays false — this is an update
     } else {
       // Insert new handover
       const { data: inserted, error: handoverError } = await supabase
@@ -201,6 +203,7 @@ export async function POST(req: Request) {
         }
       } else {
         insertedHandover = inserted;
+        isNewHandoverRecord = true; // Freshly inserted record for a new shift
       }
     }
 
@@ -240,16 +243,31 @@ export async function POST(req: Request) {
       
       let tasksError;
       
-      // Fetch all currently active tasks for this resident to prevent duplicate insertions
+      // Fetch all currently active tasks for this resident to prevent duplicate insertions.
+      // For updates to an existing handover: we only skip duplicates that already belong to
+      // THIS handover (same handover_id) or are carry-over tasks.
+      // For brand-new shift handovers: tasks from previous shifts will be auto-completed below,
+      // so we allow re-inserting the same title under the new handover.
       const { data: activeTasks } = await supabase
         .from('tasks')
-        .select('title')
+        .select('title, handover_id, carry_until_date')
         .eq('resident_id', handoverRecord.resident_id)
         .or(`is_completed.eq.false,carry_until_date.gte.${handoverDbRecord.shift_date}`);
       
-      const activeTitles = new Set((activeTasks || []).map((t: any) => t.title.toLowerCase().trim()));
+      const activeTitles = new Set(
+        (activeTasks || [])
+          .filter((t: any) => {
+            // Always skip carry-over tasks (they live across shifts)
+            if (t.carry_until_date) return true;
+            // For updates: skip tasks that already belong to THIS handover to avoid duplicates
+            if (!isNewHandoverRecord && t.handover_id === insertedHandover.id) return true;
+            // For new shift records: don't block re-insertion — old tasks will be superseded below
+            return false;
+          })
+          .map((t: any) => t.title.toLowerCase().trim())
+      );
       
-      // Filter out new tasks that are already active for this resident
+      // Filter out new tasks that are already active for this resident (duplicates)
       const filteredTaskRecords = taskRecords.filter((t: any) => !activeTitles.has(t.title.toLowerCase().trim()));
       
       if (filteredTaskRecords.length > 0) {
@@ -260,15 +278,18 @@ export async function POST(req: Request) {
       }
         
       if (!tasksError) {
-        // Mark all previous incomplete tasks for this resident as completed/superseded
-        // (excluding Carry Over tasks, which must remain active until their expiry date)
-        await supabase
-          .from('tasks')
-          .update({ is_completed: true })
-          .eq('resident_id', handoverRecord.resident_id)
-          .eq('is_completed', false)
-          .is('carry_until_date', null)
-          .neq('handover_id', insertedHandover.id);
+        // ONLY auto-complete tasks from previous shifts when a genuinely NEW shift handover
+        // is being submitted. When updating an existing handover, old tasks must stay visible
+        // so carers can continue to see and act on them until the NEW shift is formally handed over.
+        if (isNewHandoverRecord) {
+          await supabase
+            .from('tasks')
+            .update({ is_completed: true })
+            .eq('resident_id', handoverRecord.resident_id)
+            .eq('is_completed', false)
+            .is('carry_until_date', null)
+            .neq('handover_id', insertedHandover.id);
+        }
       } else {
         console.error('Tasks Insert/Merge Error:', tasksError);
       }

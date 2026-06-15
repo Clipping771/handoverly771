@@ -17,13 +17,19 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
   const [openrouterModel, setOpenrouterModel] = useState('');
   const [groqKey, setGroqKey] = useState('');
   const [groqModel, setGroqModel] = useState('');
+  const [geminiKey, setGeminiKey] = useState('');
+  const [geminiModel, setGeminiModel] = useState('');
+  const [openaiKey, setOpenaiKey] = useState('');
+  const [openaiModel, setOpenaiModel] = useState('');
   const [ollamaUrl, setOllamaUrl] = useState('');
   const [ollamaModel, setOllamaModel] = useState('');
-  const [activeProvider, setActiveProvider] = useState<'auto'|'smart_auto'|'anthropic'|'openrouter'|'groq'|'ollama'>('auto');
+  const [activeProvider, setActiveProvider] = useState<'auto'|'smart_auto'|'anthropic'|'openrouter'|'groq'|'gemini'|'openai'|'ollama'>('auto');
   
   const [showAnthropic, setShowAnthropic] = useState(false);
   const [showOpenrouter, setShowOpenrouter] = useState(false);
   const [showGroq, setShowGroq] = useState(false);
+  const [showGemini, setShowGemini] = useState(false);
+  const [showOpenai, setShowOpenai] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -32,6 +38,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
       setOpenrouterModel(localStorage.getItem('user_openrouter_model') || 'anthropic/claude-3.5-sonnet');
       setGroqKey(localStorage.getItem('user_groq_key') || '');
       setGroqModel(localStorage.getItem('user_groq_model') || 'llama-3.3-70b-versatile');
+      setGeminiKey(localStorage.getItem('user_gemini_key') || '');
+      setGeminiModel(localStorage.getItem('user_gemini_model') || 'gemini-2.0-flash');
+      setOpenaiKey(localStorage.getItem('user_openai_key') || '');
+      setOpenaiModel(localStorage.getItem('user_openai_model') || 'gpt-4o-mini');
       setOllamaUrl(localStorage.getItem('user_ollama_url') || 'http://127.0.0.1:11434');
       setOllamaModel(localStorage.getItem('user_ollama_model') || 'llama3');
       const savedProvider = localStorage.getItem('user_active_provider');
@@ -45,6 +55,10 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
     localStorage.setItem('user_openrouter_model', openrouterModel.trim() || 'anthropic/claude-3.5-sonnet');
     localStorage.setItem('user_groq_key', groqKey.trim());
     localStorage.setItem('user_groq_model', groqModel.trim() || 'llama-3.3-70b-versatile');
+    localStorage.setItem('user_gemini_key', geminiKey.trim());
+    localStorage.setItem('user_gemini_model', geminiModel.trim() || 'gemini-2.0-flash');
+    localStorage.setItem('user_openai_key', openaiKey.trim());
+    localStorage.setItem('user_openai_model', openaiModel.trim() || 'gpt-4o-mini');
     localStorage.setItem('user_ollama_url', ollamaUrl.trim() || 'http://127.0.0.1:11434');
     localStorage.setItem('user_ollama_model', ollamaModel.trim() || 'llama3');
     localStorage.setItem('user_active_provider', activeProvider);
@@ -163,6 +177,52 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               </div>
             </div>
 
+            {/* Gemini API Key */}
+            <div className="space-y-1">
+              <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                Google Gemini Key
+              </label>
+              <div className="relative">
+                <input
+                  type={showGemini ? 'text' : 'password'}
+                  placeholder="AIza..."
+                  value={geminiKey}
+                  onChange={(e) => setGeminiKey(e.target.value)}
+                  className="w-full h-10 bg-white/45 dark:bg-black/20 border border-slate-200/50 dark:border-white/5 rounded-xl px-4.5 pr-10 text-xs focus:outline-none focus:border-primary/60 focus:ring-4 focus:ring-primary/10 text-text-primary font-mono transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowGemini(!showGemini)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 cursor-pointer outline-none focus:outline-none"
+                >
+                  {showGemini ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+
+            {/* OpenAI API Key */}
+            <div className="space-y-1">
+              <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                OpenAI Key
+              </label>
+              <div className="relative">
+                <input
+                  type={showOpenai ? 'text' : 'password'}
+                  placeholder="sk-..."
+                  value={openaiKey}
+                  onChange={(e) => setOpenaiKey(e.target.value)}
+                  className="w-full h-10 bg-white/45 dark:bg-black/20 border border-slate-200/50 dark:border-white/5 rounded-xl px-4.5 pr-10 text-xs focus:outline-none focus:border-primary/60 focus:ring-4 focus:ring-primary/10 text-text-primary font-mono transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowOpenai(!showOpenai)}
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 cursor-pointer outline-none focus:outline-none"
+                >
+                  {showOpenai ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                </button>
+              </div>
+            </div>
+
             {/* Ollama Local Integration */}
             <div className="pt-2.5 border-t border-slate-200/50 dark:border-white/5 mt-3 space-y-3.5">
               <div className="flex items-center gap-1.5">
@@ -216,6 +276,8 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                   { id: 'anthropic', label: 'Anthropic', sub: 'Claude', icon: Shield },
                   { id: 'openrouter', label: 'OpenRouter', sub: 'Any Model', icon: LinkIcon },
                   { id: 'groq', label: 'Groq', sub: 'Ultra-Fast', icon: Zap },
+                  { id: 'gemini', label: 'Gemini', sub: 'Google AI', icon: Globe },
+                  { id: 'openai', label: 'OpenAI', sub: 'GPT Models', icon: Cpu },
                   { id: 'ollama', label: 'Ollama', sub: 'Local AI', icon: HardDrive }
                 ].map(p => {
                   const Icon = p.icon;
@@ -244,7 +306,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               </div>
             </div>
 
-            {/* OpenRouter Model Selector */}
+            {/* OpenRouter Model Selector — always shown */}
             <div className="space-y-1.5">
               <CustomModelSelector
                 value={openrouterModel}
@@ -254,7 +316,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               />
             </div>
 
-            {/* Groq Model Selector */}
+            {/* Groq Model Selector — always shown */}
             <div className="space-y-1.5">
               <CustomModelSelector
                 value={groqModel}
@@ -263,6 +325,30 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
                 provider="groq"
               />
             </div>
+
+            {/* Gemini Model Selector — shown when key is entered */}
+            {geminiKey.trim().length > 5 && (
+              <div className="space-y-1.5">
+                <CustomModelSelector
+                  value={geminiModel}
+                  onChange={setGeminiModel}
+                  apiKey={geminiKey}
+                  provider="gemini"
+                />
+              </div>
+            )}
+
+            {/* OpenAI Model Selector — shown when key is entered */}
+            {openaiKey.trim().length > 5 && (
+              <div className="space-y-1.5">
+                <CustomModelSelector
+                  value={openaiModel}
+                  onChange={setOpenaiModel}
+                  apiKey={openaiKey}
+                  provider="openai"
+                />
+              </div>
+            )}
           </div>
 
         </div>

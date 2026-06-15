@@ -3,35 +3,74 @@
 import React, { useState, useEffect } from 'react';
 import { Search, ChevronDown, ChevronUp, Zap, Rocket, Globe, Gem, Check, Cpu } from 'lucide-react';
 
-const STATIC_MODELS = [
-  // Groq Default
-  { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B (Groq Default)', category: 'groq' },
-  // Fast & Free
+const STATIC_OPENROUTER_MODELS = [
   { id: 'google/gemini-2.5-flash:free', name: 'Gemini 2.5 Flash (Free)', category: 'free' },
   { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash (Free)', category: 'free' },
   { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B Instruct (Free)', category: 'free' },
   { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B Instruct (Free)', category: 'free' },
   { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B Instruct (Free)', category: 'free' },
   { id: 'openchat/openchat-7b:free', name: 'OpenChat 7B (Free)', category: 'free' },
-  // Reasoning
   { id: 'deepseek/deepseek-r1', name: 'DeepSeek R1 (Reasoning)', category: 'reasoning' },
   { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1 (Free / Reasoning)', category: 'reasoning' },
   { id: 'openai/o1-mini', name: 'OpenAI o1 Mini', category: 'reasoning' },
   { id: 'openai/o3-mini', name: 'OpenAI o3 Mini', category: 'reasoning' },
-  { id: 'openai/o1-preview', name: 'OpenAI o1 Preview', category: 'reasoning' },
-  // Other Free
   { id: 'deepseek/deepseek-chat:free', name: 'DeepSeek V3 (Free)', category: 'otherFree' },
   { id: 'qwen/qwen-2.5-72b-instruct:free', name: 'Qwen 2.5 72B Instruct (Free)', category: 'otherFree' },
   { id: 'microsoft/phi-3-medium-128k-instruct:free', name: 'Phi 3 Medium (Free)', category: 'otherFree' },
-  { id: 'nvidia/llama-3.1-nemotron-70b-instruct:free', name: 'Llama 3.1 Nemotron (Free)', category: 'otherFree' },
-  // Premium
   { id: 'google/gemini-2.5-pro', name: 'Gemini 2.5 Pro', category: 'premium' },
   { id: 'anthropic/claude-3.5-sonnet', name: 'Claude 3.5 Sonnet', category: 'premium' },
   { id: 'openai/gpt-4o', name: 'GPT-4o', category: 'premium' },
   { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', category: 'premium' },
   { id: 'anthropic/claude-3.5-haiku', name: 'Claude 3.5 Haiku', category: 'premium' },
-  { id: 'anthropic/claude-3-opus', name: 'Claude 3 Opus', category: 'premium' }
 ];
+
+const STATIC_GROQ_MODELS = [
+  { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile', category: 'groq' },
+  { id: 'llama-3.3-70b-specdec', name: 'Llama 3.3 70B Specdec', category: 'groq' },
+  { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Llama 70B (Reasoning)', category: 'reasoning' },
+  { id: 'deepseek-r1-distill-qwen-32b', name: 'DeepSeek R1 Qwen 32B (Reasoning)', category: 'reasoning' },
+  { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant', category: 'free' },
+  { id: 'llama3-70b-8192', name: 'Llama 3 70B', category: 'otherFree' },
+  { id: 'llama3-8b-8192', name: 'Llama 3 8B', category: 'free' },
+  { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B', category: 'otherFree' },
+  { id: 'gemma2-9b-it', name: 'Gemma 2 9B IT', category: 'otherFree' },
+];
+
+const STATIC_GEMINI_MODELS = [
+  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', category: 'free' },
+  { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', category: 'free' },
+  { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', category: 'free' },
+  { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash 8B', category: 'free' },
+  { id: 'gemini-2.5-flash-preview-05-20', name: 'Gemini 2.5 Flash Preview', category: 'premium' },
+  { id: 'gemini-2.5-pro-preview-06-05', name: 'Gemini 2.5 Pro Preview', category: 'premium' },
+  { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', category: 'premium' },
+];
+
+const STATIC_OPENAI_MODELS = [
+  { id: 'gpt-4o-mini', name: 'GPT-4o Mini', category: 'free' },
+  { id: 'gpt-4o', name: 'GPT-4o', category: 'premium' },
+  { id: 'gpt-4-turbo', name: 'GPT-4 Turbo', category: 'premium' },
+  { id: 'gpt-3.5-turbo', name: 'GPT-3.5 Turbo', category: 'free' },
+  { id: 'o1-mini', name: 'o1 Mini (Reasoning)', category: 'reasoning' },
+  { id: 'o1-preview', name: 'o1 Preview (Reasoning)', category: 'reasoning' },
+  { id: 'o3-mini', name: 'o3 Mini (Reasoning)', category: 'reasoning' },
+];
+
+type Provider = 'openrouter' | 'groq' | 'gemini' | 'openai';
+
+const PROVIDER_LABELS: Record<Provider, string> = {
+  openrouter: 'OpenRouter Active Engine',
+  groq: 'Groq Active Engine',
+  gemini: 'Google Gemini Model',
+  openai: 'OpenAI Model',
+};
+
+const PROVIDER_DEFAULTS: Record<Provider, string> = {
+  openrouter: 'google/gemini-2.5-flash',
+  groq: 'llama-3.3-70b-versatile',
+  gemini: 'gemini-2.0-flash',
+  openai: 'gpt-4o-mini',
+};
 
 export default function CustomModelSelector({
   value,
@@ -42,33 +81,36 @@ export default function CustomModelSelector({
   value: string;
   onChange: (val: string) => void;
   apiKey: string;
-  provider: 'openrouter' | 'groq';
+  provider: Provider;
 }) {
   const [search, setSearch] = useState('');
   const [liveModels, setLiveModels] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [openCategories, setOpenCategories] = useState<Record<string, boolean>>({
     groq: provider === 'groq',
-    free: provider === 'openrouter' || provider === 'groq',
+    free: true,
     reasoning: provider === 'openrouter' || provider === 'groq',
     otherFree: false,
-    premium: false
+    premium: false,
   });
 
   useEffect(() => {
-    if (!apiKey || apiKey.length < 15) {
+    if (!apiKey || apiKey.length < 10) {
       setLiveModels([]);
       return;
     }
     const fetchModels = async () => {
       setLoading(true);
       try {
-        const endpoint = provider === 'openrouter' ? `/api/openrouter-models?apiKey=${encodeURIComponent(apiKey)}` : `/api/groq-models?apiKey=${encodeURIComponent(apiKey)}`;
-        const res = await fetch(endpoint);
+        const endpointMap: Record<Provider, string> = {
+          openrouter: `/api/openrouter-models?apiKey=${encodeURIComponent(apiKey)}`,
+          groq: `/api/groq-models?apiKey=${encodeURIComponent(apiKey)}`,
+          gemini: `/api/gemini-models?apiKey=${encodeURIComponent(apiKey)}`,
+          openai: `/api/openai-models?apiKey=${encodeURIComponent(apiKey)}`,
+        };
+        const res = await fetch(endpointMap[provider]);
         const data = await res.json();
-        if (data.models) {
-          setLiveModels(data.models);
-        }
+        if (data.models) setLiveModels(data.models);
       } catch (err) {
         console.error(`Failed to load ${provider} models:`, err);
       } finally {
@@ -78,50 +120,33 @@ export default function CustomModelSelector({
     fetchModels();
   }, [apiKey, provider]);
 
+  const staticModels = React.useMemo(() => {
+    switch (provider) {
+      case 'groq': return STATIC_GROQ_MODELS;
+      case 'gemini': return STATIC_GEMINI_MODELS;
+      case 'openai': return STATIC_OPENAI_MODELS;
+      default: return STATIC_OPENROUTER_MODELS;
+    }
+  }, [provider]);
+
   const allModels = React.useMemo(() => {
     if (liveModels.length > 0) {
       return liveModels.map(m => {
         const id = m.id.toLowerCase();
         let cat = 'premium';
-        const isFree = id.includes(':free') || m.pricing === 0 || m.pricing === '0' || m.pricing === null || m.pricing === undefined;
-        const isReasoning = id.includes('r1') || id.includes('o1') || id.includes('o3') || id.includes('reasoning') || id.includes('thinking') || id.includes('deepseek-r1');
-        
-        if (id.includes('llama-3.3-70b')) {
-          cat = 'groq';
-        } else if (isReasoning) {
+        const isFree = id.includes(':free') || id.includes('flash-lite') || id.includes('flash-8b') || id.includes('gpt-3.5') || id.includes('4o-mini') || m.pricing === 0 || m.pricing === null;
+        const isReasoning = id.includes('r1') || id.includes('o1') || id.includes('o3') || id.includes('reasoning') || id.includes('thinking');
+        if (isReasoning) {
           cat = 'reasoning';
         } else if (isFree || provider === 'groq') {
-          if (id.includes('flash') || id.includes('mini') || id.includes('8b') || id.includes('7b') || id.includes('instant') || id.includes('versatile')) {
-            cat = 'free';
-          } else {
-            cat = 'otherFree';
-          }
+          cat = (id.includes('flash') || id.includes('mini') || id.includes('8b') || id.includes('7b') || id.includes('instant') || id.includes('versatile')) ? 'free' : 'otherFree';
         }
-        return {
-          id: m.id,
-          name: m.name || m.id,
-          category: cat,
-          pricing: m.pricing
-        };
+        if (provider === 'groq' && (id.includes('70b') || id.includes('versatile'))) cat = 'groq';
+        return { id: m.id, name: m.name || m.id, category: cat, pricing: m.pricing };
       });
     }
-    
-    // If no live models, fallback to static models
-    if (provider === 'groq') {
-      return [
-        { id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B Versatile', category: 'groq' },
-        { id: 'llama-3.3-70b-specdec', name: 'Llama 3.3 70B Specdec', category: 'groq' },
-        { id: 'deepseek-r1-distill-llama-70b', name: 'DeepSeek R1 Llama 70B (Reasoning)', category: 'reasoning' },
-        { id: 'deepseek-r1-distill-qwen-32b', name: 'DeepSeek R1 Qwen 32B (Reasoning)', category: 'reasoning' },
-        { id: 'llama-3.1-8b-instant', name: 'Llama 3.1 8B Instant', category: 'free' },
-        { id: 'llama3-70b-8192', name: 'Llama 3 70B', category: 'otherFree' },
-        { id: 'llama3-8b-8192', name: 'Llama 3 8B', category: 'free' },
-        { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B', category: 'otherFree' },
-        { id: 'gemma2-9b-it', name: 'Gemma 2 9B IT', category: 'otherFree' }
-      ];
-    }
-    return STATIC_MODELS;
-  }, [liveModels, provider]);
+    return staticModels;
+  }, [liveModels, staticModels, provider]);
 
   const filteredModels = React.useMemo(() => {
     if (!search.trim()) return allModels;
@@ -132,64 +157,31 @@ export default function CustomModelSelector({
   useEffect(() => {
     if (search.trim()) {
       const activeCats: Record<string, boolean> = {};
-      filteredModels.forEach(m => {
-        activeCats[m.category] = true;
-      });
+      filteredModels.forEach(m => { activeCats[m.category] = true; });
       setOpenCategories(prev => ({ ...prev, ...activeCats }));
     }
   }, [filteredModels, search]);
 
   const categories = [
-    {
-      id: 'groq',
-      title: 'Groq Default',
-      desc: 'Fastest — direct Groq, no quota issues',
-      icon: Zap,
-      color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
-      badgeColor: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
-    },
-    {
-      id: 'free',
-      title: 'Fast & Free',
-      desc: 'Quick answers',
-      icon: Rocket,
-      color: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20',
-      badgeColor: 'bg-teal-500/20 text-teal-700 dark:text-teal-300'
-    },
-    {
-      id: 'reasoning',
-      title: 'Reasoning',
-      desc: 'Shows thinking — use with Brain Trust',
-      icon: Zap,
-      color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
-      badgeColor: 'bg-amber-500/20 text-amber-700 dark:text-amber-300',
-      footer: '⚡ Reasoning models best used with Brain Trust mode'
-    },
-    {
-      id: 'otherFree',
-      title: 'Other Free',
-      desc: 'More free models',
-      icon: Globe,
-      color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
-      badgeColor: 'bg-indigo-500/20 text-indigo-700 dark:text-indigo-300'
-    },
-    {
-      id: 'premium',
-      title: 'Premium',
-      desc: 'Paid — fastest & most capable',
-      icon: Gem,
-      color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
-      badgeColor: 'bg-blue-500/20 text-blue-700 dark:text-blue-300'
-    }
+    { id: 'groq', title: 'Groq Default', desc: 'Fastest — direct Groq', icon: Zap, color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20', badgeColor: 'bg-emerald-500/20 text-emerald-700 dark:text-emerald-300' },
+    { id: 'free', title: 'Fast & Free', desc: 'Quick answers', icon: Rocket, color: 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20', badgeColor: 'bg-teal-500/20 text-teal-700 dark:text-teal-300' },
+    { id: 'reasoning', title: 'Reasoning', desc: 'Shows thinking', icon: Zap, color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20', badgeColor: 'bg-amber-500/20 text-amber-700 dark:text-amber-300' },
+    { id: 'otherFree', title: 'Other Free', desc: 'More free models', icon: Globe, color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20', badgeColor: 'bg-indigo-500/20 text-indigo-700 dark:text-indigo-300' },
+    { id: 'premium', title: 'Premium', desc: 'Paid — most capable', icon: Gem, color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20', badgeColor: 'bg-blue-500/20 text-blue-700 dark:text-blue-300' },
   ];
+
+  const defaultVal = PROVIDER_DEFAULTS[provider];
 
   return (
     <div className="w-full space-y-3.5 apple-card hover:transform-none !bg-white/80 dark:!bg-[#0c1220]/40 p-4 rounded-2xl">
-      <div className="text-[9.5px] font-sans font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1 flex items-center gap-1.5">
-        <Cpu className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
-        <span>{provider === 'openrouter' ? 'OpenRouter Active Engine' : 'Groq Active Engine'}</span>
+      <div className="text-[9.5px] font-sans font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-1 flex items-center justify-between gap-1.5">
+        <div className="flex items-center gap-1.5">
+          <Cpu className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
+          <span>{PROVIDER_LABELS[provider]}</span>
+        </div>
+        {loading && <span className="text-[9px] text-primary animate-pulse">Loading live models…</span>}
       </div>
-      
+
       {/* Search box */}
       <div className="relative flex items-center">
         <Search className="w-4 h-4 text-slate-400 absolute left-3.5 pointer-events-none" />
@@ -204,13 +196,13 @@ export default function CustomModelSelector({
 
       {/* Accordion Categories */}
       <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1 custom-scrollbar">
-        
-        {/* Auto Option */}
+
+        {/* Auto / Recommended */}
         <button
           type="button"
-          onClick={() => onChange(provider === 'groq' ? 'llama-3.3-70b-versatile' : 'google/gemini-2.5-flash')}
+          onClick={() => onChange(defaultVal)}
           className={`w-full text-left p-3.5 rounded-2xl border text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
-            value === 'google/gemini-2.5-flash' || value === 'llama-3.3-70b-versatile' || value === 'auto'
+            value === defaultVal || value === 'auto'
               ? 'border-primary bg-primary/5 text-primary'
               : 'border-slate-200/40 dark:border-white/5 bg-white/50 dark:bg-slate-900/20 text-text-secondary hover:bg-white/65 dark:hover:bg-slate-900/35'
           }`}
@@ -219,22 +211,22 @@ export default function CustomModelSelector({
             <Zap className="w-3.5 h-3.5" />
             <span>Auto / Recommended (Best Speed & Accuracy)</span>
           </div>
-          { (value === 'google/gemini-2.5-flash' || value === 'llama-3.3-70b-versatile' || value === 'auto') && <Check className="w-4 h-4 text-primary" /> }
+          {(value === defaultVal || value === 'auto') && <Check className="w-4 h-4 text-primary" />}
         </button>
 
         {categories.map(cat => {
-          // Filter out categories that are not supported by Groq
-          if (provider === 'groq' && cat.id !== 'groq' && cat.id !== 'free' && cat.id !== 'otherFree' && cat.id !== 'reasoning') return null;
-
+          // Only show groq category for groq provider
+          if (cat.id === 'groq' && provider !== 'groq') return null;
+          // Hide groq category for non-groq providers
           const catModels = filteredModels.filter(m => m.category === cat.id);
           if (catModels.length === 0 && search.trim()) return null;
+          if (catModels.length === 0) return null;
 
           const isExpanded = !!openCategories[cat.id];
           const Icon = cat.icon;
 
           return (
             <div key={cat.id} className="border border-slate-200/40 dark:border-white/5 rounded-2xl overflow-hidden bg-white/60 dark:bg-slate-900/25">
-              {/* Category Header */}
               <button
                 type="button"
                 onClick={() => setOpenCategories(prev => ({ ...prev, [cat.id]: !prev[cat.id] }))}
@@ -257,7 +249,6 @@ export default function CustomModelSelector({
                 </div>
               </button>
 
-              {/* Models List */}
               {isExpanded && (
                 <div className="border-t border-slate-200/40 dark:border-white/5 bg-slate-50/50 dark:bg-black/10 divide-y divide-slate-200/30 dark:divide-white/5">
                   {catModels.map(model => (
@@ -266,9 +257,7 @@ export default function CustomModelSelector({
                       type="button"
                       onClick={() => onChange(model.id)}
                       className={`w-full text-left px-4 py-3 text-xs transition-all flex items-center justify-between hover:bg-primary/5 dark:hover:bg-primary/10 cursor-pointer ${
-                        value === model.id
-                          ? 'text-primary font-bold bg-primary/5'
-                          : 'text-slate-650 dark:text-slate-355'
+                        value === model.id ? 'text-primary font-bold bg-primary/5' : 'text-slate-650 dark:text-slate-355'
                       }`}
                     >
                       <div className="min-w-0">
@@ -278,11 +267,6 @@ export default function CustomModelSelector({
                       {value === model.id && <Check className="w-3.5 h-3.5 text-primary shrink-0 ml-2" />}
                     </button>
                   ))}
-                  {cat.footer && (
-                    <div className="p-3 text-[9px] text-amber-600 dark:text-amber-400 italic bg-amber-500/5 flex items-center gap-1">
-                      <span>{cat.footer}</span>
-                    </div>
-                  )}
                 </div>
               )}
             </div>
