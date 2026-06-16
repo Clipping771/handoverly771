@@ -31,7 +31,12 @@ export async function POST(request: Request) {
     }
 
     const provider = clientProvider !== 'auto' ? clientProvider : (aiConfig.activeProvider || 'auto');
-    const userKeys = { ...(aiConfig.keys || {}), ...(clientUserKeys || {}) };
+    const userKeys: any = { ...(aiConfig.keys || {}) };
+    if (clientUserKeys) {
+      Object.keys(clientUserKeys).forEach(k => {
+        if (clientUserKeys[k]) userKeys[k] = clientUserKeys[k];
+      });
+    }
 
     const anthropicKey = userKeys?.anthropicKey || process.env.ANTHROPIC_API_KEY || '';
     const openrouterKey = userKeys?.openrouterKey || process.env.OPENROUTER_API_KEY || '';
