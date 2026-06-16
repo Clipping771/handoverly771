@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     }
 
     // Fetch Global Facility Config
-    const { data: facilityConf } = await supabaseAdmin.from('facility_configurations').select('ai_config').eq('facility_id', facilityId).single();
+    const { data: facilityConf } = await supabaseAdmin.from('facilities').select('ai_config').eq('id', facilityId).single();
     const aiConfig = facilityConf?.ai_config || {};
     const globalProvider = aiConfig.activeProvider || 'auto';
     

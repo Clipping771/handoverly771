@@ -84,11 +84,18 @@ export default function AdminSetup() {
   const [ollamaModel, setOllamaModel] = useState('');
   const [groqKey, setGroqKey] = useState('');
   const [groqModel, setGroqModel] = useState('llama-3.3-70b-versatile');
-  const [activeProvider, setActiveProvider] = useState<'auto' | 'anthropic' | 'openrouter' | 'groq' | 'ollama' | 'mock'>('auto');
+  const [activeProvider, setActiveProvider] = useState<'auto' | 'anthropic' | 'openrouter' | 'groq' | 'ollama' | 'mock' | 'openai' | 'gemini'>('auto');
   
   const [showAnthropic, setShowAnthropic] = useState(false);
   const [showOpenrouter, setShowOpenrouter] = useState(false);
   const [showGroq, setShowGroq] = useState(false);
+  const [showOpenai, setShowOpenai] = useState(false);
+  const [showGemini, setShowGemini] = useState(false);
+
+  const [openaiKey, setOpenaiKey] = useState('');
+  const [openaiModel, setOpenaiModel] = useState('gpt-4o-mini');
+  const [geminiKey, setGeminiKey] = useState('');
+  const [geminiModel, setGeminiModel] = useState('gemini-2.0-flash');
   
   // Module Feature Flags
   const [sentinelEnabled, setSentinelEnabled] = useState(true);
@@ -237,6 +244,10 @@ export default function AdminSetup() {
           setOllamaModel(conf.keys.ollamaModel || 'llama3');
           setGroqKey(conf.keys.groqKey || '');
           setGroqModel(conf.keys.groqModel || 'llama-3.3-70b-versatile');
+          setOpenaiKey(conf.keys.openaiKey || '');
+          setOpenaiModel(conf.keys.openaiModel || 'gpt-4o-mini');
+          setGeminiKey(conf.keys.geminiKey || '');
+          setGeminiModel(conf.keys.geminiModel || 'gemini-2.0-flash');
         }
         const flags = conf.featureFlags || {};
         setSentinelEnabled(flags.sentinelEnabled !== false);
@@ -455,7 +466,11 @@ export default function AdminSetup() {
             ollamaUrl,
             ollamaModel,
             groqKey,
-            groqModel
+            groqModel,
+            openaiKey,
+            openaiModel,
+            geminiKey,
+            geminiModel
           }
         })
       });
@@ -885,6 +900,8 @@ export default function AdminSetup() {
                   {[
                     { id: 'auto', label: 'Auto', desc: 'Fallback' },
                     { id: 'anthropic', label: 'Anthropic', desc: 'Claude' },
+                    { id: 'openai', label: 'OpenAI', desc: 'GPT-4' },
+                    { id: 'gemini', label: 'Gemini', desc: 'Google' },
                     { id: 'openrouter', label: 'OpenRouter', desc: 'Cloud API' },
                     { id: 'groq', label: 'Groq', desc: 'Ultra-fast' },
                     { id: 'ollama', label: 'Ollama', desc: 'Local' },
@@ -974,6 +991,72 @@ export default function AdminSetup() {
                       {showAnthropic ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 bg-white/30 dark:bg-black/10 p-6 rounded-[24px] border border-white/40 dark:border-white/5 shadow-inner">
+                <div className="flex items-center gap-2 mb-2 border-b border-white/50 dark:border-white/5 pb-2">
+                  <Key className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">OpenAI (GPT-4 / O1)</h4>
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block mb-1.5 pl-1">API Key</label>
+                  <div className="relative mb-3">
+                    <input
+                      type={showOpenai ? "text" : "password"}
+                      value={openaiKey}
+                      onChange={(e) => setOpenaiKey(e.target.value)}
+                      placeholder="sk-proj-..."
+                      className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] pl-4 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowOpenai(!showOpenai)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 cursor-pointer outline-none focus:outline-none"
+                    >
+                      {showOpenai ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block mb-1.5 pl-1">Model</label>
+                  <CustomModelSelector
+                    value={openaiModel}
+                    onChange={setOpenaiModel}
+                    apiKey={openaiKey}
+                    provider="openai"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3 bg-white/30 dark:bg-black/10 p-6 rounded-[24px] border border-white/40 dark:border-white/5 shadow-inner">
+                <div className="flex items-center gap-2 mb-2 border-b border-white/50 dark:border-white/5 pb-2">
+                  <Key className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+                  <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200">Google Gemini</h4>
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block mb-1.5 pl-1">API Key</label>
+                  <div className="relative mb-3">
+                    <input
+                      type={showGemini ? "text" : "password"}
+                      value={geminiKey}
+                      onChange={(e) => setGeminiKey(e.target.value)}
+                      placeholder="AIzaSy..."
+                      className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] pl-4 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner font-mono"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowGemini(!showGemini)}
+                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-650 dark:hover:text-slate-200 cursor-pointer outline-none focus:outline-none"
+                    >
+                      {showGemini ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block mb-1.5 pl-1">Model</label>
+                  <CustomModelSelector
+                    value={geminiModel}
+                    onChange={setGeminiModel}
+                    apiKey={geminiKey}
+                    provider="gemini"
+                  />
                 </div>
               </div>
 

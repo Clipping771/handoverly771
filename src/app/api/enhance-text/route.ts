@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 const ENHANCE_PROMPT = `You are an exceptionally advanced clinical documentation assistant for an Australian aged care facility.
 Your goal is to take a very brief, informal, or fragmented note and rewrite/paraphrase it into a highly professional, clinical, precise, and extremely concise entry for a shift handover.
@@ -17,11 +18,20 @@ Rules:
 
 export async function POST(request: Request) {
   try {
-    const { text, tag, resident, otherTasks, userKeys, provider = 'auto' } = await request.json();
+    const { text, tag, resident, otherTasks, userKeys: clientUserKeys, provider: clientProvider = 'auto', facilityId } = await request.json();
 
     if (!text || !text.trim()) {
       return NextResponse.json({ refined: text });
     }
+
+    let aiConfig: any = {};
+    if (facilityId) {
+      const { data: facilityConf } = await supabaseAdmin.from('facilities').select('ai_config').eq('id', facilityId).single();
+      aiConfig = facilityConf?.ai_config || {};
+    }
+
+    const provider = clientProvider !== 'auto' ? clientProvider : (aiConfig.activeProvider || 'auto');
+    const userKeys = { ...(aiConfig.keys || {}), ...(clientUserKeys || {}) };
 
     const anthropicKey = userKeys?.anthropicKey || process.env.ANTHROPIC_API_KEY || '';
     const openrouterKey = userKeys?.openrouterKey || process.env.OPENROUTER_API_KEY || '';
@@ -30,6 +40,10 @@ export async function POST(request: Request) {
     const groqModel = userKeys?.groqModel || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
     const ollamaUrl = userKeys?.ollamaUrl || process.env.OLLAMA_API_URL || 'http://127.0.0.1:11434';
     const ollamaModel = userKeys?.ollamaModel || process.env.OLLAMA_MODEL || 'llama3';
+    const openaiKey = userKeys?.openaiKey || process.env.OPENAI_API_KEY || '';
+    const openaiModel = userKeys?.openaiModel || process.env.OPENAI_MODEL || 'gpt-4o-mini';
+    const geminiKey = userKeys?.geminiKey || process.env.GEMINI_API_KEY || '';
+    const geminiModel = userKeys?.geminiModel || process.env.GEMINI_MODEL || 'gemini-2.0-flash';
 
     // Build rich context prompt
     let contextPrompt = `${ENHANCE_PROMPT}\n\n`;
@@ -149,6 +163,56 @@ export async function POST(request: Request) {
         }
       } catch (err) {
         console.error('Ollama enhance failed:', err);
+      }
+    }
+
+    // Try OpenAI
+    if ((provider === 'auto' || provider === 'openai') && openaiKey && !refined) {
+      try {
+        const res = await fetch('https://api.openai.com/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${openaiKey}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            model: openaiModel,
+            messages: [
+              { role: 'user', content: contextPrompt }
+            ],
+            temperature: 0.1,
+            max_tokens: 1024
+          })
+        });
+        const data = await res.json();
+        if (res.ok && data.choices?.[0]) {
+          refined = data.choices[0].message?.content?.trim() || null;
+        }
+      } catch (err) {
+        console.error('OpenAI enhance failed:', err);
+      }
+    }
+
+    // Try Gemini
+    if ((provider === 'auto' || provider === 'gemini') && geminiKey && !refined) {
+      try {
+        const res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${geminiKey}`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts: [{ text: contextPrompt }] }],
+              generationConfig: { temperature: 0.1, maxOutputTokens: 1024 }
+            })
+          }
+        );
+        const data = await res.json();
+        if (res.ok && data.candidates?.[0]?.content?.parts?.[0]?.text) {
+          refined = data.candidates[0].content.parts[0].text.trim();
+        }
+      } catch (err) {
+        console.error('Gemini enhance failed:', err);
       }
     }
 

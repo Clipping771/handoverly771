@@ -381,7 +381,8 @@ export default function ResidentInput() {
           resident,
           otherTasks,
           userKeys,
-          provider: aiProvider
+          provider: aiProvider,
+          facilityId: facility?.id
         })
       });
 
@@ -633,7 +634,8 @@ export default function ResidentInput() {
       </div>
 
       {/* Main Container */}
-      <main className="max-w-xl mx-auto w-full px-4 mt-8 flex-1 flex flex-col relative z-10">
+      <main className="max-w-2xl mx-auto w-full px-4 mt-8 mb-12 flex-1 flex flex-col relative z-10">
+        <div className="flex-1 bg-white/40 dark:bg-[#0f172a]/40 backdrop-blur-3xl rounded-[32px] border border-white/60 dark:border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.04)] p-6 sm:p-8 flex flex-col custom-scrollbar">
         <div className="mb-6 flex justify-between items-end">
           <div>
             <div className="flex items-center gap-1.5 mb-2">
@@ -645,10 +647,10 @@ export default function ResidentInput() {
 
           <div className="flex gap-2">
             <motion.button
-              whileHover={{ scale: 1.04, y: -1 }}
+              whileHover={{ scale: 1.02, y: -1 }}
               whileTap={{ scale: 0.96 }}
               onClick={addTaskNode}
-              className="flex items-center gap-1.5 px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-200 dark:text-slate-900 rounded-full text-xs font-bold tracking-wide transition-all shadow-[0_4px_12px_rgba(0,0,0,0.1)] dark:shadow-[0_4px_15px_rgba(255,255,255,0.15)] cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
+              className="flex items-center gap-1.5 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 rounded-xl text-xs font-bold tracking-wide transition-all shadow-sm cursor-pointer outline-none focus:outline-none focus-visible:outline-none"
             >
               <Plus className="w-4 h-4" />
               Add Task
@@ -828,7 +830,7 @@ export default function ResidentInput() {
               const isListening = activeMicNodeId === task.id;
               const isEnhancing = enhancingNodeId === task.id;
               return (
-                <div key={task.id} className={`group relative apple-card bg-surface dark:bg-[#121214]/80 p-5 transition-all hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] dark:hover:shadow-[0_8px_30px_rgba(255,255,255,0.03)] overflow-hidden ${isEnhancing ? 'border-violet-300 dark:border-violet-500/40' : 'dark:border-white/5'}`}>
+                <div key={task.id} className={`group relative apple-card p-5 rounded-[24px] transition-all hover:shadow-[0_8px_30px_rgba(0,0,0,0.04)] overflow-hidden mb-4 ${isEnhancing ? 'border-primary/40 shadow-[0_0_15px_rgba(59,130,246,0.1)]' : ''}`}>
                   {/* Task Header: Tag Input & Actions */}
                   <div className="flex items-center gap-3 mb-4">
                     <div className="flex-1">
@@ -845,9 +847,9 @@ export default function ResidentInput() {
                     <button
                       type="button"
                       onClick={() => toggleListening(task.id)}
-                      className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center border transition-all duration-300 cursor-pointer ${isListening
-                          ? 'bg-rose-600 border-rose-600 text-white shadow-md shadow-rose-600/20 animate-pulse'
-                          : 'bg-surface hover:bg-surface-hover border-border text-text-secondary'
+                      className={`w-10 h-10 shrink-0 rounded-xl flex items-center justify-center border transition-all duration-300 cursor-pointer ${isListening
+                          ? 'bg-red-accent border-red-accent text-white shadow-md shadow-red-accent/20 animate-pulse'
+                          : 'bg-surface hover:bg-white/60 dark:hover:bg-white/10 border-border text-text-secondary shadow-sm'
                         }`}
                     >
                       {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
@@ -858,7 +860,7 @@ export default function ResidentInput() {
                       type="button"
                       onClick={() => enhanceNodeText(task.id)}
                       disabled={enhancingNodeId === task.id || !task.description.trim()}
-                      className="w-10 h-10 shrink-0 rounded-full flex items-center justify-center bg-indigo-55 hover:bg-indigo-100/80 text-indigo-600 dark:bg-indigo-950/45 dark:text-indigo-400 dark:hover:bg-indigo-900/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
+                      className="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20 shadow-sm disabled:opacity-40 disabled:cursor-not-allowed transition-colors cursor-pointer"
                       title="AI Clinical Rewrite & Paraphrase"
                     >
                       {enhancingNodeId === task.id ? <Loader2 className="w-4 h-4 animate-spin text-indigo-500" /> : <Sparkles className="w-4 h-4" />}
@@ -868,7 +870,7 @@ export default function ResidentInput() {
                     <button
                       type="button"
                       onClick={() => removeTaskNode(task.id)}
-                      className="w-10 h-10 shrink-0 rounded-full flex items-center justify-center bg-rose-50 text-rose-600 hover:bg-rose-100 dark:bg-rose-950/30 dark:text-rose-400 dark:hover:bg-rose-900/50 transition-colors cursor-pointer"
+                      className="w-10 h-10 shrink-0 rounded-xl flex items-center justify-center bg-red-accent/10 text-red-accent hover:bg-red-accent/20 border border-red-accent/20 transition-colors cursor-pointer"
                       title="Delete Task Node"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -928,7 +930,7 @@ export default function ResidentInput() {
             <button
               type="submit"
               disabled={tasks.every(t => !t.tag.trim() && !t.description.trim()) || activeMicNodeId !== null}
-              className="w-full h-14 bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-200 dark:text-slate-900 text-sm font-bold tracking-wider uppercase rounded-[20px] shadow-[0_8px_25px_rgba(0,0,0,0.15)] dark:shadow-[0_8px_25px_rgba(255,255,255,0.15)] disabled:opacity-30 dark:disabled:opacity-20 disabled:shadow-none transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full h-14 bg-primary hover:bg-primary/90 text-white text-sm font-bold tracking-wider uppercase rounded-2xl shadow-[0_8px_25px_rgba(59,130,246,0.3)] disabled:bg-slate-200 dark:disabled:bg-slate-800 disabled:text-slate-400 disabled:shadow-none transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer disabled:cursor-not-allowed"
             >
               <Sparkles className="w-5 h-5" />
               Generate Handover Draft
@@ -942,6 +944,7 @@ export default function ResidentInput() {
             )}
           </div>
         </form>
+        </div>
       </main>
     </div>
   );
