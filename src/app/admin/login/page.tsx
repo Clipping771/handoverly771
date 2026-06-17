@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContextProvider';
 import { useRouter } from 'next/navigation';
 import { ShieldAlert, LogIn, User, Lock, Sun, Moon, HeartPulse, Eye, EyeOff } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function AdminLogin() {
   const { login, user, isLoading, logout, isAdmin } = useAuth();
@@ -131,6 +132,16 @@ export default function AdminLogin() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+            </div>
+
+            <div className="flex justify-end mt-1.5">
+              <button
+                type="button"
+                onClick={() => toast('Admin Password reset requires master system-admin setup. Contact IT support.', { icon: 'ℹ️' })}
+                className="text-[10px] font-bold text-primary hover:text-primary/80 transition-colors cursor-pointer"
+              >
+                Forgot Password?
+              </button>
             </div>
 
             {error && (

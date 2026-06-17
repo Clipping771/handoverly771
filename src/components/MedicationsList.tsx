@@ -19,7 +19,7 @@ export default function MedicationsList({ residentId, facilityId }: { residentId
   const fetchMeds = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/medications?residentId=${residentId}`);
+      const res = await fetch(`/api/medications?residentId=${residentId}&facilityId=${facilityId}`);
       const json = await res.json();
       
       if (!res.ok || !json.success) throw new Error(json.error || 'Failed to fetch medications');
@@ -53,6 +53,7 @@ export default function MedicationsList({ residentId, facilityId }: { residentId
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             medId: editingMedId,
+            facilityId: facilityId,
             updates: formData
           })
         });
@@ -102,7 +103,7 @@ export default function MedicationsList({ residentId, facilityId }: { residentId
       const res = await fetch('/api/medications', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ medId: id })
+        body: JSON.stringify({ medId: id, facilityId: facilityId })
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Failed to delete');
@@ -119,7 +120,7 @@ export default function MedicationsList({ residentId, facilityId }: { residentId
       const res = await fetch('/api/medications', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ residentId })
+        body: JSON.stringify({ residentId, facilityId: facilityId })
       });
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Failed to delete all');

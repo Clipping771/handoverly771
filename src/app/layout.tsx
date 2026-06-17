@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { AuthProvider } from "@/context/AuthContext";
@@ -6,6 +6,7 @@ import { ThemeProvider } from "@/context/ThemeContextProvider";
 import { SyncProvider } from "@/context/SyncContext";
 import SmartSearch from "@/components/SmartSearch";
 import SyncBanner from "@/components/SyncBanner";
+import PWARegister from "@/components/PWARegister";
 import { Toaster } from "react-hot-toast";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -21,6 +22,14 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "Handoverly — AI-Powered Shift Handover for Aged Care",
   description: "AI-Powered Shift Handover Platform for Australian Residential Aged Care. Converts unstructured shift notes into structured ISBAR summaries and carer task lists.",
+  manifest: "/manifest.json",
+};
+
+export const viewport: Viewport = {
+  themeColor: '#3B82F6',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({
@@ -31,6 +40,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full" suppressHydrationWarning>
       <body className={`${plusJakarta.variable} ${jetbrainsMono.variable} font-sans h-full antialiased bg-background text-text-primary flex flex-col transition-colors duration-200 relative`} suppressHydrationWarning>
+        <PWARegister />
         {/* Global Mesh Gradient Background */}
         <div className="fixed inset-0 overflow-hidden pointer-events-none -z-10">
           <div className="absolute -top-[10%] -left-[10%] w-[50%] h-[50%] rounded-full bg-purple-200 dark:bg-purple-900/30 blur-[120px] mix-blend-multiply dark:mix-blend-screen opacity-70 animate-[pulse_10s_ease-in-out_infinite]"></div>

@@ -38,12 +38,14 @@ interface Wing {
 
 interface HandoverStatus {
   resident_id: string;
-  is_approved: boolean;
+  is_approved?: boolean;
+  status?: 'published' | 'needs_review' | 'rejected';
   urgency: 'critical' | 'attention' | 'routine' | 'urgent';
   shift_type?: 'morning' | 'afternoon' | 'night';
   updated_at?: string;
   raw_input?: string;
   rn_summary?: any;
+  id?: string;
 }
 
 export default function MyShift() {
@@ -58,7 +60,7 @@ export default function MyShift() {
   const [handovers, setHandovers] = useState<Record<string, HandoverStatus>>({});
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'completed'>('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'needs_review' | 'completed'>('all');
   const [showArchive, setShowArchive] = useState(false);
   const [selectedResidentId, setSelectedResidentId] = useState<string | null>(null);
   const [selectedResidentTasks, setSelectedResidentTasks] = useState<any[]>([]);
@@ -119,11 +121,14 @@ export default function MyShift() {
       matchesWing = res.wing_id === selectedWingFilter;
     }
 
-    const hasHandover = handovers[res.id]?.is_approved;
+    const hasHandover = handovers[res.id]?.status === 'published' || handovers[res.id]?.is_approved;
+    const needsReview = handovers[res.id]?.status === 'needs_review';
 
     let matchesTab = true;
     if (activeTab === 'pending') {
-      matchesTab = !hasHandover;
+      matchesTab = !hasHandover && !needsReview;
+    } else if (activeTab === 'needs_review') {
+      matchesTab = needsReview;
     } else if (activeTab === 'completed') {
       matchesTab = hasHandover;
     }
@@ -317,7 +322,7 @@ export default function MyShift() {
 
       const { data: handData, error: handError } = await supabase
         .from('handovers')
-        .select('resident_id, is_approved, urgency, shift_type, created_at, raw_input, rn_summary')
+        .select('id, resident_id, is_approved, status, urgency, shift_type, created_at, raw_input, rn_summary')
         .eq('facility_id', facility.id)
         .eq('shift_date', todayStr)
         .eq('shift_type', currentShiftType);
@@ -350,8 +355,10 @@ export default function MyShift() {
       // 2. Override with server data
       (handData || []).forEach((h) => {
         statusMap[h.resident_id] = {
+          id: h.id,
           resident_id: h.resident_id,
           is_approved: h.is_approved,
+          status: h.status,
           urgency: h.urgency as any,
           shift_type: h.shift_type as any,
           updated_at: h.created_at,
@@ -979,16 +986,30 @@ function formatHandoverTime(dateStr?: string) {
             </div>
 
             {/* Shift Context Header (Above Residents) */}
-            <div className="flex items-center justify-between mb-4 px-1">
-              <div className="flex items-center gap-2">
-                <h3 className="text-sm font-bold text-text-primary">Resident Handovers</h3>
-                <span className="text-xs text-text-secondary font-medium px-2 py-0.5 bg-surface-solid rounded-md border border-border">
-                  {filteredResidents.length} Residents
-                </span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4 px-1">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-text-primary">Resident Handovers</h3>
+                  <span className="text-xs text-text-secondary font-medium px-2 py-0.5 bg-surface-solid rounded-md border border-border shadow-sm">
+                    {filteredResidents.length} Residents
+                  </span>
+                </div>
+                
+                {/* Tabs */}
+                <div className="flex items-center gap-1 bg-surface p-1 rounded-xl border border-border shadow-sm">
+                  <button onClick={() => setActiveTab('all')} className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${activeTab === 'all' ? 'bg-white dark:bg-slate-700 shadow text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>All</button>
+                  <button onClick={() => setActiveTab('pending')} className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${activeTab === 'pending' ? 'bg-white dark:bg-slate-700 shadow text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>Pending</button>
+                  <button onClick={() => setActiveTab('needs_review')} className={`flex items-center gap-1 px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${activeTab === 'needs_review' ? 'bg-amber-accent/10 border-amber-accent/20 text-amber-accent shadow-sm' : 'text-amber-accent/70 hover:text-amber-accent'}`}>
+                    <AlertCircle className="w-3 h-3" />
+                    Review Req
+                  </button>
+                  <button onClick={() => setActiveTab('completed')} className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${activeTab === 'completed' ? 'bg-white dark:bg-slate-700 shadow text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>Published</button>
+                </div>
               </div>
+
               <button
                 onClick={() => setShowShiftSelector(true)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-surface border border-border rounded-xl shadow-sm hover:shadow-md hover:border-teal-accent/50 transition-all cursor-pointer text-text-primary group"
+                className="flex items-center gap-2 px-3 py-1.5 bg-surface border border-border rounded-xl shadow-sm hover:shadow-md hover:border-teal-accent/50 transition-all cursor-pointer text-text-primary group shrink-0"
                 title="Change Shift & Date"
               >
                 <div className="flex items-center gap-1.5">
@@ -1067,13 +1088,18 @@ function formatHandoverTime(dateStr?: string) {
                     {/* Bottom Section: Status & Actions */}
                     <div className="pt-3 border-t border-border flex items-center justify-between gap-2">
                        <div className="flex flex-wrap items-center gap-1.5">
-                         {hasHandover ? (
+                         {status?.status === 'needs_review' ? (
+                           <div className="flex items-center gap-1 text-amber-accent bg-amber-accent/10 px-1.5 py-0.5 rounded border border-amber-accent/20 shrink-0">
+                             <AlertCircle className="w-3 h-3" />
+                             <span className="text-[9px] font-bold uppercase tracking-wider">Review Req</span>
+                           </div>
+                         ) : status?.status === 'published' || status?.is_approved ? (
                            <div className="flex items-center gap-1 text-teal-accent bg-teal-accent/10 px-1.5 py-0.5 rounded border border-teal-accent/20 shrink-0">
                              <Check className="w-3 h-3" />
                              <span className="text-[9px] font-bold uppercase tracking-wider">Logged</span>
                            </div>
                          ) : (
-                           <div className="flex items-center gap-1 text-amber-accent bg-amber-accent/10 px-1.5 py-0.5 rounded border border-amber-accent/20 shrink-0">
+                           <div className="flex items-center gap-1 text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-border shrink-0">
                              <Activity className="w-3 h-3" />
                              <span className="text-[9px] font-bold uppercase tracking-wider">Pending</span>
                            </div>
@@ -1085,22 +1111,24 @@ function formatHandoverTime(dateStr?: string) {
                          )}
                        </div>
 
-                       {/* Update Button */}
+                       {/* Update/Review Button */}
                        {user?.role !== 'carer' && (
                          <Link
                            onClick={(e) => e.stopPropagation()}
-                           href={`/resident/${res.id}/input?update=${hasHandover ? 'true' : 'false'}&date=${selectedDate}&shift=${selectedShift}`}
+                           href={status?.status === 'needs_review' ? `/resident/${res.id}/review?id=${status.id}` : `/resident/${res.id}/input?update=${hasHandover ? 'true' : 'false'}&date=${selectedDate}&shift=${selectedShift}`}
                            className={`px-3 py-1.5 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-300 flex items-center gap-1 cursor-pointer z-10 border shrink-0 ${
-                             hasHandover 
+                             status?.status === 'needs_review'
+                               ? 'bg-amber-accent hover:bg-amber-accent/90 border-transparent text-white shadow-sm'
+                               : hasHandover 
                                ? 'bg-surface-solid border-border text-text-primary hover:border-teal-accent/50 hover:text-teal-accent shadow-sm' 
                                : 'bg-teal-accent hover:bg-teal-accent/90 border-transparent text-white shadow-sm hover:shadow-md'
                            }`}
                          >
-                           {hasHandover ? 'Update' : 'Start'}
+                           {status?.status === 'needs_review' ? 'Review' : hasHandover ? 'Update' : 'Start'}
                            <ArrowRight className="w-3 h-3" />
                          </Link>
                        )}
-                    </div>
+                     </div>
                   </div>
                 );
               })}
@@ -1291,6 +1319,7 @@ interface EditResidentModalProps {
 }
 
 function EditResidentModal({ isOpen, onClose, resident, wings, theme, onEditSuccess }: EditResidentModalProps) {
+  const { facility } = useAuth();
   const [name, setName] = useState('');
   const [roomNumber, setRoomNumber] = useState('');
   const [dob, setDob] = useState('');
@@ -1337,7 +1366,7 @@ function EditResidentModal({ isOpen, onClose, resident, wings, theme, onEditSucc
       const res = await fetch('/api/resident/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id: resident.id, updates: updateData })
+        body: JSON.stringify({ id: resident.id, facility_id: facility?.id, updates: updateData })
       });
 
       const json = await res.json();

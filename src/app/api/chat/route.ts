@@ -361,7 +361,7 @@ RESPONSE GUIDELINES:
     const openrouterKey = userKeys?.openrouterKey || process.env.OPENROUTER_API_KEY || '';
     if ((targetProvider === 'auto' || targetProvider === 'openrouter') && openrouterKey && !answerStr) {
       try {
-        const model = userKeys?.openrouterModel || process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash';
+        const model = userKeys?.openrouterModel || process.env.OPENROUTER_MODEL || 'google/gemini-1.5-flash';
         // Format for OpenRouter/OpenAI Vision
         let openRouterMessages = [...providerMessages];
         if (image) {
@@ -450,7 +450,7 @@ RESPONSE GUIDELINES:
     const geminiKey = userKeys?.geminiKey || process.env.GEMINI_API_KEY || '';
     if ((targetProvider === 'auto' || targetProvider === 'gemini') && geminiKey && !answerStr) {
       try {
-        const geminiModel = userKeys?.geminiModel || process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+        const geminiModel = userKeys?.geminiModel || process.env.GEMINI_MODEL || 'gemini-1.5-flash';
         // Build Gemini contents array (no separate system role — prepend as first user turn)
         const geminiContents = [
           { role: 'user', parts: [{ text: systemPrompt }] },

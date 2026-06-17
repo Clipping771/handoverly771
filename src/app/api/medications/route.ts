@@ -5,7 +5,8 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const residentId = searchParams.get('residentId');
-    if (!residentId) throw new Error('Missing residentId');
+    const facilityId = searchParams.get('facilityId');
+    if (!residentId || !facilityId) throw new Error('Missing residentId or facilityId');
 
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,6 +17,7 @@ export async function GET(request: Request) {
       .from('medication_profiles')
       .select(`*, last_reconciled_by(name)`)
       .eq('resident_id', residentId)
+      .eq('facility_id', facilityId)
       .order('status', { ascending: true })
       .order('medication_name', { ascending: true });
 
@@ -65,7 +67,8 @@ export async function PUT(request: Request) {
       const { error } = await supabaseAdmin
         .from('medication_profiles')
         .update(updates)
-        .eq('id', medId);
+        .eq('id', medId)
+        .eq('facility_id', body.facilityId);
       if (error) throw error;
       return NextResponse.json({ success: true });
     }
@@ -95,7 +98,8 @@ export async function PUT(request: Request) {
 export async function DELETE(request: Request) {
   try {
     const body = await request.json();
-    const { medId, residentId } = body;
+    const { medId, residentId, facilityId } = body;
+    if (!facilityId) throw new Error('Missing facilityId');
     
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -107,14 +111,16 @@ export async function DELETE(request: Request) {
       const { error } = await supabaseAdmin
         .from('medication_profiles')
         .delete()
-        .eq('id', medId);
+        .eq('id', medId)
+        .eq('facility_id', facilityId);
       if (error) throw error;
     } else if (residentId) {
       // Delete all medications for a resident
       const { error } = await supabaseAdmin
         .from('medication_profiles')
         .delete()
-        .eq('resident_id', residentId);
+        .eq('resident_id', residentId)
+        .eq('facility_id', facilityId);
       if (error) throw error;
     } else {
       throw new Error('Missing medId or residentId');

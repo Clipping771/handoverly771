@@ -60,6 +60,7 @@ export async function POST(req: Request) {
     const { data: existingHandover } = await supabase
       .from('handovers')
       .select('id, raw_input, rn_summary')
+      .eq('facility_id', handoverDbRecord.facility_id)
       .eq('resident_id', handoverDbRecord.resident_id)
       .eq('shift_date', handoverDbRecord.shift_date)
       .eq('shift_type', handoverDbRecord.shift_type)
@@ -139,6 +140,7 @@ export async function POST(req: Request) {
           const { data: retryHandover } = await supabase
             .from('handovers')
             .select('id, raw_input, rn_summary')
+            .eq('facility_id', handoverDbRecord.facility_id)
             .eq('resident_id', handoverDbRecord.resident_id)
             .eq('shift_date', handoverDbRecord.shift_date)
             .eq('shift_type', handoverDbRecord.shift_type)
@@ -251,6 +253,7 @@ export async function POST(req: Request) {
       const { data: activeTasks } = await supabase
         .from('tasks')
         .select('title, handover_id, carry_until_date')
+        .eq('facility_id', handoverRecord.facility_id)
         .eq('resident_id', handoverRecord.resident_id)
         .or(`is_completed.eq.false,carry_until_date.gte.${handoverDbRecord.shift_date}`);
       
@@ -285,6 +288,7 @@ export async function POST(req: Request) {
           await supabase
             .from('tasks')
             .update({ is_completed: true })
+            .eq('facility_id', handoverRecord.facility_id)
             .eq('resident_id', handoverRecord.resident_id)
             .eq('is_completed', false)
             .is('carry_until_date', null)
@@ -301,6 +305,7 @@ export async function POST(req: Request) {
       const { data: staffData } = await supabase
         .from('staff')
         .select('name')
+        .eq('facility_id', handoverRecord.facility_id)
         .eq('id', handoverRecord.submitted_by)
         .single();
       if (staffData && staffData.name) {
@@ -328,6 +333,7 @@ export async function POST(req: Request) {
     await supabase
       .from('resident_insights')
       .delete()
+      .eq('facility_id', handoverRecord.facility_id)
       .eq('resident_id', handoverRecord.resident_id);
 
     if (useTransaction && client) {

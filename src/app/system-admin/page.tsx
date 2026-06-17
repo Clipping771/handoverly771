@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { ShieldCheck, Plus, Building, UserPlus, AlertCircle, RefreshCw, Sun, Moon, Lock, Eye, EyeOff, Edit3, Trash2, Save, X } from 'lucide-react';
 import Link from 'next/link';
+import toast from 'react-hot-toast';
 
 interface Facility {
   id: string;
@@ -250,6 +251,15 @@ export default function SystemAdminSetup() {
                   className="absolute right-4 p-1 text-slate-400 hover:text-indigo-500 focus:outline-none transition-colors cursor-pointer z-10"
                 >
                   {showMasterPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+              <div className="flex justify-end mt-1.5">
+                <button
+                  type="button"
+                  onClick={() => toast('Master Password reset requires manual database intervention. Please contact IT support.', { icon: 'ℹ️' })}
+                  className="text-[10px] font-bold text-indigo-500 hover:text-indigo-400 transition-colors cursor-pointer"
+                >
+                  Forgot Password?
                 </button>
               </div>
             </div>

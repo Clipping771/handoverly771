@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
     const anthropicKey = userKeys?.anthropicKey || process.env.ANTHROPIC_API_KEY || '';
     const openrouterKey = userKeys?.openrouterKey || process.env.OPENROUTER_API_KEY || '';
-    const openrouterModel = userKeys?.openrouterModel || process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash';
+    const openrouterModel = userKeys?.openrouterModel || process.env.OPENROUTER_MODEL || 'google/gemini-1.5-flash';
     const groqKey = userKeys?.groqKey || process.env.GROQ_API_KEY || '';
     const groqModel = userKeys?.groqModel || process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
     const ollamaUrl = userKeys?.ollamaUrl || process.env.OLLAMA_API_URL || 'http://127.0.0.1:11434';
@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     const openaiKey = userKeys?.openaiKey || process.env.OPENAI_API_KEY || '';
     const openaiModel = userKeys?.openaiModel || process.env.OPENAI_MODEL || 'gpt-4o-mini';
     const geminiKey = userKeys?.geminiKey || process.env.GEMINI_API_KEY || '';
-    const geminiModel = userKeys?.geminiModel || process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+    const geminiModel = userKeys?.geminiModel || process.env.GEMINI_MODEL || 'gemini-1.5-flash';
 
     // Build rich context prompt
     let contextPrompt = `${ENHANCE_PROMPT}\n\n`;

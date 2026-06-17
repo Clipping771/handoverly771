@@ -12,7 +12,7 @@ const RISK_KEYWORDS = ['fall', 'injury', 'refused medication', 'medication error
 
 export async function POST(request: Request) {
   try {
-    const { residentId, rawInput, facilityId } = await request.json();
+    const { residentId, rawInput, facilityId, staffId, shiftType, shiftDate, inputMethod } = await request.json();
 
     if (!residentId || !rawInput || !facilityId) {
       return NextResponse.json(
@@ -119,9 +119,9 @@ fall | injury | refused medication | medication error | aggression | hospital tr
 
 Return ONLY valid JSON with this exact structure (no surrounding markdown, no backticks, no comments, just JSON):
 {
-  "urgency": "critical|attention|routine",
-  "risk_flags": ["list any of the detected risk flags from the list above, or empty array"],
-  "flags_status": "all_present|some_missing|none_detected",
+  "risk_flag": "routine|attention|critical",
+  "confidence_score": 0.95,
+  "uncertainty_reason": "Provide reason if confidence is low, else null",
   "rn_summary": {
     "identify": "Name, Room, Age, Care level",
     "situation": "current status details",
@@ -129,7 +129,7 @@ Return ONLY valid JSON with this exact structure (no surrounding markdown, no ba
     "assessment": "clinical evaluation details",
     "recommendation": "recommendations for next shift"
   },
-  "shift_tasks": [
+  "carer_tasks": [
     {
       "title": "short concise tagline (e.g., Comfort Check, Vitals Monitoring)",
       "description": "action item description",
@@ -139,7 +139,7 @@ Return ONLY valid JSON with this exact structure (no surrounding markdown, no ba
       "carry_until_date": "If the task description or title specifies that the task must be performed until/by/through/to a specific date, parse and set this to that date in YYYY-MM-DD format (e.g., '2026-06-15'). Otherwise, set to null."
     }
   ],
-  "follow_up_questions": ["question 1", "question 2 (Only include if critical safety info is MISSING, max 2. Otherwise empty array. Do NOT repeat or include any questions that have already been asked and answered in the Informal Notes.)"]
+  "follow_up_questions": ["question 1", "question 2 (Only include if critical safety info is MISSING, max 2. Otherwise empty array.)"]
 }
 
 Use Australian English (e.g. behaviour, monitored, colour). Do not invent information not explicitly provided or strongly implied by the input notes.`;
@@ -160,6 +160,8 @@ Informal Notes:
 "${rawInput}"`;
 
     let resultJson: any = null;
+    let fallbackEngineUsed = false;
+    let usedProvider = '';
     const targetProvider = provider || 'auto';
     const errors: string[] = [];
 
@@ -181,6 +183,7 @@ Informal Notes:
         const jsonMatch = textContent.match(/\{[\s\S]*\}/);
         const jsonStr = jsonMatch ? jsonMatch[0] : textContent;
         resultJson = JSON.parse(jsonStr);
+        usedProvider = 'Anthropic Claude';
       } catch (apiErr: any) {
         console.error('Claude API call failed:', apiErr);
         if (targetProvider !== 'auto') {
@@ -194,7 +197,7 @@ Informal Notes:
     // 2. Try OpenRouter
     const openrouterKey = userKeys?.openrouterKey || process.env.OPENROUTER_API_KEY || '';
     if ((targetProvider === 'auto' || targetProvider === 'openrouter') && openrouterKey && !resultJson) {
-      const selectedModel = userKeys?.openrouterModel || process.env.OPENROUTER_MODEL || 'google/gemini-2.5-flash';
+      const selectedModel = userKeys?.openrouterModel || process.env.OPENROUTER_MODEL || 'google/gemini-1.5-flash';
       let currentModel = selectedModel;
       let attempts = 0;
       let lastError: any = null;
@@ -227,13 +230,19 @@ Informal Notes:
             const jsonMatch = textContent.match(/\{[\s\S]*\}/);
             const jsonStr = jsonMatch ? jsonMatch[0] : textContent;
             resultJson = JSON.parse(jsonStr);
+            usedProvider = 'OpenRouter';
+            if (currentModel !== selectedModel) {
+              fallbackEngineUsed = true;
+              usedProvider = `OpenRouter (${currentModel})`;
+            }
           } else {
             console.error(`OpenRouter response error (${currentModel}):`, data);
             lastError = new Error(data.error?.message || `OpenRouter error (${res.status})`);
 
-            if (attempts === 1 && currentModel !== 'google/gemini-2.5-flash') {
-              console.log('Switching to fallback model google/gemini-2.5-flash...');
-              currentModel = 'google/gemini-2.5-flash';
+            if (attempts === 1 && currentModel !== 'google/gemini-1.5-flash') {
+              console.log('Switching to fallback model google/gemini-1.5-flash...');
+              currentModel = 'google/gemini-1.5-flash';
+              fallbackEngineUsed = true;
             } else {
               break;
             }
@@ -242,9 +251,9 @@ Informal Notes:
           console.error(`OpenRouter call failed (${currentModel}):`, orErr);
           lastError = orErr;
 
-          if (attempts === 1 && currentModel !== 'google/gemini-2.5-flash') {
-            console.log('Switching to fallback model google/gemini-2.5-flash...');
-            currentModel = 'google/gemini-2.5-flash';
+          if (attempts === 1 && currentModel !== 'google/gemini-1.5-flash') {
+            console.log('Switching to fallback model google/gemini-1.5-flash...');
+            currentModel = 'google/gemini-1.5-flash';
           } else {
             break;
           }
@@ -365,9 +374,96 @@ Informal Notes:
       }
       console.log("Using Mock fallback engine.");
       resultJson = generateMockHandover(resident, age, rawInput);
+      fallbackEngineUsed = true;
+      usedProvider = 'Mock Engine (Offline)';
     }
 
-    return NextResponse.json({ success: true, data: resultJson });
+    // --- DETERMINISTIC SERVER DECISION ENGINE ---
+    const lowerInput = rawInput.toLowerCase();
+    const hasCriticalKeyword = RISK_KEYWORDS.some(k => lowerInput.includes(k));
+    
+    // In case AI completely failed or timed out, we fallback to our mock generator
+    let finalJson = resultJson;
+    if (!finalJson) {
+       console.log('AI Generation failed entirely, falling back to deterministic safe mock.');
+       finalJson = generateMockHandover(resident, age, rawInput);
+       fallbackEngineUsed = true;
+       usedProvider = 'Fail-Safe Deterministic Fallback';
+    }
+
+    // Determine Status
+    let status = 'published';
+    if (
+      finalJson.risk_flag === 'critical' || 
+      (finalJson.confidence_score && finalJson.confidence_score < 0.75) || 
+      hasCriticalKeyword || 
+      fallbackEngineUsed || 
+      errors.length > 0
+    ) {
+      status = 'needs_review';
+    }
+
+    // --- WRITE DIRECTLY TO DATABASE (Service Role allows bypassing RLS for system operations, but we use it securely) ---
+    // Actually, we can use the regular client if we want RLS, but the API doesn't have the user's JWT. 
+    // We will use the service role key to insert, because it's a backend operation on behalf of the user.
+    const { createClient } = require('@supabase/supabase-js');
+    const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+
+    // Extract Risk Flags array based on the single flag mapping to align with schema requirements
+    const riskFlags = [];
+    if (finalJson.risk_flag === 'critical') riskFlags.push('critical');
+    if (hasCriticalKeyword) riskFlags.push('keyword_override');
+
+    const { data: dbHandover, error: dbError } = await supabaseAdmin.from('handovers').insert([{
+      facility_id: facilityId,
+      resident_id: residentId,
+      submitted_by: staffId,
+      raw_input: rawInput,
+      rn_summary: finalJson.rn_summary,
+      rn_summary_original: finalJson.rn_summary,
+      carer_tasks: finalJson.carer_tasks || finalJson.shift_tasks || [],
+      urgency: finalJson.risk_flag || 'routine',
+      risk_flags: riskFlags,
+      flags_status: riskFlags.length > 0 ? 'all_present' : 'none_detected',
+      status: status,
+      confidence_score: finalJson.confidence_score || 0.5,
+      uncertainty_reason: finalJson.uncertainty_reason || null,
+      shift_date: shiftDate || new Date().toISOString().split('T')[0],
+      shift_type: shiftType || 'morning',
+      input_method: inputMethod || 'text'
+    }]).select('id').single();
+
+    if (dbError) {
+      console.error('Failed to write handover to DB:', dbError);
+      throw new Error('Database write failed');
+    }
+
+    // If it was published immediately, we need to create tasks
+    if (status === 'published' && finalJson.carer_tasks) {
+      const taskInserts = (finalJson.carer_tasks || finalJson.shift_tasks).map((t: any) => ({
+        resident_id: residentId,
+        facility_id: facilityId,
+        handover_id: dbHandover.id,
+        title: t.title,
+        description: t.description,
+        assigned_role: t.assigned_role || 'carer',
+        tags: t.tags || [],
+        clinical_purpose: t.clinical_purpose,
+        carry_until_date: t.carry_until_date
+      }));
+      if (taskInserts.length > 0) {
+        await supabaseAdmin.from('tasks').insert(taskInserts);
+      }
+    }
+
+    return NextResponse.json({ 
+      success: true, 
+      handoverId: dbHandover.id, 
+      status,
+      data: finalJson, 
+      fallbackEngineUsed, 
+      usedProvider 
+    });
   } catch (err: any) {
     console.error('API Handover Generation error:', err);
     return NextResponse.json(
@@ -506,9 +602,9 @@ function generateMockHandover(resident: any, age: number, rawInput: string): any
   }
 
   return {
-    urgency,
-    risk_flags: detectedFlags,
-    flags_status: detectedFlags.length > 0 ? (followUp.length > 0 ? 'some_missing' : 'all_present') : 'none_detected',
+    risk_flag: urgency,
+    confidence_score: 0.5,
+    uncertainty_reason: "Generated by deterministic fallback engine due to API timeout or failure.",
     rn_summary: {
       identify,
       situation,

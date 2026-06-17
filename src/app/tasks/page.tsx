@@ -177,7 +177,7 @@ export default function TasksPage() {
     outcomeText?: string
   ) => {
     const task = tasks.find(t => t.id === taskId);
-    if (!task || !user) return;
+    if (!task || !user || !facility) return;
 
     // Allow matching roles dynamically
     const taskRole = task.assigned_role;
@@ -247,7 +247,8 @@ export default function TasksPage() {
           is_completed: newStatus,
           outcome: customStatus === 'reopened' ? null : outcomeText || (customStatus === 'declined' ? 'Resident declined' : 'Completed')
         })
-        .eq('id', taskId);
+        .eq('id', taskId)
+        .eq('facility_id', facility.id);
 
       if (error) throw error;
       

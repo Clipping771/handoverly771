@@ -75,6 +75,7 @@ export default function ResidentInput() {
           .from('tasks')
           .select('id, title, description, tags, assigned_role, is_completed, carry_until_date')
           .eq('resident_id', residentId)
+          .eq('facility_id', facility?.id)
           .or(`is_completed.eq.false,carry_until_date.gte.${todayStr}`);
         if (!error && data) {
           setPendingTasks(data);
@@ -94,7 +95,8 @@ export default function ResidentInput() {
       const { error } = await supabase
         .from('tasks')
         .delete()
-        .eq('id', taskId);
+        .eq('id', taskId)
+        .eq('facility_id', facility?.id);
       if (error) throw error;
       setPendingTasks(prev => prev.filter(t => t.id !== taskId));
     } catch (err) {
@@ -112,7 +114,8 @@ export default function ResidentInput() {
           description: editDescription.trim(),
           carry_until_date: editCarryDate || null
         })
-        .eq('id', taskId);
+        .eq('id', taskId)
+        .eq('facility_id', facility?.id);
       if (error) throw error;
       setPendingTasks(prev => prev.map(t => {
         if (t.id === taskId) {
@@ -363,7 +366,7 @@ export default function ResidentInput() {
       const userKeys = dbUserKeys || {
         anthropicKey: typeof window !== 'undefined' ? localStorage.getItem('user_anthropic_key') || '' : '',
         openrouterKey: typeof window !== 'undefined' ? localStorage.getItem('user_openrouter_key') || '' : '',
-        openrouterModel: typeof window !== 'undefined' ? localStorage.getItem('user_openrouter_model') || 'google/gemini-2.5-flash' : 'google/gemini-2.5-flash',
+        openrouterModel: typeof window !== 'undefined' ? localStorage.getItem('user_openrouter_model') || 'google/gemini-1.5-flash' : 'google/gemini-1.5-flash',
         groqKey: typeof window !== 'undefined' ? localStorage.getItem('user_groq_key') || '' : '',
         groqModel: typeof window !== 'undefined' ? localStorage.getItem('user_groq_model') || 'llama-3.3-70b-versatile' : 'llama-3.3-70b-versatile',
         ollamaUrl: typeof window !== 'undefined' ? localStorage.getItem('user_ollama_url') || '' : '',

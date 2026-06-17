@@ -3,16 +3,17 @@ import { supabaseAdmin } from '@/lib/supabase-admin';
 
 export async function POST(request: Request) {
   try {
-    const { id, updates } = await request.json();
+    const { id, updates, facility_id } = await request.json();
 
-    if (!id || !updates) {
-      return NextResponse.json({ error: 'Resident ID and updates are required' }, { status: 400 });
+    if (!id || !updates || !facility_id) {
+      return NextResponse.json({ error: 'Resident ID, facility_id and updates are required' }, { status: 400 });
     }
 
     const { data, error } = await supabaseAdmin
       .from('residents')
       .update(updates)
       .eq('id', id)
+      .eq('facility_id', facility_id)
       .select()
       .single();
 

@@ -11,6 +11,7 @@ import ActivityTimeline from '@/components/ActivityTimeline';
 import MedicationsList from '@/components/MedicationsList';
 import ExternalCommsLog from '@/components/ExternalCommsLog';
 import SirsReportingForm from '@/components/SirsReportingForm';
+import VitalsTrending from '@/components/VitalsTrending';
 import toast from 'react-hot-toast';
 import { ShieldAlert, CheckCircle2, Lightbulb } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -93,6 +94,7 @@ export default function ResidentProfile() {
           .from('residents')
           .select('*')
           .eq('id', residentId)
+          .eq('facility_id', facility?.id)
           .single();
 
         if (error) throw error;
@@ -155,6 +157,7 @@ export default function ResidentProfile() {
           wing_id: editForm.wing_id || null
         })
         .eq('id', resident.id)
+        .eq('facility_id', facility?.id)
         .select()
         .single();
       if (error) throw error;
@@ -250,6 +253,7 @@ export default function ResidentProfile() {
             handover:handovers(urgency)
           `)
           .eq('resident_id', residentId)
+          .eq('facility_id', facility?.id)
           .is('outcome', null)
           .lt('created_at', twoHoursAgo);
 
@@ -331,7 +335,7 @@ export default function ResidentProfile() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-4xl mx-auto w-full px-6 mt-10">
+      <main id="printable-ehr" className="max-w-4xl mx-auto w-full px-6 mt-10">
         
         {/* Resident Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
@@ -350,6 +354,42 @@ export default function ResidentProfile() {
           </div>
           
           <div className="flex flex-col sm:flex-row items-center gap-3">
+            <motion.button
+              onClick={async () => {
+                try {
+                  const html2pdf = (await import('html2pdf.js')).default;
+                  const element = document.getElementById('printable-ehr');
+                  if (!element) {
+                     toast.error('Could not find EHR content to print.');
+                     return;
+                  }
+                  
+                  // Clone the element to format for print
+                  const clone = element.cloneNode(true) as HTMLElement;
+                  clone.classList.add('p-8', 'bg-white');
+                  
+                  const opt = {
+                    margin:       10,
+                    filename:     `Handoverly_EHR_${resident.name.replace(/\s+/g, '_')}.pdf`,
+                    image:        { type: 'jpeg' as const, quality: 0.98 },
+                    html2canvas:  { scale: 2, useCORS: true },
+                    jsPDF:        { unit: 'mm' as const, format: 'a4' as const, orientation: 'portrait' as const }
+                  };
+                  
+                  toast.success('Generating PDF...');
+                  html2pdf().set(opt).from(clone).save();
+                } catch (e) {
+                  console.error(e);
+                  toast.error('Failed to generate PDF');
+                }
+              }}
+              whileHover={{ scale: 1.03, y: -2 }}
+              whileTap={{ scale: 0.97 }}
+              className="px-6 py-3 rounded-full bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold text-xs tracking-widest uppercase transition-all duration-300 flex items-center gap-2 shadow-sm whitespace-nowrap cursor-pointer"
+            >
+              <FileText className="w-4 h-4" />
+              Export to PDF
+            </motion.button>
             <motion.button
               onClick={() => setShowSirsForm(true)}
               whileHover={{ scale: 1.03, y: -2 }}
@@ -407,6 +447,9 @@ export default function ResidentProfile() {
             </ul>
           </div>
         )}
+
+        {/* Vitals Trending Sparklines */}
+        <VitalsTrending residentId={residentId} />
 
         {/* Smart Insights Panel */}
         <section className="apple-card rounded-[32px] p-8 relative overflow-hidden">
@@ -738,12 +781,9 @@ export default function ResidentProfile() {
 }
 
 function HandoverHistory({ residentId }: { residentId: string }) {
+  const { facility } = useAuth();
   const [handovers, setHandovers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedHandover, setSelectedHandover] = useState<any | null>(null);
-  const [versions, setVersions] = useState<any[]>([]);
-  const [loadingVersions, setLoadingVersions] = useState(false);
-  const [viewingVersion, setViewingVersion] = useState<any | null>(null);
 
   const fetchHandovers = async () => {
     try {
@@ -752,27 +792,13 @@ function HandoverHistory({ residentId }: { residentId: string }) {
         .from('handovers')
         .select('*')
         .eq('resident_id', residentId)
+        .eq('facility_id', facility?.id)
+        .eq('status', 'published') // Only show published ones in EHR
         .order('shift_date', { ascending: false })
         .order('created_at', { ascending: false });
       
       if (!error && data) {
-        // Fetch the max version for each handover from handover_versions dynamically
-        const handoversWithVersions = await Promise.all(
-          data.map(async (h) => {
-            const { data: verData } = await supabase
-              .from('handover_versions')
-              .select('version')
-              .eq('handover_id', h.id)
-              .order('version', { ascending: false })
-              .limit(1);
-            const latestVer = verData && verData[0] ? verData[0].version : 1;
-            return {
-              ...h,
-              version_number: latestVer.toString()
-            };
-          })
-        );
-        setHandovers(handoversWithVersions);
+        setHandovers(data);
       }
     } catch (e) {
       console.error(e);
@@ -782,242 +808,84 @@ function HandoverHistory({ residentId }: { residentId: string }) {
   };
 
   useEffect(() => {
-    fetchHandovers();
-  }, [residentId]);
-
-  const loadVersions = async (handoverId: string) => {
-    try {
-      setLoadingVersions(true);
-      setSelectedHandover(handovers.find(h => h.id === handoverId));
-      setViewingVersion(null);
-      const { data, error } = await supabase
-        .from('handover_versions')
-        .select('*')
-        .eq('handover_id', handoverId)
-        .order('version', { ascending: false });
-      if (!error && data) {
-        setVersions(data);
-      }
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingVersions(false);
-    }
-  };
-
-  const handleRollback = async (versionRecord: any) => {
-    if (!window.confirm(`Are you sure you want to rollback to Version ${versionRecord.version}? This will update the active handover and create a new version.`)) {
-      return;
-    }
-    try {
-      // Get current version number from versions array
-      const currentVerNum = versions.length > 0 ? Math.max(...versions.map(v => v.version)) : 1;
-      const newVersionNum = currentVerNum + 1;
-
-      // Update main handover table (exclude version_number column to prevent cache error)
-      const { error: updateError } = await supabase
-        .from('handovers')
-        .update({
-          raw_input: versionRecord.raw_input,
-          rn_summary: versionRecord.rn_summary,
-          carer_tasks: versionRecord.carer_tasks,
-          urgency: versionRecord.urgency,
-          risk_flags: versionRecord.risk_flags
-        })
-        .eq('id', selectedHandover.id);
-
-      if (updateError) throw updateError;
-
-      // Insert new version snapshot
-      const { error: verError } = await supabase
-        .from('handover_versions')
-        .insert([
-          {
-            handover_id: selectedHandover.id,
-            version: newVersionNum,
-            submitted_by: versionRecord.submitted_by,
-            raw_input: versionRecord.raw_input,
-            rn_summary: versionRecord.rn_summary,
-            carer_tasks: versionRecord.carer_tasks,
-            urgency: versionRecord.urgency,
-            risk_flags: versionRecord.risk_flags
-          }
-        ]);
-
-      if (verError) throw verError;
-
-      alert('Handover successfully rolled back!');
-      setSelectedHandover(null);
-      setViewingVersion(null);
+    if (facility?.id) {
       fetchHandovers();
-    } catch (e: any) {
-      console.error(e);
-      alert(`Rollback failed: ${e.message}`);
     }
-  };
+  }, [residentId, facility?.id]);
 
-  if (loading) return <div className="text-xs text-slate-400">Loading handover history...</div>;
-  if (handovers.length === 0) return <div className="text-xs text-slate-400 italic">No handover records found.</div>;
+  if (loading) return <div className="text-xs text-text-secondary">Loading longitudinal EHR...</div>;
+  if (handovers.length === 0) return <div className="text-xs text-text-secondary italic p-4 bg-surface rounded-2xl">No published clinical records found.</div>;
 
   return (
-    <div className="space-y-6">
-      {!selectedHandover ? (
-        <div className="grid gap-4">
-          {handovers.map((h) => (
-            <div key={h.id} className="bg-white dark:bg-[#121214] border border-slate-200 dark:border-[#202024] p-5 rounded-[24px] shadow-sm flex flex-col justify-between">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-350 capitalize">
-                    {h.shift_type} Shift
-                  </span>
-                  <span className="text-xs font-medium text-slate-500">
-                    {new Date(h.shift_date + 'T00:00:00').toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </span>
-                </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-650 dark:text-indigo-400">
-                  v{h.version_number || '1'} (Active)
-                </span>
-              </div>
-
-              <div className="space-y-3">
-                <div>
-                  <h4 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Situation</h4>
-                  <p className="text-xs text-slate-750 dark:text-slate-300 leading-relaxed">
-                    {h.rn_summary?.situation || 'No summary entered.'}
-                  </p>
-                </div>
-                <div>
-                  <h4 className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Recommendation</h4>
-                  <p className="text-xs text-slate-750 dark:text-slate-300 leading-relaxed">
-                    {h.rn_summary?.recommendation || 'No recommendation entered.'}
-                  </p>
-                </div>
-              </div>
-
-              <div className="mt-4 pt-4 border-t border-slate-100 dark:border-[#1c1c1f] flex items-center justify-between">
-                <span className="text-[10px] text-slate-400">
-                  Version: v{h.version_number || '1'}
-                </span>
-                <button
-                  onClick={() => loadVersions(h.id)}
-                  className="text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 flex items-center gap-1.5 cursor-pointer"
-                >
-                  <History className="w-3.5 h-3.5" />
-                  View Versions
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="bg-white dark:bg-[#121214] border border-slate-200 dark:border-[#202024] p-6 rounded-[28px] shadow-md space-y-6">
-          <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#1c1c1f] pb-4">
-            <div>
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white capitalize">
-                {selectedHandover.shift_type} Shift Versions
-              </h3>
-              <p className="text-[10px] text-slate-450 mt-0.5">
-                {new Date(selectedHandover.shift_date + 'T00:00:00').toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}
-              </p>
-            </div>
-            <button
-              onClick={() => setSelectedHandover(null)}
-              className="text-xs font-semibold text-slate-500 hover:text-slate-700 dark:hover:text-slate-350 cursor-pointer"
-            >
-              Back to History
-            </button>
+    <div className="relative space-y-6 before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border-solid before:to-transparent">
+      {handovers.map((h, index) => (
+        <div key={h.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+          {/* Timeline Marker */}
+          <div className="flex items-center justify-center w-10 h-10 rounded-full border-4 border-background bg-surface-solid shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 text-primary z-10">
+            <Activity className="w-4 h-4" />
           </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {/* Version List Sidebar */}
-            <div className="space-y-2 border-r border-slate-150 dark:border-[#1c1c1f] pr-4">
-              <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Available Snapshots</h4>
-              {loadingVersions ? (
-                <div className="text-xs text-slate-400 animate-pulse">Loading versions...</div>
-              ) : (
-                versions.map((v) => (
-                  <button
-                    key={v.id}
-                    onClick={() => setViewingVersion(v)}
-                    className={`w-full text-left p-3 rounded-xl border text-xs transition-all ${
-                      (viewingVersion?.id === v.id) || (!viewingVersion && v.version === parseInt(selectedHandover.version_number, 10))
-                        ? 'bg-indigo-50 border-indigo-200 text-indigo-700 dark:bg-indigo-950/20 dark:border-indigo-850 dark:text-indigo-300 font-bold'
-                        : 'border-transparent text-slate-600 dark:text-slate-450 hover:bg-slate-50 dark:hover:bg-slate-900/60'
-                    }`}
-                  >
-                    <div className="flex justify-between items-center">
-                      <span>Version {v.version}</span>
-                      {v.version === parseInt(selectedHandover.version_number, 10) && (
-                        <span className="text-[8px] bg-indigo-650 text-white px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Active</span>
-                      )}
-                    </div>
-                    <div className="text-[9px] text-slate-400 font-normal mt-1">
-                      {new Date(v.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </div>
-                  </button>
-                ))
-              )}
+          
+          {/* Card */}
+          <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] apple-card p-5 rounded-3xl group-hover:-translate-y-1 transition-all">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-xs font-bold px-2.5 py-1 rounded-lg bg-primary/10 text-primary capitalize tracking-wide">
+                {h.shift_type} Shift
+              </span>
+              <span className="text-[10px] font-bold text-text-secondary tracking-widest uppercase">
+                {new Date(h.shift_date + 'T00:00:00').toLocaleDateString([], { day: 'numeric', month: 'short' })}
+              </span>
             </div>
 
-            {/* Version Snapshot Detail View */}
-            <div className="md:col-span-2 space-y-5">
-              {(() => {
-                const current = viewingVersion || versions.find(v => v.version === parseInt(selectedHandover.version_number, 10)) || versions[0];
-                if (!current) return <div className="text-xs text-slate-400 italic">Select a version snapshot to view details.</div>;
-                return (
-                  <div className="space-y-4">
-                    <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-900/60 p-3 rounded-xl">
-                      <span className="text-xs font-bold text-slate-700 dark:text-slate-350">
-                        Viewing Version {current.version} details
-                      </span>
-                      {current.version !== parseInt(selectedHandover.version_number, 10) && (
-                        <button
-                          onClick={() => handleRollback(current)}
-                          className="px-3.5 py-1.5 bg-indigo-650 hover:bg-indigo-700 text-white rounded-full text-[10px] font-bold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-1"
-                        >
-                          <RotateCcw className="w-3 h-3" />
-                          Rollback
-                        </button>
-                      )}
-                    </div>
+            <div className="space-y-4">
+              <div>
+                <h4 className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span> Situation
+                </h4>
+                <p className="text-xs text-text-primary leading-relaxed">
+                  {h.rn_summary?.situation || 'No situation detailed.'}
+                </p>
+              </div>
+              
+              <div>
+                <h4 className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500"></span> Background
+                </h4>
+                <p className="text-xs text-text-primary leading-relaxed line-clamp-2 hover:line-clamp-none transition-all">
+                  {h.rn_summary?.background || 'No background detailed.'}
+                </p>
+              </div>
 
-                    <div className="space-y-4">
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Raw Notes</h4>
-                        <pre className="text-xs text-slate-750 dark:text-slate-300 whitespace-pre-wrap font-sans bg-slate-50/50 dark:bg-slate-900/40 p-4 rounded-xl border border-slate-100 dark:border-[#202024] leading-relaxed">
-                          {current.raw_input || 'None.'}
-                        </pre>
-                      </div>
+              <div>
+                <h4 className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Assessment
+                </h4>
+                <p className="text-xs text-text-primary leading-relaxed line-clamp-2 hover:line-clamp-none transition-all">
+                  {h.rn_summary?.assessment || 'No assessment detailed.'}
+                </p>
+              </div>
 
-                      <div className="grid sm:grid-cols-2 gap-4">
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Situation</h4>
-                          <p className="text-xs text-slate-750 dark:text-slate-300 leading-relaxed bg-slate-50/50 dark:bg-slate-900/40 p-3.5 rounded-xl">
-                            {current.rn_summary?.situation || 'None.'}
-                          </p>
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Assessment</h4>
-                          <p className="text-xs text-slate-750 dark:text-slate-300 leading-relaxed bg-slate-50/50 dark:bg-slate-900/40 p-3.5 rounded-xl">
-                            {current.rn_summary?.assessment || 'None.'}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div>
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Recommendations</h4>
-                        <p className="text-xs text-slate-750 dark:text-slate-300 leading-relaxed bg-slate-50/50 dark:bg-slate-900/40 p-3.5 rounded-xl">
-                          {current.rn_summary?.recommendation || 'None.'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
+              <div>
+                <h4 className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mb-1.5 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Recommendation
+                </h4>
+                <p className="text-xs text-text-primary leading-relaxed font-medium">
+                  {h.rn_summary?.recommendation || 'No recommendations.'}
+                </p>
+              </div>
             </div>
+
+            {h.risk_flags && h.risk_flags.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-border flex flex-wrap gap-1.5">
+                {h.risk_flags.map((flag: string, i: number) => (
+                  <span key={i} className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-500 border border-rose-500/20">
+                    {flag}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
-      )}
+      ))}
     </div>
   );
 }

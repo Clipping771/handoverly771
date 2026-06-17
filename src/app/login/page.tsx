@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ShieldAlert, LogIn, User, Lock, Sun, Moon, HeartPulse, UserPlus, Mail, BadgeCent, ChevronDown, Eye, EyeOff } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import toast from 'react-hot-toast';
 
 export default function Login() {
   const { login, user, isLoading, isCarer, isAdmin } = useAuth();
@@ -226,6 +227,16 @@ export default function Login() {
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+              </div>
+
+              <div className="flex justify-end mt-1.5">
+                <button
+                  type="button"
+                  onClick={() => toast('Password reset is disabled in this environment. Please contact your system administrator.', { icon: 'ℹ️' })}
+                  className="text-[10px] font-bold text-primary hover:text-primary/80 transition-colors cursor-pointer"
+                >
+                  Forgot Password?
+                </button>
               </div>
 
               {error && (

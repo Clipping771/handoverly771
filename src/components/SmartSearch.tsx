@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContextProvider';
-import { Send, X, Loader2, CheckCircle2, Trash2, Stethoscope, Paperclip, Camera, Image as ImageIcon } from 'lucide-react';
+import { Send, X, Loader2, CheckCircle2, Trash2, Stethoscope, Paperclip, Camera, Image as ImageIcon, Zap, ChevronRight } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import toast from 'react-hot-toast';
@@ -278,7 +278,7 @@ export default function SmartSearch() {
         groqKey: localStorage.getItem('user_groq_key') || '',
         groqModel: localStorage.getItem('user_groq_model') || 'llama-3.3-70b-versatile',
         geminiKey: localStorage.getItem('user_gemini_key') || '',
-        geminiModel: localStorage.getItem('user_gemini_model') || 'gemini-2.0-flash',
+        geminiModel: localStorage.getItem('user_gemini_model') || 'gemini-1.5-flash',
         openaiKey: localStorage.getItem('user_openai_key') || '',
         openaiModel: localStorage.getItem('user_openai_model') || 'gpt-4o-mini',
         ollamaUrl: localStorage.getItem('user_ollama_url') || 'http://127.0.0.1:11434',
@@ -408,7 +408,7 @@ export default function SmartSearch() {
         groqKey: localStorage.getItem('user_groq_key') || '',
         groqModel: localStorage.getItem('user_groq_model') || 'llama-3.3-70b-versatile',
         geminiKey: localStorage.getItem('user_gemini_key') || '',
-        geminiModel: localStorage.getItem('user_gemini_model') || 'gemini-2.0-flash',
+        geminiModel: localStorage.getItem('user_gemini_model') || 'gemini-1.5-flash',
         openaiKey: localStorage.getItem('user_openai_key') || '',
         openaiModel: localStorage.getItem('user_openai_model') || 'gpt-4o-mini',
         ollamaUrl: localStorage.getItem('user_ollama_url') || 'http://127.0.0.1:11434',
@@ -681,49 +681,61 @@ export default function SmartSearch() {
                       </div>
                     )}
 
-                    {/* Inline Config UI */}
+                    {/* Premium Inline Unlock UI */}
                     {m.requiresConfig && (
-                      <div className="mt-4 p-4 rounded-xl bg-slate-900/5 dark:bg-white/5 border border-primary/20">
-                        <div className="flex items-center justify-between mb-2">
-                          <p className="text-xs font-bold">Quick Configuration</p>
-                        </div>
-                        <p className="text-[10px] text-text-secondary mb-3">Setup your preferred AI Engine instantly without leaving the chat.</p>
-                        <div className="flex gap-2">
-                          <select 
-                            id={`inline-provider-${i}`}
-                            className="bg-white dark:bg-black/40 border border-border rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:border-primary/60 min-w-[100px]"
-                          >
-                            <option value="groq">Groq</option>
-                             <option value="openrouter">OpenRouter</option>
-                            <option value="anthropic">Anthropic</option>
-                            <option value="gemini">Google Gemini</option>
-                            <option value="openai">OpenAI</option>
-                          </select>
-                          <input 
-                            type="password" 
-                            placeholder="Paste API Key here..." 
-                            id={`inline-key-${i}`}
-                            className="flex-1 min-w-0 bg-white dark:bg-black/40 border border-border rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-primary/60"
-                          />
-                          <button 
-                            onClick={() => {
-                              const keyInput = document.getElementById(`inline-key-${i}`) as HTMLInputElement;
-                              const providerSelect = document.getElementById(`inline-provider-${i}`) as HTMLSelectElement;
-                              
-                              if (keyInput && keyInput.value && providerSelect) {
-                                const provider = providerSelect.value;
-                                localStorage.setItem(`user_${provider}_key`, keyInput.value.trim());
-                                toast.success(`${provider} key saved! Try your query again.`);
+                      <div className="mt-5 p-5 rounded-2xl bg-gradient-to-br from-indigo-500/10 to-violet-500/10 dark:from-indigo-500/20 dark:to-violet-500/20 border border-indigo-500/30 dark:border-indigo-400/30 shadow-lg relative overflow-hidden group">
+                        {/* Shimmer effect */}
+                        <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 dark:via-white/10 to-transparent group-hover:animate-[shimmer_2s_infinite]"></div>
+                        
+                        <div className="relative z-10">
+                          <div className="flex items-center gap-3 mb-3">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-500 flex items-center justify-center shadow-md">
+                              <Zap className="w-5 h-5 text-white animate-pulse" />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-bold text-slate-800 dark:text-white tracking-tight">Unlock AI Features</h4>
+                              <p className="text-[10px] text-slate-500 dark:text-indigo-200 mt-0.5">Connect an engine to enable the Clinical Copilot</p>
+                            </div>
+                          </div>
+                          
+                          <div className="flex flex-col sm:flex-row gap-2 mt-4">
+                            <select 
+                              id={`inline-provider-${i}`}
+                              className="bg-white/80 dark:bg-black/40 backdrop-blur-md border border-indigo-500/20 dark:border-indigo-400/20 rounded-xl px-3 py-2.5 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-slate-700 dark:text-slate-200 transition-all cursor-pointer"
+                            >
+                              <option value="groq">Groq (Fastest)</option>
+                              <option value="openrouter">OpenRouter</option>
+                              <option value="gemini">Google Gemini</option>
+                              <option value="openai">OpenAI</option>
+                              <option value="anthropic">Anthropic</option>
+                            </select>
+                            <input 
+                              type="password" 
+                              placeholder="Paste API Key securely..." 
+                              id={`inline-key-${i}`}
+                              className="flex-1 min-w-0 bg-white/80 dark:bg-black/40 backdrop-blur-md border border-indigo-500/20 dark:border-indigo-400/20 rounded-xl px-4 py-2.5 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/50 text-slate-700 dark:text-slate-200 transition-all shadow-inner"
+                            />
+                            <button 
+                              onClick={() => {
+                                const keyInput = document.getElementById(`inline-key-${i}`) as HTMLInputElement;
+                                const providerSelect = document.getElementById(`inline-provider-${i}`) as HTMLSelectElement;
                                 
-                                const updatedMessages = [...messages];
-                                updatedMessages[i].requiresConfig = false;
-                                setMessages(updatedMessages);
-                              }
-                            }}
-                            className="bg-primary shrink-0 text-white px-3 py-1.5 rounded-lg text-xs font-bold hover:bg-primary/90 transition-colors"
-                          >
-                            Save Key
-                          </button>
+                                if (keyInput && keyInput.value && providerSelect) {
+                                  const provider = providerSelect.value;
+                                  localStorage.setItem(`user_${provider}_key`, keyInput.value.trim());
+                                  toast.success(`${provider} unlocked successfully!`);
+                                  
+                                  const updatedMessages = [...messages];
+                                  updatedMessages[i].requiresConfig = false;
+                                  setMessages(updatedMessages);
+                                }
+                              }}
+                              className="bg-indigo-600 hover:bg-indigo-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold transition-all shadow-[0_0_15px_rgba(79,70,229,0.4)] active:scale-95 flex items-center gap-2 cursor-pointer"
+                            >
+                              Connect
+                              <ChevronRight className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
                       </div>
                     )}

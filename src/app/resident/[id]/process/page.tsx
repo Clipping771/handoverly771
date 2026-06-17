@@ -1,17 +1,19 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContextProvider';
 import { useRouter, useParams } from 'next/navigation';
-import { Sparkles, Brain, ShieldAlert, Sun, Moon } from 'lucide-react';
+import { Sparkles, Brain, ShieldAlert, Sun, Moon, Activity } from 'lucide-react';
+import gsap from 'gsap';
+import { useGSAP } from '@gsap/react';
 
 const STEPS = [
-  { label: 'Analyze Raw Notes', desc: 'Decoding clinical context and transcripts' },
-  { label: 'Map to ISBAR Format', desc: 'Formatting RN Clinical sections' },
-  { label: 'Risk Flags Scan', desc: 'Checking safety incidents and flags' },
-  { label: 'Synthesize Carer Tasks', desc: 'Drafting carer numbered checklists' },
-  { label: 'Final Polish & Assembly', desc: 'Optimizing and validating JSON payload' }
+  { label: 'Synthesizing Audio & Text', desc: 'Decoding clinical context and intent' },
+  { label: 'ISBAR Mapping', desc: 'Structuring into clinical guidelines' },
+  { label: 'Risk Intelligence', desc: 'Scanning for emerging risk flags' },
+  { label: 'Task Delegation', desc: 'Creating actionable items for carers' },
+  { label: 'Final Verification', desc: 'Validating clinical safety constraints' }
 ];
 
 export default function ProcessHandover() {
@@ -23,6 +25,23 @@ export default function ProcessHandover() {
 
   const [activeStep, setActiveStep] = useState(0);
   const [error, setError] = useState('');
+  const orbRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useGSAP(() => {
+    if (orbRef.current && !error) {
+      // Siri-like organic breathing & morphing
+      gsap.to('.orb-layer-1', {
+        scale: 1.15, rotate: 90, duration: 4, yoyo: true, repeat: -1, ease: 'sine.inOut'
+      });
+      gsap.to('.orb-layer-2', {
+        scale: 1.25, rotate: -90, duration: 5, yoyo: true, repeat: -1, ease: 'sine.inOut', delay: 0.5
+      });
+      gsap.to('.orb-layer-3', {
+        scale: 1.1, rotate: 180, duration: 6, yoyo: true, repeat: -1, ease: 'sine.inOut', delay: 1
+      });
+    }
+  }, { dependencies: [error] });
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -40,6 +59,10 @@ export default function ProcessHandover() {
       return;
     }
 
+    const shiftType = sessionStorage.getItem('handover_shift_type') || 'morning';
+    const shiftDate = sessionStorage.getItem('handover_shift_date') || new Date().toISOString().split('T')[0];
+    const inputMethod = sessionStorage.getItem('handover_input_method') || 'text';
+
     // Dynamic processing step increment
     const interval = setInterval(() => {
       setActiveStep((prev) => (prev < 4 ? prev + 1 : prev));
@@ -50,7 +73,15 @@ export default function ProcessHandover() {
         const res = await fetch('/api/generate-handover', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ residentId, rawInput, facilityId: facility.id })
+          body: JSON.stringify({ 
+            residentId, 
+            rawInput, 
+            facilityId: facility.id,
+            staffId: user?.id,
+            shiftType,
+            shiftDate,
+            inputMethod
+          })
         });
 
         const data = await res.json();
@@ -59,8 +90,14 @@ export default function ProcessHandover() {
           throw new Error(data.error || 'Failed to generate handover');
         }
 
-        // Store API result
-        sessionStorage.setItem('handover_api_result', JSON.stringify(data.data));
+        // Store handover ID
+        sessionStorage.setItem('handover_db_id', data.handoverId);
+
+        if (data.fallbackEngineUsed) {
+          sessionStorage.setItem('handover_fallback', data.usedProvider || 'Fallback Engine');
+        } else {
+          sessionStorage.removeItem('handover_fallback');
+        }
 
         // Let the animation finish nicely or wait a brief moment
         setTimeout(() => {
@@ -115,104 +152,96 @@ export default function ProcessHandover() {
         
         {error ? (
           <div className="flex flex-col items-center text-center">
-            <div className="w-16 h-16 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 text-rose-600 dark:text-rose-450 flex items-center justify-center mb-5 animate-bounce">
-              <ShieldAlert className="w-8 h-8" />
+            <div className="w-20 h-20 rounded-3xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(244,63,94,0.2)]">
+              <ShieldAlert className="w-10 h-10" />
             </div>
-            <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">Generation Failed</h3>
-            <p className="text-slate-500 dark:text-slate-400 text-xs mt-2 leading-relaxed max-w-xs">{error}</p>
+            <h3 className="text-xl font-bold text-text-primary tracking-tight">Processing Interrupted</h3>
+            <p className="text-text-secondary text-sm mt-2 max-w-xs leading-relaxed">{error}</p>
             
             <div className="flex gap-3 mt-8 w-full">
               <button
                 onClick={() => router.push(`/resident/${residentId}/input`)}
-                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 dark:bg-[#141b3a] dark:hover:bg-[#1e295d] text-xs font-semibold rounded-xl text-slate-700 dark:text-slate-250 transition-colors border border-slate-200 dark:border-[#222e69]"
+                className="flex-1 py-3.5 bg-surface-solid hover:bg-surface-hover text-sm font-bold rounded-xl text-text-primary transition-all border border-border shadow-sm"
               >
-                Go Back & Retry
+                Go Back & Edit
               </button>
               <button
-                onClick={() => router.push('/admin')}
-                className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-500 dark:bg-indigo-600 dark:hover:bg-indigo-500 text-xs font-semibold rounded-xl text-white transition-colors shadow-lg shadow-indigo-500/20"
+                onClick={() => window.location.reload()}
+                className="flex-1 py-3.5 bg-rose-500 hover:bg-rose-600 text-sm font-bold rounded-xl text-white transition-all shadow-md shadow-rose-500/20"
               >
-                Admin Settings
+                Retry Request
               </button>
             </div>
           </div>
         ) : (
-          <div className="flex flex-col">
-            {/* Pulsing Glowing Aura Orb */}
-            <div className="relative w-24 h-24 mb-8 mx-auto flex items-center justify-center">
-              <div className="absolute inset-0 bg-indigo-500/20 dark:bg-indigo-500/30 rounded-full blur-xl animate-pulse"></div>
-              {/* Rotating outer ring */}
-              <div className="absolute inset-0 border-2 border-indigo-500/10 rounded-full"></div>
-              <div className="absolute inset-0 border-2 border-indigo-600 dark:border-indigo-500 border-t-transparent border-b-transparent rounded-full animate-spin duration-3000"></div>
-              {/* Counter-rotating inner ring */}
-              <div className="absolute inset-2 border border-violet-500/30 rounded-full"></div>
-              <div className="absolute inset-2 border-2 border-violet-600 dark:border-violet-500 border-r-transparent border-l-transparent rounded-full animate-spin [animation-direction:reverse] duration-2000"></div>
-              {/* Core Solid Orb */}
-              <div className="absolute inset-4 bg-gradient-to-tr from-indigo-600 to-violet-650 dark:from-indigo-650 dark:to-violet-700 rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/25">
-                <Brain className="w-8 h-8 text-white animate-pulse" />
+          <div ref={containerRef} className="flex flex-col items-center">
+            {/* Siri-Like Morphing Orb */}
+            <div ref={orbRef} className="relative w-36 h-36 mb-10 flex items-center justify-center">
+              {/* Outer Glow */}
+              <div className="absolute inset-[-50%] bg-primary/20 rounded-full blur-3xl animate-pulse duration-[4000ms]"></div>
+              
+              {/* Orb Layers */}
+              <div className="orb-layer-1 absolute inset-0 rounded-full bg-gradient-to-tr from-blue-500 via-indigo-500 to-purple-500 opacity-80 blur-[8px] mix-blend-screen"></div>
+              <div className="orb-layer-2 absolute inset-2 rounded-[40%_60%_70%_30%] bg-gradient-to-br from-teal-400 via-blue-500 to-indigo-600 opacity-90 blur-[6px] mix-blend-screen"></div>
+              <div className="orb-layer-3 absolute inset-4 rounded-[60%_40%_30%_70%] bg-gradient-to-tl from-purple-600 via-pink-500 to-amber-400 opacity-70 blur-[10px] mix-blend-screen"></div>
+              
+              {/* Core Sharp Orb */}
+              <div className="absolute inset-6 bg-surface-solid/80 backdrop-blur-md rounded-full shadow-[inset_0_0_20px_rgba(255,255,255,0.8)] border border-white/50 flex items-center justify-center z-10">
+                <Brain className="w-8 h-8 text-primary animate-pulse" />
               </div>
             </div>
 
-            <div className="text-center mb-6">
-              <h3 className="text-lg font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-1.5 justify-center">
-                <Sparkles className="w-4.5 h-4.5 text-indigo-650 dark:text-indigo-400 animate-pulse" />
-                AI Synthesis Pipeline
+            <div className="text-center mb-8 relative z-10">
+              <h3 className="text-xl font-black tracking-tight text-text-primary flex items-center justify-center gap-2">
+                <Sparkles className="w-5 h-5 text-primary animate-pulse" />
+                Handover Intelligence
               </h3>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-sm mx-auto">
-                Processing informal notes into ISBAR structured handover drafts.
+              <p className="text-xs font-bold text-text-secondary mt-2 tracking-widest uppercase">
+                Synthesizing Clinical Context...
               </p>
             </div>
 
             {/* Checklist Pipeline Steps */}
-            <div className="space-y-3.5 border-t border-slate-150 dark:border-[#1e295d]/30 pt-6">
+            <div className="w-full space-y-3 relative z-10">
               {STEPS.map((step, idx) => {
                 const isCompleted = idx < activeStep;
                 const isActive = idx === activeStep;
                 return (
                   <div
                     key={idx}
-                    className={`flex items-start gap-4 p-3 rounded-2xl border transition-all duration-300 ${
+                    className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all duration-500 ${
                       isActive 
-                        ? 'bg-indigo-500/5 dark:bg-indigo-500/10 border-indigo-500/15 dark:border-indigo-500/20 shadow-sm' 
-                        : 'border-transparent'
+                        ? 'bg-primary/5 border-primary/20 shadow-[0_4px_20px_rgba(59,130,246,0.1)] scale-[1.02]' 
+                        : isCompleted
+                        ? 'bg-emerald-500/5 border-emerald-500/20'
+                        : 'bg-transparent border-transparent opacity-50'
                     }`}
                   >
-                    {/* Status Circles */}
-                    <div className="mt-0.5 shrink-0">
-                      {isCompleted ? (
-                        <div className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-[10px] font-bold">
-                          ✓
-                        </div>
-                      ) : isActive ? (
-                        <div className="w-5 h-5 rounded-full border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <div className="w-5 h-5 rounded-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 flex items-center justify-center">
-                          <span className="w-1.5 h-1.5 rounded-full bg-slate-350 dark:bg-slate-700" />
-                        </div>
-                      )}
+                    <div className="flex items-center gap-3">
+                      <div className="shrink-0">
+                        {isCompleted ? (
+                          <div className="w-6 h-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-sm shadow-emerald-500/30">
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                          </div>
+                        ) : isActive ? (
+                          <div className="w-6 h-6 rounded-full border-[2.5px] border-primary/20 border-t-primary animate-spin" />
+                        ) : (
+                          <div className="w-6 h-6 rounded-full bg-surface-solid border border-border flex items-center justify-center">
+                            <span className="w-1.5 h-1.5 rounded-full bg-border-solid" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-left">
+                        <h4 className={`text-[13px] font-bold transition-colors ${
+                          isActive ? 'text-primary' : isCompleted ? 'text-text-primary' : 'text-text-secondary'
+                        }`}>
+                          {step.label}
+                        </h4>
+                      </div>
                     </div>
-
-                    {/* Description Text */}
-                    <div className="text-left">
-                      <h4 className={`text-xs font-bold transition-colors duration-300 ${
-                        isActive 
-                          ? 'text-indigo-650 dark:text-indigo-400' 
-                          : isCompleted 
-                          ? 'text-slate-800 dark:text-slate-300' 
-                          : 'text-slate-400 dark:text-slate-605'
-                      }`}>
-                        {step.label}
-                      </h4>
-                      <p className={`text-[10px] mt-0.5 transition-colors duration-300 ${
-                        isActive 
-                          ? 'text-slate-500 dark:text-slate-400' 
-                          : isCompleted 
-                          ? 'text-slate-400 dark:text-slate-500' 
-                          : 'text-slate-400/60 dark:text-slate-700'
-                      }`}>
-                        {step.desc}
-                      </p>
-                    </div>
+                    {isActive && (
+                      <Activity className="w-4 h-4 text-primary animate-pulse" />
+                    )}
                   </div>
                 );
               })}

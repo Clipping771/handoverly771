@@ -4,8 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { Search, ChevronDown, ChevronUp, Zap, Rocket, Globe, Gem, Check, Cpu } from 'lucide-react';
 
 const STATIC_OPENROUTER_MODELS = [
-  { id: 'google/gemini-2.5-flash:free', name: 'Gemini 2.5 Flash (Free)', category: 'free' },
-  { id: 'google/gemini-2.0-flash-exp:free', name: 'Gemini 2.0 Flash (Free)', category: 'free' },
+  { id: 'google/gemini-1.5-flash:free', name: 'Gemini 1.5 Flash (Free)', category: 'free' },
+  { id: 'google/gemini-1.5-pro', name: 'Gemini 1.5 Pro', category: 'premium' },
   { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B Instruct (Free)', category: 'free' },
   { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B Instruct (Free)', category: 'free' },
   { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B Instruct (Free)', category: 'free' },
@@ -37,12 +37,8 @@ const STATIC_GROQ_MODELS = [
 ];
 
 const STATIC_GEMINI_MODELS = [
-  { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', category: 'free' },
-  { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite', category: 'free' },
   { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', category: 'free' },
   { id: 'gemini-1.5-flash-8b', name: 'Gemini 1.5 Flash 8B', category: 'free' },
-  { id: 'gemini-2.5-flash-preview-05-20', name: 'Gemini 2.5 Flash Preview', category: 'premium' },
-  { id: 'gemini-2.5-pro-preview-06-05', name: 'Gemini 2.5 Pro Preview', category: 'premium' },
   { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', category: 'premium' },
 ];
 
@@ -66,9 +62,9 @@ const PROVIDER_LABELS: Record<Provider, string> = {
 };
 
 const PROVIDER_DEFAULTS: Record<Provider, string> = {
-  openrouter: 'google/gemini-2.5-flash',
+  openrouter: 'google/gemini-1.5-flash',
   groq: 'llama-3.3-70b-versatile',
-  gemini: 'gemini-2.0-flash',
+  gemini: 'gemini-1.5-flash',
   openai: 'gpt-4o-mini',
 };
 

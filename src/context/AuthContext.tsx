@@ -2,27 +2,19 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 export interface Staff {
   id: string;
   facility_id: string;
   name: string;
   role: string;
-  is_active: boolean;
-  created_at: string;
 }
 
 export interface Facility {
   id: string;
-  name: string;
-  code: string;
-  created_at: string;
-}
-
-export interface Session {
-  staff: Staff;
-  facility: Facility;
-  expiresAt: number;
+  name?: string;
+  code?: string;
 }
 
 interface AuthContextType {
@@ -44,35 +36,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-  // Load session from cookie/localStorage on mount
   useEffect(() => {
-    try {
-      const storedSession = localStorage.getItem('carehandover_session');
-      if (storedSession) {
-        const sessionData: Session = JSON.parse(storedSession);
-        
-        // Check if session has expired
-        if (Date.now() < sessionData.expiresAt) {
-          setUser(sessionData.staff);
-          setFacility(sessionData.facility);
-        } else {
-          // Session expired
-          localStorage.removeItem('carehandover_session');
-        }
+    // Check active sessions and sets up a listener
+    const getSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        setupUserFromSession(session);
       }
-    } catch (err) {
-      console.error('Failed to load session:', err);
-    } finally {
       setIsLoading(false);
-    }
+    };
+
+    getSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        setupUserFromSession(session);
+      } else {
+        setUser(null);
+        setFacility(null);
+      }
+      setIsLoading(false);
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (username: string, password: string) => {
+  const setupUserFromSession = (session: any) => {
+    const meta = session.user.user_metadata;
+    if (meta && meta.facility_id) {
+      setUser({
+        id: session.user.id, // we don't know the exact staff.id anymore on client easily, but user.id is what RLS checks now!
+        facility_id: meta.facility_id,
+        name: meta.name || 'Staff',
+        role: meta.role || 'rn'
+      });
+      setFacility({ id: meta.facility_id });
+    }
+  };
+
+  const login = async (username: string, pin: string) => {
     try {
+      // 1. Map Name to Synthetic Email
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password })
+        body: JSON.stringify({ username })
       });
 
       const data = await res.json();
@@ -81,12 +89,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: data.error || 'Authentication failed' };
       }
 
-      // Save to state
-      setUser(data.session.staff);
-      setFacility(data.session.facility);
-      
-      // Save to localStorage
-      localStorage.setItem('carehandover_session', JSON.stringify(data.session));
+      // 2. Perform Native Supabase Sign In
+      const { error } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: pin
+      });
+
+      if (error) {
+        console.error('Supabase auth error:', error);
+        return { success: false, error: 'Invalid PIN or credentials' };
+      }
 
       return { success: true };
     } catch (err: any) {
@@ -95,14 +107,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
     setFacility(null);
-    localStorage.removeItem('carehandover_session');
-    
-    // Clear cookie by setting past expiry
-    document.cookie = 'carehandover_session=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT';
-    
     router.push('/login');
   };
 
