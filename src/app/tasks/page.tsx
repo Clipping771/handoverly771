@@ -380,9 +380,28 @@ export default function TasksPage() {
   const groupedCompleted = useMemo(() => groupTasksByResident(completedTasks), [completedTasks]);
   const groupedDeclined = useMemo(() => groupTasksByResident(declinedTasks), [declinedTasks]);
 
-  if (authLoading || !user || !facility) {
+  if (authLoading || !user) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
+      <div className="min-h-screen bg-[#030712] flex flex-col items-center justify-center">
+        <div className="w-12 h-12 border-[3px] border-teal-accent border-t-transparent rounded-full animate-spin"></div>
+        <p className="mt-6 text-text-secondary font-medium text-sm tracking-wide">Authenticating...</p>
+      </div>
+    );
+  }
+
+  // Platform admin doesn't belong here → send them home
+  if (user.role === 'platform_admin') {
+    router.replace('/system-admin');
+    return (
+      <div className="min-h-screen bg-[#030712] flex flex-col items-center justify-center">
+        <div className="w-12 h-12 border-[3px] border-indigo-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!facility) {
+    return (
+      <div className="min-h-screen bg-[#030712] flex flex-col items-center justify-center">
         <div className="w-12 h-12 border-[3px] border-teal-accent border-t-transparent rounded-full animate-spin"></div>
         <p className="mt-6 text-text-secondary font-medium text-sm tracking-wide">Syncing Workspace...</p>
       </div>

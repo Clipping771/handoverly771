@@ -32,9 +32,22 @@ interface HandoverWithDetails {
 }
 
 export default function Dashboard() {
-  const { user, facility, logout, isLoading: authLoading, isCarer } = useAuth();
+  const { user, facility, logout, isLoading: authLoading, isCarer, isPlatformAdmin, isAdmin } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
+
+  // Auth redirects — must be in useEffect, not during render
+  useEffect(() => {
+    if (!authLoading) {
+      if (!user) {
+        router.replace('/login');
+      } else if (isPlatformAdmin) {
+        router.replace('/system-admin');
+      } else if (isAdmin) {
+        router.replace('/admin');
+      }
+    }
+  }, [authLoading, user, isPlatformAdmin, isAdmin, router]);
 
   const [handovers, setHandovers] = useState<HandoverWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -295,7 +308,10 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    if (!facility) return;
+    if (!facility) {
+      setLoading(false);
+      return;
+    }
 
     fetchHandovers();
     fetchAvailableDates();

@@ -4,9 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContextProvider';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ShieldAlert, LogIn, User, Lock, Sun, Moon, Building2, Eye, EyeOff } from 'lucide-react';
+import { ShieldAlert, LogIn, User, Lock, Sun, Moon, Database, Eye, EyeOff } from 'lucide-react';
 
-export default function AdminLogin() {
+export default function SystemAdminLogin() {
   return (
     <React.Suspense fallback={<div>Loading...</div>}>
       <LoginContent />
@@ -15,7 +15,7 @@ export default function AdminLogin() {
 }
 
 function LoginContent() {
-  const { login, user, isLoading, isAdmin } = useAuth();
+  const { login, user, isLoading, isPlatformAdmin } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -29,27 +29,27 @@ function LoginContent() {
   // Redirect already-authenticated admins to their appropriate home
   useEffect(() => {
     if (!isLoading && user) {
-      if (isAdmin) {
+      if (isPlatformAdmin) {
         const redirectTo = searchParams.get('redirect');
-        if (redirectTo && redirectTo.startsWith('/admin') && redirectTo !== '/admin/login') {
+        if (redirectTo && redirectTo.startsWith('/system-admin') && redirectTo !== '/system-admin/login') {
           router.replace(redirectTo);
         } else {
-          router.replace('/admin');
+          router.replace('/system-admin');
         }
       }
     }
-  }, [user, isLoading, router, isAdmin, searchParams]);
+  }, [user, isLoading, router, isPlatformAdmin, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim() || !password.trim()) {
-      setError('Please enter your Employee ID and password.');
+      setError('Please enter your Developer Email and password.');
       return;
     }
     setIsSubmitting(true);
     setError('');
 
-    const res = await login(username.trim(), password, 'admin');
+    const res = await login(username.trim(), password, 'system-admin');
     if (!res.success) {
       setError(res.error ?? 'Invalid credentials. Please try again.');
       setIsSubmitting(false);
@@ -69,8 +69,8 @@ function LoginContent() {
 
       {/* Ambient gradient */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] rounded-full bg-indigo-100 dark:bg-indigo-900/20 blur-[120px] animate-[pulse_8s_ease-in-out_infinite] mix-blend-multiply dark:mix-blend-screen" />
-        <div className="absolute top-[20%] -right-[10%] w-[60%] h-[60%] rounded-full bg-violet-200 dark:bg-violet-800/30 blur-[120px] animate-[pulse_10s_ease-in-out_infinite_1s] mix-blend-multiply dark:mix-blend-screen" />
+        <div className="absolute -top-[20%] -left-[10%] w-[70%] h-[70%] rounded-full bg-emerald-100 dark:bg-emerald-900/20 blur-[120px] animate-[pulse_8s_ease-in-out_infinite] mix-blend-multiply dark:mix-blend-screen" />
+        <div className="absolute top-[20%] -right-[10%] w-[60%] h-[60%] rounded-full bg-teal-200 dark:bg-teal-800/30 blur-[120px] animate-[pulse_10s_ease-in-out_infinite_1s] mix-blend-multiply dark:mix-blend-screen" />
       </div>
 
       {/* Theme toggle */}
@@ -89,7 +89,7 @@ function LoginContent() {
         {/* Logo */}
         <div className="flex justify-center mb-10">
           <div className="w-20 h-20 rounded-[24px] bg-white dark:bg-slate-800 shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-white/80 dark:border-white/10 flex items-center justify-center hover:scale-105 transition-transform duration-300">
-            <Building2 className="w-9 h-9 text-indigo-500" strokeWidth={1.5} />
+            <Database className="w-9 h-9 text-emerald-500" strokeWidth={1.5} />
           </div>
         </div>
 
@@ -98,41 +98,41 @@ function LoginContent() {
 
           <div className="text-center mb-8">
             <h1 className="text-2xl font-bold tracking-tight text-text-primary mb-1.5">Handoverly</h1>
-            <p className="text-[11px] font-bold text-indigo-500 uppercase tracking-[0.22em]">Facility Administrator</p>
+            <p className="text-[11px] font-bold text-emerald-500 uppercase tracking-[0.22em]">System Operations</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
 
             <div className="space-y-1.5 group/input">
               <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">
-                Employee ID
+                Developer Identity
               </label>
               <div className="relative flex items-center">
-                <User className="absolute left-4 w-4 h-4 text-slate-400 group-focus-within/input:text-indigo-500 transition-colors z-10" />
+                <User className="absolute left-4 w-4 h-4 text-slate-400 group-focus-within/input:text-emerald-500 transition-colors z-10" />
                 <input
                   type="text"
-                  placeholder="e.g. ADM1001"
+                  placeholder="e.g. dev@handoverly.com"
                   value={username}
                   onChange={e => setUsername(e.target.value)}
                   autoComplete="username"
-                  className="w-full h-12 bg-white/60 dark:bg-slate-800/60 border border-white/60 dark:border-white/10 rounded-full pl-11 pr-4 text-sm font-medium text-text-primary placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/50 transition-all shadow-inner"
+                  className="w-full h-12 bg-white/60 dark:bg-slate-800/60 border border-white/60 dark:border-white/10 rounded-full pl-11 pr-4 text-sm font-medium text-text-primary placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all shadow-inner"
                 />
               </div>
             </div>
 
             <div className="space-y-1.5 group/input">
               <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">
-                Password
+                Root Password
               </label>
               <div className="relative flex items-center">
-                <Lock className="absolute left-4 w-4 h-4 text-slate-400 group-focus-within/input:text-indigo-500 transition-colors z-10" />
+                <Lock className="absolute left-4 w-4 h-4 text-slate-400 group-focus-within/input:text-emerald-500 transition-colors z-10" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   autoComplete="current-password"
-                  className="w-full h-12 bg-white/60 dark:bg-slate-800/60 border border-white/60 dark:border-white/10 rounded-full pl-11 pr-11 text-sm font-medium tracking-wider text-text-primary placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/50 transition-all shadow-inner"
+                  className="w-full h-12 bg-white/60 dark:bg-slate-800/60 border border-white/60 dark:border-white/10 rounded-full pl-11 pr-11 text-sm font-medium tracking-wider text-text-primary placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all shadow-inner"
                 />
                 <button
                   type="button"
@@ -155,12 +155,12 @@ function LoginContent() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full h-12 mt-2 rounded-full bg-indigo-500 hover:opacity-90 text-white font-semibold text-sm tracking-wide transition-all active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
+              className="w-full h-12 mt-2 rounded-full bg-emerald-500 hover:opacity-90 text-white font-semibold text-sm tracking-wide transition-all active:scale-[0.98] disabled:opacity-60 flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
                 <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
-                <>Administrator Login <LogIn className="w-3.5 h-3.5" /></>
+                <>System Login <LogIn className="w-3.5 h-3.5" /></>
               )}
             </button>
 
@@ -171,11 +171,11 @@ function LoginContent() {
         <div className="mt-6 text-center flex items-center justify-center gap-3">
           <div className="px-3 py-1.5 rounded-full bg-white/40 dark:bg-black/40 backdrop-blur-md border border-black/5 dark:border-white/5 text-[9px] font-bold text-text-secondary tracking-[0.2em] uppercase flex items-center gap-1.5">
             <Lock className="w-3 h-3" />
-            Secured
+            Root Access
           </div>
           <div className="px-3 py-1.5 rounded-full bg-white/40 dark:bg-black/40 backdrop-blur-md border border-black/5 dark:border-white/5 text-[9px] font-bold text-text-secondary tracking-[0.2em] uppercase flex items-center gap-1.5">
             <ShieldAlert className="w-3 h-3" />
-            RLS Active
+            Full Bypass
           </div>
         </div>
 

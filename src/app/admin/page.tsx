@@ -5,7 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContextProvider';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { ShieldCheck, Plus, Trash2, Building, Users, AlertCircle, AlertOctagon, RefreshCw, Sun, Moon, Search, ChevronDown, LogOut, UserPlus, Edit3, Save, X, Eye, EyeOff, Key, Server, Cpu, Activity } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Plus, Trash2, Building, Users, AlertCircle, AlertOctagon, RefreshCw, Sun, Moon, Search, ChevronDown, LogOut, UserPlus, Edit3, Save, X, Eye, EyeOff, Key, Server, Cpu, Activity } from 'lucide-react';
 import Link from 'next/link';
 import CustomModelSelector from '@/components/CustomModelSelector';
 
@@ -38,9 +38,22 @@ interface Resident {
 }
 
 export default function AdminSetup() {
-  const { user, facility, isLoading: authLoading, logout } = useAuth();
+  const { user, facility, isLoading: authLoading, logout, isAdmin, isPlatformAdmin } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
+
+  // Role boundaries enforcement
+  useEffect(() => {
+    if (!authLoading) {
+      if (!user) {
+        router.replace('/admin/login');
+      } else if (isPlatformAdmin) {
+        router.replace('/system-admin');
+      } else if (!isAdmin) {
+        router.replace('/');
+      }
+    }
+  }, [authLoading, user, isPlatformAdmin, isAdmin, router]);
 
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [residents, setResidents] = useState<Resident[]>([]);
@@ -149,11 +162,7 @@ export default function AdminSetup() {
   const [showToast, setShowToast] = useState(false);
   const [showSirsReports, setShowSirsReports] = useState(true);
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/admin/login');
-    }
-  }, [user, authLoading, router]);
+
 
   const handleLogout = () => {
     logout();
@@ -220,7 +229,10 @@ export default function AdminSetup() {
 
 
   const loadData = async () => {
-    if (!facility) return;
+    if (!facility) {
+      setLoading(false);
+      return;
+    }
     try {
       const [residentsRes, wingsRes, rolesRes] = await Promise.all([
         supabase.from('residents').select('*').eq('facility_id', facility.id).order('name'),
@@ -529,9 +541,31 @@ export default function AdminSetup() {
 
 
 
-  // Loading guard re-enabled as system setup handles the bootstrapping now
-  if (authLoading || !user || !facility) {
-    return <div>Loading...</div>;
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen bg-transparent flex flex-col items-center justify-center">
+        <div className="w-12 h-12 border-4 border-slate-200 border-t-indigo-500 rounded-full animate-spin"></div>
+        <p className="mt-6 text-slate-500 font-medium text-sm tracking-wide">Authenticating...</p>
+      </div>
+    );
+  }
+
+  // Platform admin visiting /admin → useEffect handles redirect, just show spinner
+  if (user.role === 'platform_admin') {
+    return (
+      <div className="min-h-screen bg-transparent flex flex-col items-center justify-center">
+        <div className="w-10 h-10 border-4 border-slate-200 border-t-indigo-500 rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!facility) {
+    return (
+      <div className="min-h-screen bg-transparent flex flex-col items-center justify-center">
+        <div className="w-12 h-12 border-4 border-slate-200 border-t-indigo-500 rounded-full animate-spin"></div>
+        <p className="mt-6 text-slate-500 font-medium text-sm tracking-wide">Loading Facility Workspace...</p>
+      </div>
+    );
   }
 
   return (

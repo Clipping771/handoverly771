@@ -1,10 +1,12 @@
 'use client';
 
+
 import React, { useState, useEffect } from 'react';
 import { useTheme } from '@/context/ThemeContextProvider';
+import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { ShieldCheck, Plus, Building, UserPlus, AlertCircle, RefreshCw, Sun, Moon, Lock, Eye, EyeOff, Edit3, Trash2, Save, X } from 'lucide-react';
+import { ShieldCheck, Plus, Building, UserPlus, AlertCircle, RefreshCw, Sun, Moon, Lock, Eye, EyeOff, Edit3, Trash2, Save, X, LogOut } from 'lucide-react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 
@@ -16,14 +18,32 @@ interface Facility {
 
 export default function SystemAdminSetup() {
   const { theme, toggleTheme } = useTheme();
+  const { user, isLoading: authLoading, isPlatformAdmin, isAdmin, logout } = useAuth();
   const router = useRouter();
 
+  const [mounted, setMounted] = useState(false);
   const [facilities, setFacilities] = useState<Facility[]>([]);
   const [admins, setAdmins] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [masterPassword, setMasterPassword] = useState('');
-  const [showMasterPassword, setShowMasterPassword] = useState(false);
+
+  // Prevent hydration mismatch — don't render auth-gated content until mounted client-side
+  useEffect(() => { setMounted(true); }, []);
+
+  // Client-side auth guard — redirect non-platform_admins away
+  useEffect(() => {
+    if (!authLoading) {
+      if (!user) {
+        router.replace('/system-admin/login');
+      } else if (!isPlatformAdmin) {
+        if (isAdmin) {
+          router.replace('/admin');
+        } else {
+          router.replace('/');
+        }
+      }
+    }
+  }, [user, authLoading, isPlatformAdmin, isAdmin, router]);
+
 
   // Facility Form
   const [newFacName, setNewFacName] = useState('');
@@ -53,12 +73,12 @@ export default function SystemAdminSetup() {
       const res = await fetch('/api/auth/create-admin');
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to fetch bootstrap data');
-      
+
       const facData = json.facilities || [];
       const adminData = json.admins || [];
       setFacilities(facData);
       setAdmins(adminData);
-      
+
       if (facData.length > 0 && !selectedFacilityId) {
         setSelectedFacilityId(facData[0].id);
       }
@@ -71,22 +91,10 @@ export default function SystemAdminSetup() {
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (!authLoading && isPlatformAdmin) {
       loadFacilities();
     }
-  }, [isAuthenticated]);
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    // For MVP, simple master password check or open access.
-    // Replace 'admin123' with environment variable or more secure check if desired.
-    if (masterPassword === 'admin123' || masterPassword === 'handoverly') {
-      setIsAuthenticated(true);
-      setError('');
-    } else {
-      setError('Invalid master password.');
-    }
-  };
+  }, [authLoading, isPlatformAdmin]);
 
   const handleAddFacility = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -218,77 +226,18 @@ export default function SystemAdminSetup() {
     }
   };
 
-  if (!isAuthenticated) {
+  // Show spinner until mounted (prevents hydration mismatch) or while auth is resolving
+  if (!mounted || authLoading || !user || !isPlatformAdmin) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-transparent transition-colors duration-700 p-4 relative font-sans">
-        
-        {/* The global ambient mesh from layout.tsx shines through */}
-
-        <div className="max-w-md w-full bg-white/40 dark:bg-[#0f172a]/40 backdrop-blur-3xl p-10 rounded-[40px] border border-white/60 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.08)]">
-          <div className="text-center mb-10">
-            <div className="w-20 h-20 rounded-[24px] bg-white dark:bg-slate-800 shadow-md border border-white/80 dark:border-white/10 mx-auto flex items-center justify-center mb-6">
-              <ShieldCheck className="w-9 h-9 text-primary" strokeWidth={1.5} />
-            </div>
-            <h1 className="text-2xl font-bold text-slate-800 dark:text-white">System Setup</h1>
-            <p className="text-[10px] font-bold text-text-secondary uppercase tracking-widest mt-2">Enter master password to bootstrap facilities</p>
-          </div>
-          
-          <form onSubmit={handleLogin} className="space-y-6 mt-8">
-            <div className="space-y-2 group/input">
-              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest pl-1">Master Password</label>
-              <div className="relative flex items-center">
-                <Lock className="absolute left-4 w-5 h-5 text-slate-400 group-focus-within/input:text-indigo-500 transition-colors z-10" />
-                <input
-                  type={showMasterPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={masterPassword}
-                  onChange={(e) => setMasterPassword(e.target.value)}
-                  className="w-full h-14 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl pl-12 pr-12 text-sm font-medium tracking-wider text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all shadow-sm hover:border-indigo-500/50"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowMasterPassword(!showMasterPassword)}
-                  className="absolute right-4 p-1 text-slate-400 hover:text-indigo-500 focus:outline-none transition-colors cursor-pointer z-10"
-                >
-                  {showMasterPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-              <div className="flex justify-end mt-1.5">
-                <button
-                  type="button"
-                  onClick={() => toast('Master Password reset requires manual database intervention. Please contact IT support.', { icon: 'ℹ️' })}
-                  className="text-[10px] font-bold text-indigo-500 hover:text-indigo-400 transition-colors cursor-pointer"
-                >
-                  Forgot Password?
-                </button>
-              </div>
-            </div>
-            {error && (
-              <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 text-[12px] font-bold text-rose-600 dark:text-rose-400 text-center shadow-sm">
-                {error}
-              </div>
-            )}
-            <button
-              type="submit"
-              className="w-full h-14 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-500 hover:to-blue-500 text-white font-bold rounded-2xl text-sm tracking-wide transition-all shadow-xl shadow-indigo-500/25 active:scale-[0.98] overflow-hidden relative group"
-            >
-              <div className="absolute inset-0 w-[200%] h-full bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-[150%] hover:animate-[sheen_1.5s_infinite]"></div>
-              <span className="relative z-10">Unlock Setup</span>
-            </button>
-            <div className="text-center mt-6">
-              <Link href="/" className="text-[10px] font-bold text-text-secondary uppercase tracking-widest hover:text-primary transition-colors flex items-center justify-center gap-1">
-                &larr; Return to Login
-              </Link>
-            </div>
-          </form>
-        </div>
+      <div className="min-h-screen bg-transparent flex items-center justify-center">
+        <div className="w-12 h-12 border-4 border-slate-200 border-t-indigo-500 rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-transparent text-[#0f172a] dark:text-[#e2e8f0] flex flex-col pb-12 transition-colors duration-700 relative font-sans">
-      
+
       {/* Global layout.tsx Mesh Gradient shines through */}
 
       <header className="sticky top-0 z-40 bg-white/40 dark:bg-slate-900/40 backdrop-blur-3xl border-b border-white/60 dark:border-white/5 px-4 py-4 sm:px-6 transition-colors duration-300">
@@ -318,6 +267,13 @@ export default function SystemAdminSetup() {
             >
               Exit Setup
             </Link>
+            <button
+              onClick={logout}
+              className="p-2.5 rounded-full bg-rose-50/80 dark:bg-rose-500/10 border border-rose-100 dark:border-rose-500/20 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-500/20 transition-colors shadow-sm"
+              title="Logout"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </header>
@@ -332,7 +288,7 @@ export default function SystemAdminSetup() {
               Initialize core infrastructure & administrators
             </p>
           </div>
-          <button 
+          <button
             onClick={loadFacilities}
             className="p-3 bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border border-slate-200/60 dark:border-white/10 text-slate-600 dark:text-slate-300 rounded-full hover:bg-white dark:hover:bg-slate-700 transition-all shadow-sm hover:shadow-md active:scale-95 group"
             title="Refresh Facilities"
@@ -344,11 +300,11 @@ export default function SystemAdminSetup() {
 
 
         <div className="grid gap-8 lg:grid-cols-2">
-          
+
           {/* FACILITY CREATION */}
           <div className="bg-white/90 dark:bg-[#111827]/80 backdrop-blur-3xl p-8 sm:p-10 rounded-[32px] border border-white dark:border-white/5 shadow-2xl shadow-indigo-500/5 relative overflow-hidden group">
             <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 dark:bg-indigo-500/20 blur-[80px] rounded-full pointer-events-none -z-10 translate-x-1/2 -translate-y-1/2"></div>
-            
+
             <h3 className="text-2xl font-black flex items-center gap-4 mb-8 text-slate-800 dark:text-white relative">
               <div className="w-12 h-12 rounded-[16px] bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-500/20 dark:to-blue-500/20 shadow-inner border border-indigo-100 dark:border-indigo-500/30 flex items-center justify-center">
                 <Building className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
@@ -551,7 +507,7 @@ export default function SystemAdminSetup() {
                 <span>{adminError}</span>
               </div>
             )}
-            
+
             <div className="mt-6 p-4 bg-amber-50/80 dark:bg-amber-500/10 border border-amber-100 dark:border-amber-500/20 text-amber-800 dark:text-amber-400 text-xs font-semibold rounded-2xl flex items-start gap-2 backdrop-blur-md shadow-sm">
               <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
               <p className="leading-relaxed">

@@ -130,7 +130,7 @@ export default function MyShift() {
     } else if (activeTab === 'needs_review') {
       matchesTab = needsReview;
     } else if (activeTab === 'completed') {
-      matchesTab = hasHandover;
+      matchesTab = !!hasHandover;
     }
 
     return matchesSearch && matchesWing && matchesTab;

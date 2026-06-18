@@ -1,22 +1,81 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { createServerClient } from '@supabase/ssr';
+import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
 
-// One-time admin creation endpoint
-// POST /api/auth/create-admin with { name, email, employeeId, password, facilityId }
+/**
+ * POST /api/auth/create-admin
+ * Platform-admin only. Creates a facility admin account.
+ *
+ * GET /api/auth/create-admin
+ * Platform-admin only. Returns facilities + existing admin list (used by system-admin UI).
+ */
+
+async function getPlatformAdminSession() {
+  const cookieStore = await cookies();
+  const supabaseServer = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => cookieStore.getAll(),
+        setAll: () => { },
+      },
+    }
+  );
+  const { data: { session } } = await supabaseServer.auth.getSession();
+  return session;
+}
+
 export async function POST(request: Request) {
   try {
+    const session = await getPlatformAdminSession();
+
+    if (session?.user?.user_metadata?.role !== 'platform_admin') {
+      return NextResponse.json({ error: 'Forbidden: platform admin access required.' }, { status: 403 });
+    }
+
     const { name, email, employeeId, password, facilityId } = await request.json();
 
     if (!name || !email || !employeeId || !password || !facilityId) {
-      return NextResponse.json({ error: 'All fields required' }, { status: 400 });
+      return NextResponse.json({ error: 'All fields are required.' }, { status: 400 });
     }
 
+    if (password.length < 6) {
+      return NextResponse.json({ error: 'Password must be at least 6 characters.' }, { status: 400 });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json({ error: 'Invalid email address.' }, { status: 400 });
+    }
+
+    const staffId = crypto.randomUUID();
+    const syntheticEmail = `${staffId}@handoverly.local`;
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const { data, error } = await supabaseAdmin
+    const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
+      email: syntheticEmail,
+      password,
+      email_confirm: true,
+      user_metadata: {
+        facility_id: facilityId,
+        role: 'admin',
+        name: name.trim(),
+      },
+    });
+
+    if (authError) {
+      console.error('[create-admin] Auth creation error:', authError.message);
+      return NextResponse.json({ error: 'Failed to create authentication account.' }, { status: 400 });
+    }
+
+    const { data, error: dbError } = await supabaseAdmin
       .from('staff')
       .insert([{
+        id: staffId,
+        user_id: authUser.user.id,
         facility_id: facilityId,
         name: name.trim(),
         role: 'admin',
@@ -25,55 +84,69 @@ export async function POST(request: Request) {
         password_hash: passwordHash,
         pin_hash: passwordHash,
       }])
-      .select();
+      .select()
+      .single();
 
-    if (error) {
-      if (error.code === '23505' || error.message.includes('unique constraint') || error.message.includes('already exists')) {
-        const msg = error.message.toLowerCase();
-        if (msg.includes('email')) {
-          return NextResponse.json({ error: 'An admin with this email address already exists.' }, { status: 400 });
-        }
-        if (msg.includes('employee_id') || msg.includes('employee')) {
-          return NextResponse.json({ error: 'An admin with this Employee ID already exists.' }, { status: 400 });
-        }
-        return NextResponse.json({ error: 'An admin account with these details already exists.' }, { status: 400 });
+    if (dbError) {
+      await supabaseAdmin.auth.admin.deleteUser(authUser.user.id);
+
+      if (dbError.code === '23505' || dbError.message.toLowerCase().includes('unique')) {
+        const msg = dbError.message.toLowerCase();
+        if (msg.includes('email')) return NextResponse.json({ error: 'An admin with this email already exists.' }, { status: 409 });
+        if (msg.includes('employee')) return NextResponse.json({ error: 'An admin with this Employee ID already exists.' }, { status: 409 });
+        return NextResponse.json({ error: 'An admin with these details already exists.' }, { status: 409 });
       }
-      return NextResponse.json({ error: error.message }, { status: 400 });
+
+      console.error('[create-admin] DB insert error:', dbError.message);
+      return NextResponse.json({ error: 'Failed to save admin record.' }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true, staff: data[0] });
+    // Audit log
+    try {
+      await supabaseAdmin.from('audit_logs').insert([{
+        actor_id: session.user.id,
+        actor_role: 'platform_admin',
+        action_type: 'CREATE_FACILITY_ADMIN',
+        target_entity: {
+          facilityId,
+          newAdminEmail: email.trim().toLowerCase(),
+          newAdminId: staffId,
+        },
+      }]);
+    } catch (e) {
+      // Non-critical, don't fail the request
+    }
+
+    return NextResponse.json({ success: true, staff: data });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('[create-admin] Unexpected error:', err.message);
+    return NextResponse.json({ error: 'Internal server error.' }, { status: 500 });
   }
 }
 
-// GET /api/auth/create-admin - list facilities and existing admins
 export async function GET() {
   try {
-    const { data: facilities, error: facError } = await supabaseAdmin
-      .from('facilities')
-      .select('id, name, code');
-    if (facError) throw facError;
+    const session = await getPlatformAdminSession();
 
-    const { data: admins, error: adminError } = await supabaseAdmin
-      .from('staff')
-      .select(`
-        id,
-        name,
-        role,
-        employee_id,
-        email,
-        facility_id,
-        facilities (
-          name
-        )
-      `)
-      .eq('role', 'admin')
-      .order('created_at', { ascending: false });
-    if (adminError) throw adminError;
+    if (session?.user?.user_metadata?.role !== 'platform_admin') {
+      return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
+    }
 
-    return NextResponse.json({ facilities, admins });
+    const [facResult, adminsResult] = await Promise.all([
+      supabaseAdmin.from('facilities').select('id, name, code').order('name'),
+      supabaseAdmin
+        .from('staff')
+        .select('id, name, role, employee_id, email, facility_id, facilities(name)')
+        .eq('role', 'admin')
+        .order('created_at', { ascending: false }),
+    ]);
+
+    if (facResult.error) throw facResult.error;
+    if (adminsResult.error) throw adminsResult.error;
+
+    return NextResponse.json({ facilities: facResult.data, admins: adminsResult.data });
   } catch (err: any) {
+    console.error('[create-admin GET] Error:', err.message);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
