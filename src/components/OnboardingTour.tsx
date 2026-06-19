@@ -27,8 +27,8 @@ function CustomTooltip({
       {...tooltipProps}
       className={`w-[360px] p-6 rounded-[28px] border backdrop-blur-2xl shadow-2xl transition-all duration-300 relative animate-in fade-in-50 zoom-in-95 ${
         isDark
-          ? 'bg-slate-900/95 border-slate-800/80 text-slate-100 shadow-black/60'
-          : 'bg-white/95 border-slate-200/60 text-slate-850 shadow-slate-200/50'
+          ? 'bg-[#0f172a] border-slate-800/80 text-slate-100 shadow-black/60'
+          : 'bg-white border-slate-200/60 text-slate-850 shadow-slate-200/50'
       }`}
     >
       {/* Header Accent Badge & Close Button */}
