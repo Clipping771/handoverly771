@@ -38,7 +38,7 @@ export async function POST(request: Request) {
     const fourteenDaysAgo = new Date();
     fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
 
-    const { data: handovers } = await supabase
+    const { data: handovers } = await supabaseAdmin
       .from('handovers')
       .select(`
         shift_date, shift_type, urgency, risk_flags, rn_summary, carer_tasks, raw_input,
@@ -51,20 +51,20 @@ export async function POST(request: Request) {
     const filteredHandovers = (handovers || []).filter((h: any) => h.resident?.is_active !== false);
 
     // 2. Fetch ALL Residents for the facility (Active and Archived)
-    const { data: residents } = await supabase
+    const { data: residents } = await supabaseAdmin
       .from('residents')
       .select('id, name, room_number, care_level, dob, wing_id, is_active, status_reason, wings(name)')
       .eq('facility_id', facilityId);
 
     // 2.5 Fetch Available Wings
-    const { data: wings } = await supabase
+    const { data: wings } = await supabaseAdmin
       .from('wings')
       .select('id, name')
       .eq('facility_id', facilityId);
 
     // 3. Fetch Active/Pending Tasks
     const todayStr = getAdelaideTodayStr();
-    const { data: activeTasks } = await supabase
+    const { data: activeTasks } = await supabaseAdmin
       .from('tasks')
       .select('title, description, assigned_role, resident_id, is_completed, carry_until_date')
       .eq('facility_id', facilityId)
@@ -73,7 +73,7 @@ export async function POST(request: Request) {
     // 4. Fetch Recent Activity Logs (last 7 days)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const { data: timeline } = await supabase
+    const { data: timeline } = await supabaseAdmin
       .from('activity_timeline')
       .select('action_type, description, created_at, resident_id')
       .eq('facility_id', facilityId)

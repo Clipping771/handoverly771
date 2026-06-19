@@ -171,6 +171,7 @@ export default function SmartSearch() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const loadedUserIdRef = useRef<string | null>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -208,13 +209,21 @@ export default function SmartSearch() {
       if (saved) {
         try {
           setMessages(JSON.parse(saved));
-        } catch (e) {}
+        } catch (e) {
+          setMessages([]);
+        }
+      } else {
+        setMessages([]);
       }
+      loadedUserIdRef.current = user.id;
+    } else {
+      setMessages([]);
+      loadedUserIdRef.current = null;
     }
   }, [user?.id]);
 
   useEffect(() => {
-    if (user?.id) {
+    if (user?.id && loadedUserIdRef.current === user.id) {
       localStorage.setItem(`handoverly_chat_${user.id}`, JSON.stringify(messages));
     }
   }, [messages, user?.id]);
