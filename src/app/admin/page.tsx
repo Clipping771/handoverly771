@@ -589,6 +589,12 @@ export default function AdminSetup() {
           </div>
 
           <div className="flex items-center gap-3">
+            <Link
+              href="/"
+              className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 text-xs font-bold transition-all border border-slate-200 dark:border-white/10 flex items-center gap-1.5 hover:scale-105 active:scale-95"
+            >
+              <span>Clinical Dashboard</span>
+            </Link>
             {/* Theme Toggle Button */}
             <button
               onClick={toggleTheme}
