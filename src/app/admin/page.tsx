@@ -632,7 +632,7 @@ export default function AdminSetup() {
               onClick={() => setActiveTab(tab as any)}
               className={`flex-1 py-3 px-4 text-xs font-bold rounded-full relative transition-all duration-300 tracking-wider uppercase z-20 text-center ${
                 activeTab === tab 
-                  ? '!text-white bg-primary shadow-[0_4px_14px_rgba(45,212,191,0.4)] scale-105' 
+                  ? 'active-admin-tab shadow-[0_4px_14px_rgba(45,212,191,0.4)] scale-105' 
                   : 'text-slate-500 hover:text-slate-850 dark:text-slate-450 dark:hover:text-white hover:bg-white/10 dark:hover:bg-slate-800/10'
               }`}
             >

@@ -218,3 +218,9 @@ a:focus-visible,
   outline: none !important;
   box-shadow: none !important;
 }
+
+/* Universal fix for browser forced dark modes / color overrides */
+.active-admin-tab {
+  background-color: var(--primary) !important;
+  color: #ffffff !important;
+}
