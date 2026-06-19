@@ -18,8 +18,8 @@ import { createServerClient } from '@supabase/ssr';
  *   Everything else
  */
 
-const PUBLIC_PATHS = ['/login', '/admin/login', '/system-admin/login'];
-const PUBLIC_API_PATHS = ['/api/auth/login'];
+const PUBLIC_PATHS = ['/login', '/admin/login', '/system-admin/login', '/register'];
+const PUBLIC_API_PATHS = ['/api/auth/login', '/api/auth/register-public', '/api/message', '/api/public'];
 const PLATFORM_ADMIN_PATHS = ['/system-admin', '/api/auth/create-admin'];
 const ADMIN_PATHS = [
   '/admin',
@@ -80,10 +80,10 @@ export default async function proxy(request: NextRequest) {
     }
   );
 
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { user } } = await supabase.auth.getUser();
 
   // Not authenticated → redirect to login
-  if (!session) {
+  if (!user) {
     let loginRoute = '/login';
     if (pathname.startsWith('/admin')) loginRoute = '/admin/login';
     if (pathname.startsWith('/system-admin')) loginRoute = '/system-admin/login';
@@ -93,16 +93,21 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  const role = session.user.user_metadata?.role as string | undefined;
+  const roleRaw = user.user_metadata?.role as string | undefined;
+  const role = roleRaw ? roleRaw.toLowerCase().trim() : undefined;
 
   // Platform-admin-only routes
   if (requiresPlatformAdmin(pathname) && role !== 'platform_admin') {
-    return NextResponse.redirect(new URL('/', request.url));
+    const loginUrl = new URL('/system-admin/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   // Admin-only routes
-  if (requiresAdmin(pathname) && role !== 'admin') {
-    return NextResponse.redirect(new URL('/', request.url));
+  if (requiresAdmin(pathname) && role !== 'admin' && role !== 'platform_admin') {
+    const loginUrl = new URL('/admin/login', request.url);
+    loginUrl.searchParams.set('redirect', pathname);
+    return NextResponse.redirect(loginUrl);
   }
 
   return response;

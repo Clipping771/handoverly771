@@ -49,7 +49,7 @@ function getPresetsForTask(task: Task) {
 }
 
 export default function TasksPage() {
-  const { user, facility, isLoading: authLoading, isCarer, isRN, isAdmin } = useAuth();
+  const { user, facility, isLoading: authLoading, isCarer, isRN, isAdmin, isPlatformAdmin } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
 
@@ -66,10 +66,16 @@ export default function TasksPage() {
   const [showFullReport, setShowFullReport] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
+    if (!authLoading) {
+      if (!user) {
+        router.replace('/login');
+      } else if (isAdmin) {
+        router.replace('/admin');
+      } else if (isPlatformAdmin) {
+        router.replace('/system-admin');
+      }
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, isAdmin, isPlatformAdmin, router]);
 
 
 

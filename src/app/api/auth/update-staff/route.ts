@@ -2,12 +2,12 @@ import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import bcrypt from 'bcryptjs';
 
 /**
  * POST /api/auth/update-staff
  *
- * Admin-only. Updates the staff row AND syncs user_metadata in Supabase Auth
- * so the change takes effect without requiring a re-login.
+ * Admin/platform-admin only. Updates the staff row AND syncs user_metadata in Supabase Auth.
  */
 export async function POST(request: Request) {
   try {
@@ -24,15 +24,15 @@ export async function POST(request: Request) {
       }
     );
 
-    const { data: { session } } = await supabaseServer.auth.getSession();
-    const callerRole = session?.user?.user_metadata?.role as string | undefined;
+    const { data: { user } } = await supabaseServer.auth.getUser();
+    const callerRole = user?.user_metadata?.role as string | undefined;
 
     if (callerRole !== 'platform_admin' && callerRole !== 'admin') {
       return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
     }
 
     // ── Input validation ─────────────────────────────────────────────────────
-    const { id, name, role, employeeId, email } = await request.json();
+    const { id, name, role, employeeId, email, facilityId, password } = await request.json();
 
     if (!id || !name || !role || !employeeId || !email) {
       return NextResponse.json(
@@ -52,15 +52,34 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Staff member not found.' }, { status: 404 });
     }
 
+    // ── Handle password hashing if updating password ────────────────────────
+    let passwordHash: string | undefined = undefined;
+    if (password && password.trim() !== '') {
+      if (password.length < 6) {
+        return NextResponse.json({ error: 'Password must be at least 6 characters.' }, { status: 400 });
+      }
+      passwordHash = await bcrypt.hash(password, 10);
+    }
+
     // ── Update staff table ───────────────────────────────────────────────────
+    const updateData: any = {
+      name: name.trim(),
+      role,
+      employee_id: employeeId.trim(),
+      email: email.trim().toLowerCase(),
+    };
+
+    if (callerRole === 'platform_admin' && facilityId) {
+      updateData.facility_id = facilityId;
+    }
+    if (passwordHash) {
+      updateData.password_hash = passwordHash;
+      updateData.pin_hash = passwordHash;
+    }
+
     const { error: updateErr } = await supabaseAdmin
       .from('staff')
-      .update({
-        name: name.trim(),
-        role,
-        employee_id: employeeId.trim(),
-        email: email.trim().toLowerCase(),
-      })
+      .update(updateData)
       .eq('id', id);
 
     if (updateErr) {
@@ -73,18 +92,22 @@ export async function POST(request: Request) {
       throw updateErr;
     }
 
-    // ── Sync Supabase Auth user_metadata ─────────────────────────────────────
-    // This ensures the role/name change is reflected immediately in the live
-    // JWT without the user needing to log out and back in.
+    // ── Sync Supabase Auth user_metadata & credentials ───────────────────────
     if (staffRow.user_id) {
-      await supabaseAdmin.auth.admin.updateUserById(staffRow.user_id, {
+      const authUpdates: any = {
         user_metadata: {
           name: name.trim(),
           role,
-          facility_id: staffRow.facility_id,
+          facility_id: (callerRole === 'platform_admin' && facilityId) ? facilityId : staffRow.facility_id,
           staff_id: id,
         },
-      });
+      };
+
+      if (password && password.trim() !== '') {
+        authUpdates.password = password;
+      }
+
+      await supabaseAdmin.auth.admin.updateUserById(staffRow.user_id, authUpdates);
     }
 
     return NextResponse.json({ success: true });

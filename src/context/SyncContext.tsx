@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useRef, memo } from 'react';
 import { getPendingQueue, updateQueueItemStatus, removeQueueItem, getQueueCount } from '@/lib/db';
 import toast from 'react-hot-toast';
 
@@ -15,10 +15,17 @@ const SyncContext = createContext<SyncContextType>({
   isOnline: true,
   pendingCount: 0,
   syncInProgress: false,
-  triggerSync: async () => {},
+  triggerSync: async () => { },
 });
 
 export const useSync = () => useContext(SyncContext);
+
+// Isolate children from SyncProvider re-renders caused by sync polling.
+// React.memo prevents children from re-rendering when SyncProvider's own
+// state (isOnline, pendingCount, syncInProgress) changes — only consumers
+// of useSync() will re-render.
+const SyncChildren = memo(({ children }: { children: React.ReactNode }) => <>{children}</>);
+SyncChildren.displayName = 'SyncChildren';
 
 export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [isOnline, setIsOnline] = useState(true);
@@ -38,7 +45,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       syncInProgressRef.current = true;
       setSyncInProgress(true);
       const pendingItems = await getPendingQueue();
-      
+
       if (pendingItems.length === 0) {
         syncInProgressRef.current = false;
         setSyncInProgress(false);
@@ -53,7 +60,7 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       for (const item of pendingItems) {
         try {
           await updateQueueItemStatus(item.id, 'syncing');
-          
+
           const res = await fetch(item.payload.endpoint || '/api/generate-handover', {
             method: item.payload.method || 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -70,7 +77,6 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
             throw new Error(`API Sync Failed with status ${res.status}`);
           }
 
-          // If successful, remove from queue
           await removeQueueItem(item.id);
           successCount++;
         } catch (err) {
@@ -112,11 +118,9 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
       window.addEventListener('online', handleOnline);
       window.addEventListener('offline', handleOffline);
 
-      // Initial check and trigger sync
       checkQueueCount();
       triggerSync();
-      
-      // Auto-sync interval
+
       const interval = setInterval(() => {
         checkQueueCount();
         triggerSync();
@@ -130,9 +134,14 @@ export const SyncProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [checkQueueCount, triggerSync]);
 
+  const contextValue = React.useMemo(
+    () => ({ isOnline, pendingCount, syncInProgress, triggerSync }),
+    [isOnline, pendingCount, syncInProgress, triggerSync]
+  );
+
   return (
-    <SyncContext.Provider value={{ isOnline, pendingCount, syncInProgress, triggerSync }}>
-      {children}
+    <SyncContext.Provider value={contextValue}>
+      <SyncChildren>{children}</SyncChildren>
     </SyncContext.Provider>
   );
 };

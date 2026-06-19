@@ -49,7 +49,7 @@ interface HandoverStatus {
 }
 
 export default function MyShift() {
-  const { user, facility, logout, isLoading: authLoading, isAdmin, isRN } = useAuth();
+  const { user, facility, logout, isLoading: authLoading, isAdmin, isRN, isPlatformAdmin } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
 
@@ -111,8 +111,8 @@ export default function MyShift() {
   }, [selectedResidentId]);
 
   const filteredResidents = residents.filter((res) => {
-    const matchesSearch = res.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          res.room_number.includes(searchQuery);
+    const matchesSearch = res.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      res.room_number.includes(searchQuery);
 
     let matchesWing = true;
     if (selectedWingFilter === 'unassigned') {
@@ -121,7 +121,7 @@ export default function MyShift() {
       matchesWing = res.wing_id === selectedWingFilter;
     }
 
-    const hasHandover = handovers[res.id]?.status === 'published' || handovers[res.id]?.is_approved;
+    const hasHandover = handovers[res.id]?.status === 'published';
     const needsReview = handovers[res.id]?.status === 'needs_review';
 
     let matchesTab = true;
@@ -140,8 +140,8 @@ export default function MyShift() {
   useGSAP(() => {
     // Stagger load resident cards
     if (filteredResidents.length > 0) {
-      gsap.fromTo('.resident-card', 
-        { y: 24, opacity: 0 }, 
+      gsap.fromTo('.resident-card',
+        { y: 24, opacity: 0 },
         { y: 0, opacity: 1, stagger: 0.07, ease: 'power3.out', duration: 0.5 }
       );
     }
@@ -152,10 +152,10 @@ export default function MyShift() {
       // Remove any existing event listeners to avoid dupes
       const enter = () => gsap.to(card, { boxShadow: '0 10px 40px -10px rgba(15,118,110,0.08)', y: -2, duration: 0.25 });
       const leave = () => gsap.to(card, { boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05), 0 10px 30px -10px rgba(0, 0, 0, 0.02)', y: 0, duration: 0.25 });
-      
+
       card.addEventListener('mouseenter', enter);
       card.addEventListener('mouseleave', leave);
-      
+
       return () => {
         card.removeEventListener('mouseenter', enter);
         card.removeEventListener('mouseleave', leave);
@@ -192,8 +192,8 @@ export default function MyShift() {
   const [selectedDate, setSelectedDate] = useState<string>(() => {
     const formatter = new Intl.DateTimeFormat('en-US', { timeZone: 'Australia/Adelaide', year: 'numeric', month: '2-digit', day: '2-digit' });
     const parts = formatter.formatToParts(new Date());
-    let y='', m='', d='';
-    parts.forEach(p => { if(p.type==='year') y=p.value; if(p.type==='month') m=p.value; if(p.type==='day') d=p.value; });
+    let y = '', m = '', d = '';
+    parts.forEach(p => { if (p.type === 'year') y = p.value; if (p.type === 'month') m = p.value; if (p.type === 'day') d = p.value; });
     return `${y}-${m}-${d}`;
   });
 
@@ -217,12 +217,12 @@ export default function MyShift() {
     if (updatedResident.is_active !== false) {
       setResidents((prev) =>
         prev.map(r => r.id === updatedResident.id ? { ...r, ...updatedResident } : r)
-            .sort((a, b) => a.room_number.localeCompare(b.room_number))
+          .sort((a, b) => a.room_number.localeCompare(b.room_number))
       );
     } else {
       setArchivedResidents((prev) =>
         prev.map(r => r.id === updatedResident.id ? { ...r, ...updatedResident } : r)
-            .sort((a, b) => a.room_number.localeCompare(b.room_number))
+          .sort((a, b) => a.room_number.localeCompare(b.room_number))
       );
     }
   };
@@ -247,7 +247,7 @@ export default function MyShift() {
   const handleReadmitResident = async (res: Resident) => {
     try {
       const isDeceased = res.status_reason?.toLowerCase() === 'passed away' || res.status_reason?.toLowerCase() === 'deceased';
-      
+
       let confirmMessage = `Are you sure you want to readmit ${res.name} to Room ${res.room_number}?`;
       if (isDeceased) {
         confirmMessage = `WARNING: ${res.name} is marked as "PASSED AWAY".\n\nAre you sure you want to readmit them? (Only do this if they were archived as deceased by mistake)`;
@@ -286,10 +286,16 @@ export default function MyShift() {
   };
 
   useEffect(() => {
-    if (!authLoading && !user) {
-      router.push('/login');
+    if (!authLoading) {
+      if (!user) {
+        router.replace('/login');
+      } else if (isAdmin) {
+        router.replace('/admin');
+      } else if (isPlatformAdmin) {
+        router.replace('/system-admin');
+      }
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, isAdmin, isPlatformAdmin, router]);
 
   const fetchData = async () => {
     if (!facility) return;
@@ -322,7 +328,7 @@ export default function MyShift() {
 
       const { data: handData, error: handError } = await supabase
         .from('handovers')
-        .select('id, resident_id, is_approved, status, urgency, shift_type, created_at, raw_input, rn_summary')
+        .select('id, resident_id, status, urgency, shift_type, created_at, raw_input, rn_summary')
         .eq('facility_id', facility.id)
         .eq('shift_date', todayStr)
         .eq('shift_type', currentShiftType);
@@ -330,7 +336,7 @@ export default function MyShift() {
       if (handError) throw handError;
 
       const statusMap: Record<string, HandoverStatus> = {}; console.log('FETCHING DATA', todayStr, currentShiftType, handData);
-      
+
       // 1. Fetch offline queue items first
       try {
         const pendingQueue = await getPendingQueue();
@@ -339,7 +345,7 @@ export default function MyShift() {
             const hr = item.payload.body.handoverRecord;
             statusMap[hr.resident_id] = {
               resident_id: hr.resident_id,
-              is_approved: true,
+              status: 'published',
               urgency: hr.urgency || 'routine',
               shift_type: hr.shift_type || 'morning',
               updated_at: new Date(item.created_at).toISOString(),
@@ -357,7 +363,6 @@ export default function MyShift() {
         statusMap[h.resident_id] = {
           id: h.id,
           resident_id: h.resident_id,
-          is_approved: h.is_approved,
           status: h.status,
           urgency: h.urgency as any,
           shift_type: h.shift_type as any,
@@ -392,7 +397,7 @@ export default function MyShift() {
         .from('resident_insights')
         .select('resident_id, insights, residents:residents(name, room_number, is_active)')
         .eq('facility_id', facility.id);
-        
+
       const allAlerts: any[] = [];
       (cachedInsights || []).forEach((row: any) => {
         const resObj = Array.isArray(row.residents) ? row.residents[0] : row.residents;
@@ -435,7 +440,7 @@ export default function MyShift() {
           trendMap[dayStr]++;
         }
       });
-      
+
       const trendsArray = Object.keys(trendMap).map(k => ({ date: k, count: trendMap[k] }));
       setFacilityTrends(trendsArray);
 
@@ -463,12 +468,12 @@ export default function MyShift() {
         });
 
       if (error) throw error;
-      
+
       toast.success('Alert acknowledged and muted.');
-      
+
       // Optimistically update UI so the badge clears instantly
       setFacilityProactiveAlerts(prev => prev.filter(a => a.id !== alertId));
-      
+
       // Invalidate insights cache row so it updates in the background (fire and forget)
       fetch('/api/generate-insights', {
         method: 'POST',
@@ -490,12 +495,12 @@ export default function MyShift() {
         .eq('id', taskId);
 
       if (error) throw error;
-      
+
       toast.success('Task marked as completed.');
-      
+
       // Optimistically update UI so the task disappears instantly
       setFacilityUnacknowledgedTasks(prev => prev.filter(t => t.id !== taskId));
-      
+
       fetchData();
     } catch (e: any) {
       console.error('Failed to complete task:', e);
@@ -511,7 +516,7 @@ export default function MyShift() {
 
     // Poll alerts every 30 seconds as a fallback
     const interval = setInterval(fetchData, 30000);
-    
+
     return () => {
       clearInterval(interval);
       window.removeEventListener('refresh_data', handleRefresh);
@@ -554,88 +559,88 @@ export default function MyShift() {
     }
   };
 
-function parseVitalsFromHandover(status: any) {
-  let temp: number | null = null;
-  let systolic: number | null = null;
-  let diastolic: number | null = null;
-  let spo2: number | null = null;
-  let hr: number | null = null;
-  let rr: number | null = null;
+  function parseVitalsFromHandover(status: any) {
+    let temp: number | null = null;
+    let systolic: number | null = null;
+    let diastolic: number | null = null;
+    let spo2: number | null = null;
+    let hr: number | null = null;
+    let rr: number | null = null;
 
-  if (!status) return { temp, systolic, diastolic, spo2, hr, rr };
+    if (!status) return { temp, systolic, diastolic, spo2, hr, rr };
 
-  // Try parsing from rn_summary object first if it's there
-  if (status.rn_summary) {
-    const s = status.rn_summary;
-    const v = s.vitals || s.clinical_vitals;
-    if (v) {
-      if (v.temperature?.value !== undefined && v.temperature?.value !== null) temp = parseFloat(v.temperature.value);
-      else if (v.temperature !== undefined && v.temperature !== null) temp = typeof v.temperature === 'object' ? parseFloat(v.temperature.value) : parseFloat(v.temperature);
+    // Try parsing from rn_summary object first if it's there
+    if (status.rn_summary) {
+      const s = status.rn_summary;
+      const v = s.vitals || s.clinical_vitals;
+      if (v) {
+        if (v.temperature?.value !== undefined && v.temperature?.value !== null) temp = parseFloat(v.temperature.value);
+        else if (v.temperature !== undefined && v.temperature !== null) temp = typeof v.temperature === 'object' ? parseFloat(v.temperature.value) : parseFloat(v.temperature);
 
-      if (v.bp) {
-        if (v.bp.systolic && v.bp.diastolic) {
-          systolic = parseInt(v.bp.systolic);
-          diastolic = parseInt(v.bp.diastolic);
+        if (v.bp) {
+          if (v.bp.systolic && v.bp.diastolic) {
+            systolic = parseInt(v.bp.systolic);
+            diastolic = parseInt(v.bp.diastolic);
+          }
         }
+        if (v.spo2 !== undefined && v.spo2 !== null) spo2 = typeof v.spo2 === 'object' ? parseInt(v.spo2.value) : parseInt(v.spo2);
+        if (v.hr !== undefined && v.hr !== null) hr = typeof v.hr === 'object' ? parseInt(v.hr.value) : parseInt(v.hr);
+        if (v.rr !== undefined && v.rr !== null) rr = typeof v.rr === 'object' ? parseInt(v.rr.value) : parseInt(v.rr);
       }
-      if (v.spo2 !== undefined && v.spo2 !== null) spo2 = typeof v.spo2 === 'object' ? parseInt(v.spo2.value) : parseInt(v.spo2);
-      if (v.hr !== undefined && v.hr !== null) hr = typeof v.hr === 'object' ? parseInt(v.hr.value) : parseInt(v.hr);
-      if (v.rr !== undefined && v.rr !== null) rr = typeof v.rr === 'object' ? parseInt(v.rr.value) : parseInt(v.rr);
+    }
+
+    // Fallback regex parsing from raw_input or summary description if values not found
+    const textToSearch = `${status.raw_input || ''} ${typeof status.rn_summary === 'string' ? status.rn_summary : JSON.stringify(status.rn_summary || '')}`;
+
+    if (temp === null) {
+      const tempMatch = textToSearch.match(/(?:temp|temperature)(?:\s+is|\s+of|\s+was)?\s*(\d{2}(?:\.\d)?)/i) ||
+        textToSearch.match(/(\d{2}\.\d)\s*(?:degrees|celsius|c|deg\b)/i);
+      if (tempMatch) temp = parseFloat(tempMatch[1]);
+    }
+    if (systolic === null || diastolic === null) {
+      const bpSlashMatch = textToSearch.match(/(\d{2,3})\s*\/\s*(\d{2,3})/);
+      const bpOverMatch = textToSearch.match(/(?:bp|blood\s+pressure)(?:\s+is|\s+of|\s+was)?\s*(\d{2,3})\s+over\s+(\d{2,3})/i) ||
+        textToSearch.match(/(\d{2,3})\s+over\s+(\d{2,3})/i);
+      if (bpSlashMatch) {
+        systolic = parseInt(bpSlashMatch[1]);
+        diastolic = parseInt(bpSlashMatch[2]);
+      } else if (bpOverMatch) {
+        systolic = parseInt(bpOverMatch[1]);
+        diastolic = parseInt(bpOverMatch[2]);
+      }
+    }
+    if (spo2 === null) {
+      const spo2Match = textToSearch.match(/(?:spo2|pulse\s+ox|oxygen|o2\s+sat(?:uration)?)(?:\s+is|\s+of|\s+was)?\s*(\d{2,3})/i) ||
+        textToSearch.match(/(\d{2,3})\s*(?:%|\s+percent)\s*(?:spo2|o2|oxygen)/i);
+      if (spo2Match) spo2 = parseInt(spo2Match[1]);
+    }
+    if (hr === null) {
+      const hrMatch = textToSearch.match(/(?:hr|pulse|heart\s+rate)(?:\s+is|\s+of|\s+was)?\s*(\d{2,3})/i);
+      if (hrMatch) hr = parseInt(hrMatch[1]);
+    }
+    if (rr === null) {
+      const rrMatch = textToSearch.match(/(?:rr|resp|respiratory\s+rate)(?:\s+is|\s+of|\s+was)?\s*(\d{2,3})/i);
+      if (rrMatch) rr = parseInt(rrMatch[1]);
+    }
+
+    return { temp, systolic, diastolic, spo2, hr, rr };
+  }
+
+  function formatHandoverTime(dateStr?: string) {
+    if (!dateStr) return '';
+    try {
+      const date = new Date(dateStr);
+      return new Intl.DateTimeFormat('en-AU', {
+        timeZone: 'Australia/Adelaide',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZoneName: 'short'
+      }).format(date);
+    } catch (e) {
+      return '';
     }
   }
-
-  // Fallback regex parsing from raw_input or summary description if values not found
-  const textToSearch = `${status.raw_input || ''} ${typeof status.rn_summary === 'string' ? status.rn_summary : JSON.stringify(status.rn_summary || '')}`;
-
-  if (temp === null) {
-    const tempMatch = textToSearch.match(/(?:temp|temperature)(?:\s+is|\s+of|\s+was)?\s*(\d{2}(?:\.\d)?)/i) ||
-                      textToSearch.match(/(\d{2}\.\d)\s*(?:degrees|celsius|c|deg\b)/i);
-    if (tempMatch) temp = parseFloat(tempMatch[1]);
-  }
-  if (systolic === null || diastolic === null) {
-    const bpSlashMatch = textToSearch.match(/(\d{2,3})\s*\/\s*(\d{2,3})/);
-    const bpOverMatch = textToSearch.match(/(?:bp|blood\s+pressure)(?:\s+is|\s+of|\s+was)?\s*(\d{2,3})\s+over\s+(\d{2,3})/i) ||
-                        textToSearch.match(/(\d{2,3})\s+over\s+(\d{2,3})/i);
-    if (bpSlashMatch) {
-      systolic = parseInt(bpSlashMatch[1]);
-      diastolic = parseInt(bpSlashMatch[2]);
-    } else if (bpOverMatch) {
-      systolic = parseInt(bpOverMatch[1]);
-      diastolic = parseInt(bpOverMatch[2]);
-    }
-  }
-  if (spo2 === null) {
-    const spo2Match = textToSearch.match(/(?:spo2|pulse\s+ox|oxygen|o2\s+sat(?:uration)?)(?:\s+is|\s+of|\s+was)?\s*(\d{2,3})/i) ||
-                      textToSearch.match(/(\d{2,3})\s*(?:%|\s+percent)\s*(?:spo2|o2|oxygen)/i);
-    if (spo2Match) spo2 = parseInt(spo2Match[1]);
-  }
-  if (hr === null) {
-    const hrMatch = textToSearch.match(/(?:hr|pulse|heart\s+rate)(?:\s+is|\s+of|\s+was)?\s*(\d{2,3})/i);
-    if (hrMatch) hr = parseInt(hrMatch[1]);
-  }
-  if (rr === null) {
-    const rrMatch = textToSearch.match(/(?:rr|resp|respiratory\s+rate)(?:\s+is|\s+of|\s+was)?\s*(\d{2,3})/i);
-    if (rrMatch) rr = parseInt(rrMatch[1]);
-  }
-
-  return { temp, systolic, diastolic, spo2, hr, rr };
-}
-
-function formatHandoverTime(dateStr?: string) {
-  if (!dateStr) return '';
-  try {
-    const date = new Date(dateStr);
-    return new Intl.DateTimeFormat('en-AU', {
-      timeZone: 'Australia/Adelaide',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true,
-      timeZoneName: 'short'
-    }).format(date);
-  } catch (e) {
-    return '';
-  }
-}
 
 
 
@@ -654,7 +659,7 @@ function formatHandoverTime(dateStr?: string) {
   return (
     <div className="min-h-screen bg-background text-text-primary flex transition-colors duration-300 font-sans relative z-10">
       <OnboardingTour />
-      
+
       {/* 1. Left Sidebar - Desktop (w-64) */}
       <aside className={`${isLeftSidebarOpen ? 'hidden lg:flex' : 'hidden'} w-64 apple-card flex-col justify-between p-6 shrink-0 z-20 m-4 rounded-[32px]`}>
         <div className="space-y-8">
@@ -673,7 +678,7 @@ function formatHandoverTime(dateStr?: string) {
                 </span>
               </div>
             </div>
-            <button 
+            <button
               onClick={() => setIsLeftSidebarOpen(false)}
               className="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-205 transition-colors cursor-pointer lg:block hidden border border-slate-200/60 dark:border-slate-700/60"
               title="Hide Sidebar"
@@ -684,19 +689,19 @@ function formatHandoverTime(dateStr?: string) {
 
           {/* Navigation Links */}
           <nav className="space-y-1.5">
-            <Link href="/" className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-text-secondary hover:bg-primary/10 hover:text-primary transition-all">
+            <Link id="tour-nav-dashboard" href="/" className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-text-secondary hover:bg-primary/10 hover:text-primary transition-all">
               <Activity className="w-4 h-4 text-text-secondary group-hover:text-primary" />
               <span>Home Dashboard</span>
             </Link>
-            <Link href="/shift" className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold bg-primary/15 text-primary transition-all border-l-4 border-l-primary shadow-sm border border-primary/10">
+            <Link id="tour-nav-registry" href="/shift" className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold bg-primary/15 text-primary transition-all border-l-4 border-l-primary shadow-sm border border-primary/10">
               <Users className="w-4 h-4 text-primary" />
               <span>Shift Registry</span>
             </Link>
-            <Link href="/tasks" className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-text-secondary hover:bg-primary/10 hover:text-primary transition-all">
+            <Link id="tour-nav-tasks" href="/tasks" className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-text-secondary hover:bg-primary/10 hover:text-primary transition-all">
               <ListTodo className="w-4 h-4 text-text-secondary" />
               <span>Shift Tasks</span>
             </Link>
-            <button 
+            <button
               onClick={() => setShowSettingsModal(true)}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-text-secondary hover:bg-primary/10 hover:text-primary transition-all text-left cursor-pointer"
             >
@@ -743,9 +748,9 @@ function formatHandoverTime(dateStr?: string) {
             <Link href="/tasks" title="Shift Tasks" className="w-12 h-12 mx-auto rounded-full glass-pill hover:bg-white/80 text-text-secondary transition-all flex items-center justify-center">
               <ListTodo className="w-5 h-5" />
             </Link>
-            <button 
+            <button
               onClick={() => setShowSettingsModal(true)}
-              title="AI Settings" 
+              title="AI Settings"
               className="w-12 h-12 mx-auto rounded-full glass-pill hover:bg-white/80 text-text-secondary transition-all flex items-center justify-center cursor-pointer"
             >
               <Settings className="w-5 h-5" />
@@ -775,7 +780,7 @@ function formatHandoverTime(dateStr?: string) {
             <div className="flex items-center gap-3">
               <HeaderThemeSelector />
 
-              <button 
+              <button
                 onClick={() => setShowFullReport(true)}
                 className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer border border-slate-200/60 dark:border-white/10 shadow-sm"
                 title="View Full Handover Report"
@@ -798,12 +803,12 @@ function formatHandoverTime(dateStr?: string) {
         <main className="flex-1 flex flex-col lg:flex-row min-h-0 bg-transparent p-4 lg:p-6 gap-6">
           {/* Center Pane: Resident Registry */}
           <div className="flex-1 overflow-y-auto bg-white/40 dark:bg-[#0f172a]/40 backdrop-blur-3xl rounded-[32px] border border-white/60 dark:border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.04)] p-6 relative z-10 custom-scrollbar">
-            
+
             {/* Header Area */}
             <div className="flex justify-between items-end mb-8">
               <div className="flex items-center gap-4">
                 {!isLeftSidebarOpen && (
-                  <button 
+                  <button
                     onClick={() => setIsLeftSidebarOpen(true)}
                     className="p-2.5 rounded-2xl bg-white dark:bg-slate-800 text-slate-500 hover:text-primary hover:shadow-md transition-all duration-300 border border-slate-200/50 dark:border-white/5 cursor-pointer hidden lg:flex items-center justify-center"
                     title="Unhide Sidebar"
@@ -821,7 +826,7 @@ function formatHandoverTime(dateStr?: string) {
                   <div className="mr-2">
                     <HeaderThemeSelector />
                   </div>
-                  <button 
+                  <button
                     onClick={() => setShowFullReport(true)}
                     className="mr-2 p-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors cursor-pointer border border-slate-200/60 dark:border-white/10 shadow-sm"
                     title="View Full Handover Report"
@@ -849,10 +854,10 @@ function formatHandoverTime(dateStr?: string) {
                 </button>
               </div>
             </div>
-            
+
             {/* Facility Pulse / Clinical Notice Board */}
             <div className="mb-8 apple-card rounded-[24px] p-6 flex flex-col gap-5">
-              <div 
+              <div
                 className={`flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-4 cursor-pointer transition-colors ${isPulseOpen ? 'border-b border-border pb-4' : ''}`}
                 onClick={() => setIsPulseOpen(!isPulseOpen)}
               >
@@ -898,89 +903,89 @@ function formatHandoverTime(dateStr?: string) {
                   >
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-1">
                       {/* Trend 1: Falls */}
-                <div className="apple-card-inner rounded-xl p-4 shadow-sm">
-                  <h3 className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-3">Fall Incidents (7 Days)</h3>
-                  <div className="flex items-end gap-1.5 h-10 mb-3 px-1">
-                    {facilityTrends.length > 0 ? facilityTrends.map((t, idx) => {
-                      const maxCount = Math.max(...facilityTrends.map(x => x.count), 1);
-                      const heightPercent = Math.max(10, (t.count / maxCount) * 100);
-                      const isSpike = t.count > 0 && t.count === maxCount;
-                      return (
-                        <div key={idx} className={`w-full rounded-t-sm relative group cursor-help ${isSpike ? 'bg-red-accent/80 shadow-[0_0_8px_rgba(232,68,90,0.5)]' : 'bg-teal-accent/30'}`} style={{ height: `${heightPercent}%` }}>
-                          <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-surface text-text-primary text-[9px] font-bold py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity border border-border whitespace-nowrap z-10">
-                            {t.count} Incidents on {t.date}
-                          </div>
+                      <div className="apple-card-inner rounded-xl p-4 shadow-sm">
+                        <h3 className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-3">Fall Incidents (7 Days)</h3>
+                        <div className="flex items-end gap-1.5 h-10 mb-3 px-1">
+                          {facilityTrends.length > 0 ? facilityTrends.map((t, idx) => {
+                            const maxCount = Math.max(...facilityTrends.map(x => x.count), 1);
+                            const heightPercent = Math.max(10, (t.count / maxCount) * 100);
+                            const isSpike = t.count > 0 && t.count === maxCount;
+                            return (
+                              <div key={idx} className={`w-full rounded-t-sm relative group cursor-help ${isSpike ? 'bg-red-accent/80 shadow-[0_0_8px_rgba(232,68,90,0.5)]' : 'bg-teal-accent/30'}`} style={{ height: `${heightPercent}%` }}>
+                                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-surface text-text-primary text-[9px] font-bold py-0.5 px-1.5 rounded opacity-0 group-hover:opacity-100 transition-opacity border border-border whitespace-nowrap z-10">
+                                  {t.count} Incidents on {t.date}
+                                </div>
+                              </div>
+                            );
+                          }) : (
+                            <div className="w-full h-full flex items-center justify-center text-[10px] text-text-secondary">No recent incidents.</div>
+                          )}
                         </div>
-                      );
-                    }) : (
-                      <div className="w-full h-full flex items-center justify-center text-[10px] text-text-secondary">No recent incidents.</div>
-                    )}
-                  </div>
-                  {facilityTrends.some(t => t.count > 0) ? (
-                    <p className="text-[11px] text-text-secondary leading-tight">
-                      <span className="font-bold text-red-accent">Active tracking:</span> {facilityTrends.reduce((sum, t) => sum + t.count, 0)} total incidents recorded in the last 7 days.
-                    </p>
-                  ) : (
-                    <p className="text-[11px] text-text-secondary leading-tight">
-                      <span className="font-bold text-teal-accent">All clear:</span> No incidents recorded recently.
-                    </p>
-                  )}
-                </div>
-
-                {/* Trend 2: Infection / Vitals */}
-                <div className="apple-card-inner rounded-xl p-4 shadow-sm">
-                  <h3 className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-3">Emerging Risks</h3>
-                  <div className="space-y-3.5 overflow-y-auto max-h-[80px] custom-scrollbar">
-                    {facilityProactiveAlerts.filter(a => a.severity === 'critical' || a.severity === 'warning').length > 0 ? (
-                      facilityProactiveAlerts.filter(a => a.severity === 'critical' || a.severity === 'warning').slice(0, 3).map((alert, idx) => (
-                        <div key={idx} className="flex items-start gap-2">
-                          <div className={`w-1.5 h-1.5 rounded-full mt-1 shrink-0 ${alert.severity === 'critical' ? 'bg-red-accent shadow-[0_0_5px_rgba(232,68,90,0.5)]' : 'bg-amber-accent shadow-[0_0_5px_rgba(245,166,35,0.5)]'}`}></div>
-                          <p className="text-[11px] text-text-primary leading-tight">
-                            <span className={`font-bold capitalize ${alert.severity === 'critical' ? 'text-red-accent' : 'text-amber-accent'}`}>{(alert.type || 'Alert').replace('_', ' ')}:</span> {alert.message} ({alert.residentName})
+                        {facilityTrends.some(t => t.count > 0) ? (
+                          <p className="text-[11px] text-text-secondary leading-tight">
+                            <span className="font-bold text-red-accent">Active tracking:</span> {facilityTrends.reduce((sum, t) => sum + t.count, 0)} total incidents recorded in the last 7 days.
                           </p>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-[11px] text-text-secondary italic">No emerging risks detected across the facility.</p>
-                    )}
-                  </div>
-                </div>
+                        ) : (
+                          <p className="text-[11px] text-text-secondary leading-tight">
+                            <span className="font-bold text-teal-accent">All clear:</span> No incidents recorded recently.
+                          </p>
+                        )}
+                      </div>
 
-                {/* Critical Directives */}
-                <div className="apple-card-inner rounded-xl p-4 shadow-sm border border-teal-accent/20">
-                  <h3 className="text-[10px] font-black text-teal-accent uppercase tracking-widest mb-3 flex items-center gap-1.5">
-                    <ListTodo className="w-3.5 h-3.5" />
-                    Shift Directives
-                  </h3>
-                  <div className="space-y-3 overflow-y-auto max-h-[80px] custom-scrollbar">
-                    {facilityProactiveAlerts.some(a => a.type === 'infection_risk') && (
-                      <div className="flex items-start gap-2">
-                        <span className="text-[10px] font-bold text-teal-accent mt-0.5">1.</span>
-                        <p className="text-[11px] text-text-primary font-medium leading-relaxed">
-                          Enforce strict PPE protocols due to active infection risks.
-                        </p>
+                      {/* Trend 2: Infection / Vitals */}
+                      <div className="apple-card-inner rounded-xl p-4 shadow-sm">
+                        <h3 className="text-[10px] font-black text-text-secondary uppercase tracking-widest mb-3">Emerging Risks</h3>
+                        <div className="space-y-3.5 overflow-y-auto max-h-[80px] custom-scrollbar">
+                          {facilityProactiveAlerts.filter(a => a.severity === 'critical' || a.severity === 'warning').length > 0 ? (
+                            facilityProactiveAlerts.filter(a => a.severity === 'critical' || a.severity === 'warning').slice(0, 3).map((alert, idx) => (
+                              <div key={idx} className="flex items-start gap-2">
+                                <div className={`w-1.5 h-1.5 rounded-full mt-1 shrink-0 ${alert.severity === 'critical' ? 'bg-red-accent shadow-[0_0_5px_rgba(232,68,90,0.5)]' : 'bg-amber-accent shadow-[0_0_5px_rgba(245,166,35,0.5)]'}`}></div>
+                                <p className="text-[11px] text-text-primary leading-tight">
+                                  <span className={`font-bold capitalize ${alert.severity === 'critical' ? 'text-red-accent' : 'text-amber-accent'}`}>{(alert.type || 'Alert').replace('_', ' ')}:</span> {alert.message} ({alert.residentName})
+                                </p>
+                              </div>
+                            ))
+                          ) : (
+                            <p className="text-[11px] text-text-secondary italic">No emerging risks detected across the facility.</p>
+                          )}
+                        </div>
                       </div>
-                    )}
-                    {facilityUnacknowledgedTasks.length > 0 && (
-                      <div className="flex items-start gap-2">
-                        <span className="text-[10px] font-bold text-teal-accent mt-0.5">•</span>
-                        <p className="text-[11px] text-text-primary font-medium leading-relaxed">
-                          Review {facilityUnacknowledgedTasks.length} unacknowledged critical tasks from previous shifts immediately.
-                        </p>
+
+                      {/* Critical Directives */}
+                      <div className="apple-card-inner rounded-xl p-4 shadow-sm border border-teal-accent/20">
+                        <h3 className="text-[10px] font-black text-teal-accent uppercase tracking-widest mb-3 flex items-center gap-1.5">
+                          <ListTodo className="w-3.5 h-3.5" />
+                          Shift Directives
+                        </h3>
+                        <div className="space-y-3 overflow-y-auto max-h-[80px] custom-scrollbar">
+                          {facilityProactiveAlerts.some(a => a.type === 'infection_risk') && (
+                            <div className="flex items-start gap-2">
+                              <span className="text-[10px] font-bold text-teal-accent mt-0.5">1.</span>
+                              <p className="text-[11px] text-text-primary font-medium leading-relaxed">
+                                Enforce strict PPE protocols due to active infection risks.
+                              </p>
+                            </div>
+                          )}
+                          {facilityUnacknowledgedTasks.length > 0 && (
+                            <div className="flex items-start gap-2">
+                              <span className="text-[10px] font-bold text-teal-accent mt-0.5">•</span>
+                              <p className="text-[11px] text-text-primary font-medium leading-relaxed">
+                                Review {facilityUnacknowledgedTasks.length} unacknowledged critical tasks from previous shifts immediately.
+                              </p>
+                            </div>
+                          )}
+                          {(!facilityProactiveAlerts.some(a => a.type === 'infection_risk') && facilityUnacknowledgedTasks.length === 0) && (
+                            <div className="flex items-start gap-2">
+                              <span className="text-[10px] font-bold text-teal-accent mt-0.5">✓</span>
+                              <p className="text-[11px] text-text-primary font-medium leading-relaxed">
+                                No critical facility-wide directives active. Proceed with standard care plans.
+                              </p>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    )}
-                    {(!facilityProactiveAlerts.some(a => a.type === 'infection_risk') && facilityUnacknowledgedTasks.length === 0) && (
-                      <div className="flex items-start gap-2">
-                        <span className="text-[10px] font-bold text-teal-accent mt-0.5">✓</span>
-                        <p className="text-[11px] text-text-primary font-medium leading-relaxed">
-                          No critical facility-wide directives active. Proceed with standard care plans.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </motion.div>
+                    </div>
+                  </motion.div>
                 )}
               </AnimatePresence>
             </div>
@@ -994,9 +999,9 @@ function formatHandoverTime(dateStr?: string) {
                     {filteredResidents.length} Residents
                   </span>
                 </div>
-                
+
                 {/* Tabs */}
-                <div className="flex items-center gap-1 bg-surface p-1 rounded-xl border border-border shadow-sm">
+                <div id="tour-shift-tabs" className="flex items-center gap-1 bg-surface p-1 rounded-xl border border-border shadow-sm">
                   <button onClick={() => setActiveTab('all')} className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${activeTab === 'all' ? 'bg-white dark:bg-slate-700 shadow text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>All</button>
                   <button onClick={() => setActiveTab('pending')} className={`px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${activeTab === 'pending' ? 'bg-white dark:bg-slate-700 shadow text-text-primary' : 'text-text-secondary hover:text-text-primary'}`}>Pending</button>
                   <button onClick={() => setActiveTab('needs_review')} className={`flex items-center gap-1 px-3 py-1 text-[11px] font-bold rounded-lg transition-all ${activeTab === 'needs_review' ? 'bg-amber-accent/10 border-amber-accent/20 text-amber-accent shadow-sm' : 'text-amber-accent/70 hover:text-amber-accent'}`}>
@@ -1025,14 +1030,46 @@ function formatHandoverTime(dateStr?: string) {
               </button>
             </div>
 
+            {/* Search and Wing Filter Bar */}
+            <div className="flex flex-col sm:flex-row items-center gap-3 mb-6 px-1">
+              {/* Search Bar */}
+              <div id="tour-resident-search" className="relative w-full sm:w-72">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-text-tertiary" />
+                <input
+                  type="text"
+                  placeholder="Search resident or room..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-surface border border-border rounded-xl pl-11 pr-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-teal-accent/20 focus:border-teal-accent text-text-primary transition-all font-medium"
+                />
+              </div>
+
+              {/* Wing Filter Selector */}
+              <div id="tour-wing-filter" className="w-full sm:w-48">
+                <select
+                  value={selectedWingFilter}
+                  onChange={(e) => setSelectedWingFilter(e.target.value)}
+                  className="w-full bg-surface border border-border rounded-xl px-4 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-teal-accent/20 focus:border-teal-accent text-text-primary transition-all font-semibold cursor-pointer"
+                >
+                  <option value="all">All Wings</option>
+                  <option value="unassigned">Unassigned Wing</option>
+                  {wings.map((w) => (
+                    <option key={w.id} value={w.id}>
+                      {w.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {filteredResidents.map((res) => {
                 const wingName = wings.find((w) => w.id === res.wing_id)?.name;
                 const status = handovers[res.id];
-                const hasHandover = status?.is_approved;
+                const hasHandover = status?.status === 'published';
                 const isUrgent = status?.urgency === 'urgent' || status?.urgency === 'critical';
                 const vitals = parseVitalsFromHandover(status);
-                
+
                 return (
                   <div
                     key={res.id}
@@ -1055,8 +1092,8 @@ function formatHandoverTime(dateStr?: string) {
                       {user?.role !== 'carer' && (
                         <div className="flex items-center gap-1 shrink-0 z-10">
                           <button
-                            onClick={(e) => { 
-                              e.stopPropagation(); 
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setEditingResident(res);
                               setShowEditModal(true);
                             }}
@@ -1087,48 +1124,47 @@ function formatHandoverTime(dateStr?: string) {
 
                     {/* Bottom Section: Status & Actions */}
                     <div className="pt-3 border-t border-border flex items-center justify-between gap-2">
-                       <div className="flex flex-wrap items-center gap-1.5">
-                         {status?.status === 'needs_review' ? (
-                           <div className="flex items-center gap-1 text-amber-accent bg-amber-accent/10 px-1.5 py-0.5 rounded border border-amber-accent/20 shrink-0">
-                             <AlertCircle className="w-3 h-3" />
-                             <span className="text-[9px] font-bold uppercase tracking-wider">Review Req</span>
-                           </div>
-                         ) : status?.status === 'published' || status?.is_approved ? (
-                           <div className="flex items-center gap-1 text-teal-accent bg-teal-accent/10 px-1.5 py-0.5 rounded border border-teal-accent/20 shrink-0">
-                             <Check className="w-3 h-3" />
-                             <span className="text-[9px] font-bold uppercase tracking-wider">Logged</span>
-                           </div>
-                         ) : (
-                           <div className="flex items-center gap-1 text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-border shrink-0">
-                             <Activity className="w-3 h-3" />
-                             <span className="text-[9px] font-bold uppercase tracking-wider">Pending</span>
-                           </div>
-                         )}
-                         {vitals.temp && (
-                           <div className="font-mono text-[9px] font-bold text-text-primary bg-surface-solid border border-border px-1.5 py-0.5 rounded shadow-sm shrink-0">
-                             {vitals.temp}°C
-                           </div>
-                         )}
-                       </div>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {status?.status === 'needs_review' ? (
+                          <div className="flex items-center gap-1 text-amber-accent bg-amber-accent/10 px-1.5 py-0.5 rounded border border-amber-accent/20 shrink-0">
+                            <AlertCircle className="w-3 h-3" />
+                            <span className="text-[9px] font-bold uppercase tracking-wider">Review Req</span>
+                          </div>
+                        ) : status?.status === 'published' ? (
+                          <div className="flex items-center gap-1 text-teal-accent bg-teal-accent/10 px-1.5 py-0.5 rounded border border-teal-accent/20 shrink-0">
+                            <Check className="w-3 h-3" />
+                            <span className="text-[9px] font-bold uppercase tracking-wider">Logged</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 text-slate-400 bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded border border-border shrink-0">
+                            <Activity className="w-3 h-3" />
+                            <span className="text-[9px] font-bold uppercase tracking-wider">Pending</span>
+                          </div>
+                        )}
+                        {vitals.temp && (
+                          <div className="font-mono text-[9px] font-bold text-text-primary bg-surface-solid border border-border px-1.5 py-0.5 rounded shadow-sm shrink-0">
+                            {vitals.temp}°C
+                          </div>
+                        )}
+                      </div>
 
-                       {/* Update/Review Button */}
-                       {user?.role !== 'carer' && (
-                         <Link
-                           onClick={(e) => e.stopPropagation()}
-                           href={status?.status === 'needs_review' ? `/resident/${res.id}/review?id=${status.id}` : `/resident/${res.id}/input?update=${hasHandover ? 'true' : 'false'}&date=${selectedDate}&shift=${selectedShift}`}
-                           className={`px-3 py-1.5 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-300 flex items-center gap-1 cursor-pointer z-10 border shrink-0 ${
-                             status?.status === 'needs_review'
-                               ? 'bg-amber-accent hover:bg-amber-accent/90 border-transparent text-white shadow-sm'
-                               : hasHandover 
-                               ? 'bg-surface-solid border-border text-text-primary hover:border-teal-accent/50 hover:text-teal-accent shadow-sm' 
-                               : 'bg-teal-accent hover:bg-teal-accent/90 border-transparent text-white shadow-sm hover:shadow-md'
-                           }`}
-                         >
-                           {status?.status === 'needs_review' ? 'Review' : hasHandover ? 'Update' : 'Start'}
-                           <ArrowRight className="w-3 h-3" />
-                         </Link>
-                       )}
-                     </div>
+                      {/* Update/Review Button */}
+                      {user?.role !== 'carer' && (
+                        <Link
+                          onClick={(e) => e.stopPropagation()}
+                          href={status?.status === 'needs_review' ? `/resident/${res.id}/review?id=${status.id}` : `/resident/${res.id}/input?update=${hasHandover ? 'true' : 'false'}&date=${selectedDate}&shift=${selectedShift}`}
+                          className={`px-3 py-1.5 rounded-xl text-[10px] font-bold tracking-wide transition-all duration-300 flex items-center gap-1 cursor-pointer z-10 border shrink-0 ${status?.status === 'needs_review'
+                            ? 'bg-amber-accent hover:bg-amber-accent/90 border-transparent text-white shadow-sm'
+                            : hasHandover
+                              ? 'bg-surface-solid border-border text-text-primary hover:border-teal-accent/50 hover:text-teal-accent shadow-sm'
+                              : 'bg-teal-accent hover:bg-teal-accent/90 border-transparent text-white shadow-sm hover:shadow-md'
+                            }`}
+                        >
+                          {status?.status === 'needs_review' ? 'Review' : hasHandover ? 'Update' : 'Start'}
+                          <ArrowRight className="w-3 h-3" />
+                        </Link>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -1164,8 +1200,8 @@ function formatHandoverTime(dateStr?: string) {
                         {user?.role !== 'carer' && (
                           <div className="flex gap-1 shrink-0">
                             <button
-                              onClick={(e) => { 
-                                e.stopPropagation(); 
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setEditingResident(res);
                                 setShowEditModal(true);
                               }}
@@ -1175,10 +1211,10 @@ function formatHandoverTime(dateStr?: string) {
                               <Pencil className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={(e) => { 
-                                e.stopPropagation(); 
+                              onClick={(e) => {
+                                e.stopPropagation();
                                 setPermanentDeletingResident(res);
-                                setShowPermanentDeleteModal(true); 
+                                setShowPermanentDeleteModal(true);
                               }}
                               className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-500/10 transition-all cursor-pointer"
                               title={`Delete ${res.name}`}
@@ -1220,7 +1256,7 @@ function formatHandoverTime(dateStr?: string) {
       />
 
       <SettingsModal isOpen={showSettingsModal} onClose={() => setShowSettingsModal(false)} />
-      
+
       {showShiftSelector && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className="bg-surface border border-border rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in-95 duration-200">
@@ -1230,18 +1266,18 @@ function formatHandoverTime(dateStr?: string) {
                 <X className="w-5 h-5" />
               </button>
             </div>
-            
+
             <div className="space-y-4 mb-8">
               <div>
                 <label className="block text-xs font-bold text-text-secondary mb-1.5 uppercase tracking-wider">Date</label>
-                <input 
-                  type="date" 
+                <input
+                  type="date"
                   value={selectedDate}
                   onChange={(e) => setSelectedDate(e.target.value)}
                   className="w-full bg-surface-solid border border-border text-sm font-bold text-text-primary rounded-xl px-4 py-3 outline-none focus:border-teal-accent/50 transition-colors"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-xs font-bold text-text-secondary mb-1.5 uppercase tracking-wider">Shift</label>
                 <select
@@ -1255,8 +1291,8 @@ function formatHandoverTime(dateStr?: string) {
                 </select>
               </div>
             </div>
-            
-            <button 
+
+            <button
               onClick={() => setShowShiftSelector(false)}
               className="w-full bg-primary hover:bg-primary-hover text-white font-bold py-3 px-4 rounded-xl shadow-md transition-colors cursor-pointer"
             >
@@ -1568,7 +1604,7 @@ function AddResidentModal({ isOpen, onClose, wings, facilityId, theme, onAddSucc
       if (error) throw error;
 
       onAddSuccess(data);
-      
+
       // Close and reset
       onClose();
       setNewResName('');
@@ -1587,19 +1623,19 @@ function AddResidentModal({ isOpen, onClose, wings, facilityId, theme, onAddSucc
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md px-4"
         >
-          <motion.div 
+          <motion.div
             initial={{ scale: 0.95, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 20 }}
             className="w-full max-w-[400px] bg-surface-solid border border-border p-7 rounded-[28px] shadow-2xl relative z-50 flex flex-col"
           >
-            
+
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-border pb-4.5 mb-6">
               <div>
@@ -1817,9 +1853,8 @@ function SoftDeleteModal({ isOpen, onClose, resident, theme, canPermanentDelete,
           >
             <div className="flex items-center justify-between border-b border-[#e3e3e3] dark:border-[#202024] pb-4.5 mb-6">
               <div>
-                <h3 className={`text-lg font-normal tracking-tight ${
-                  isPermanent ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white'
-                }`}>
+                <h3 className={`text-lg font-normal tracking-tight ${isPermanent ? 'text-rose-600 dark:text-rose-400' : 'text-slate-900 dark:text-white'
+                  }`}>
                   {isPermanent ? 'Permanently Delete' : 'Archive Resident'}
                 </h3>
                 <p className="text-[11px] text-slate-550 dark:text-slate-400 mt-0.5">
@@ -1868,11 +1903,10 @@ function SoftDeleteModal({ isOpen, onClose, resident, theme, canPermanentDelete,
                 <select
                   value={reason}
                   onChange={(e) => { setReason(e.target.value); setError(''); setConfirmName(''); }}
-                  className={`w-full h-11 bg-slate-50 dark:bg-slate-900/60 border rounded-xl px-3.5 text-xs focus:outline-none transition-colors ${
-                    isPermanent
-                      ? 'border-rose-300 dark:border-rose-700/60 text-rose-700 dark:text-rose-300'
-                      : 'border-[#e3e3e3] dark:border-[#202024] text-slate-700 dark:text-slate-300'
-                  }`}
+                  className={`w-full h-11 bg-slate-50 dark:bg-slate-900/60 border rounded-xl px-3.5 text-xs focus:outline-none transition-colors ${isPermanent
+                    ? 'border-rose-300 dark:border-rose-700/60 text-rose-700 dark:text-rose-300'
+                    : 'border-[#e3e3e3] dark:border-[#202024] text-slate-700 dark:text-slate-300'
+                    }`}
                 >
                   <option value="Discharged">Discharged</option>
                   <option value="Transferred">Transferred to another facility</option>
@@ -1927,11 +1961,10 @@ function SoftDeleteModal({ isOpen, onClose, resident, theme, canPermanentDelete,
                 <button
                   type="submit"
                   disabled={submitting || (isPermanent && confirmName.toLowerCase() !== resident.name.toLowerCase())}
-                  className={`flex-1 h-11 rounded-full text-xs font-semibold tracking-wider uppercase transition-all duration-300 shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 ${
-                    isPermanent
-                      ? 'bg-rose-600 hover:bg-rose-700 text-white'
-                      : 'bg-slate-800 hover:bg-slate-700 dark:bg-slate-100 dark:hover:bg-[#ffffff] text-[#ffffff] dark:text-[#0b0b0d]'
-                  }`}
+                  className={`flex-1 h-11 rounded-full text-xs font-semibold tracking-wider uppercase transition-all duration-300 shadow-md flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 ${isPermanent
+                    ? 'bg-rose-600 hover:bg-rose-700 text-white'
+                    : 'bg-slate-800 hover:bg-slate-700 dark:bg-slate-100 dark:hover:bg-[#ffffff] text-[#ffffff] dark:text-[#0b0b0d]'
+                    }`}
                   style={isPermanent ? undefined : { color: theme === 'dark' ? '#0b0b0d' : '#ffffff' }}
                 >
                   {submitting ? (

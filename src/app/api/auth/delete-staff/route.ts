@@ -22,8 +22,8 @@ export async function POST(request: Request) {
       }
     );
 
-    const { data: { session } } = await supabaseServer.auth.getSession();
-    const callerRole = session?.user?.user_metadata?.role as string | undefined;
+    const { data: { user } } = await supabaseServer.auth.getUser();
+    const callerRole = user?.user_metadata?.role as string | undefined;
 
     if (callerRole !== 'platform_admin' && callerRole !== 'admin') {
       return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     }
 
     // ── Prevent self-deletion ────────────────────────────────────────────────
-    const callerStaffId = session?.user?.user_metadata?.staff_id;
+    const callerStaffId = user?.user_metadata?.staff_id;
     if (callerStaffId === id) {
       return NextResponse.json({ error: 'You cannot delete your own account.' }, { status: 400 });
     }

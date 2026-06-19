@@ -35,14 +35,10 @@ export default function SystemAdminSetup() {
       if (!user) {
         router.replace('/system-admin/login');
       } else if (!isPlatformAdmin) {
-        if (isAdmin) {
-          router.replace('/admin');
-        } else {
-          router.replace('/');
-        }
+        router.replace('/system-admin/login');
       }
     }
-  }, [user, authLoading, isPlatformAdmin, isAdmin, router]);
+  }, [user, authLoading, isPlatformAdmin, router]);
 
 
   // Facility Form
@@ -66,6 +62,14 @@ export default function SystemAdminSetup() {
   const [facError, setFacError] = useState('');
   const [adminFeedback, setAdminFeedback] = useState('');
   const [adminError, setAdminError] = useState('');
+
+  // Editing Admin State
+  const [editingAdminId, setEditingAdminId] = useState<string | null>(null);
+  const [editAdminName, setEditAdminName] = useState('');
+  const [editAdminEmail, setEditAdminEmail] = useState('');
+  const [editAdminEmpId, setEditAdminEmpId] = useState('');
+  const [editAdminFacilityId, setEditAdminFacilityId] = useState('');
+  const [editAdminPassword, setEditAdminPassword] = useState('');
 
   const loadFacilities = async () => {
     try {
@@ -223,6 +227,40 @@ export default function SystemAdminSetup() {
       loadFacilities();
     } catch (err: any) {
       setAdminError(err.message || 'Failed to delete admin.');
+    }
+  };
+
+  const handleUpdateAdmin = async (id: string) => {
+    setAdminError('');
+    setAdminFeedback('');
+    try {
+      if (!editAdminName || !editAdminEmail || !editAdminEmpId || !editAdminFacilityId) {
+        throw new Error('Name, Email, Employee ID, and Facility are required.');
+      }
+
+      const res = await fetch('/api/auth/update-staff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          name: editAdminName.trim(),
+          role: 'admin',
+          employeeId: editAdminEmpId.trim(),
+          email: editAdminEmail.trim().toLowerCase(),
+          facilityId: editAdminFacilityId,
+          password: editAdminPassword ? editAdminPassword : undefined
+        })
+      });
+
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to update admin account');
+
+      setAdminFeedback('Admin account updated successfully.');
+      setEditingAdminId(null);
+      setEditAdminPassword('');
+      loadFacilities();
+    } catch (err: any) {
+      setAdminError(err.message || 'Failed to update admin.');
     }
   };
 
@@ -528,17 +566,58 @@ export default function SystemAdminSetup() {
                   {admins.map((adm) => (
                     <tr key={adm.id} className="hover:bg-white/50 dark:hover:bg-white/10 transition-colors">
                       <td className="p-4 font-semibold text-slate-800 dark:text-slate-200">
-                        <div>{adm.name}</div>
-                        <div className="text-[10px] text-text-secondary font-medium">{adm.email}</div>
+                        {editingAdminId === adm.id ? (
+                          <div className="space-y-2">
+                            <input type="text" value={editAdminName} onChange={e => setEditAdminName(e.target.value)} className="w-full h-8 bg-white/80 dark:bg-black/40 border border-white/60 dark:border-white/10 rounded px-2 text-xs focus:outline-none" placeholder="Name" />
+                            <input type="email" value={editAdminEmail} onChange={e => setEditAdminEmail(e.target.value)} className="w-full h-8 bg-white/80 dark:bg-black/40 border border-white/60 dark:border-white/10 rounded px-2 text-xs focus:outline-none" placeholder="Email" />
+                          </div>
+                        ) : (
+                          <>
+                            <div>{adm.name}</div>
+                            <div className="text-[10px] text-text-secondary font-medium">{adm.email}</div>
+                          </>
+                        )}
                       </td>
                       <td className="p-4 font-medium text-text-secondary">
-                        <div className="font-mono text-xs text-primary">{adm.employee_id}</div>
-                        <div className="text-[10px]">{adm.facilities?.name || 'Unknown'}</div>
+                        {editingAdminId === adm.id ? (
+                          <div className="space-y-2">
+                            <input type="text" value={editAdminEmpId} onChange={e => setEditAdminEmpId(e.target.value)} className="w-full h-8 bg-white/80 dark:bg-black/40 border border-white/60 dark:border-white/10 rounded px-2 text-xs focus:outline-none" placeholder="Emp ID" />
+                            <select value={editAdminFacilityId} onChange={e => setEditAdminFacilityId(e.target.value)} className="w-full h-8 bg-white/80 dark:bg-black/40 border border-white/60 dark:border-white/10 rounded px-2 text-xs focus:outline-none">
+                              {facilities.map(f => (
+                                <option key={f.id} value={f.id}>{f.name}</option>
+                              ))}
+                            </select>
+                            <input type="password" value={editAdminPassword} onChange={e => setEditAdminPassword(e.target.value)} className="w-full h-8 bg-white/80 dark:bg-black/40 border border-white/60 dark:border-white/10 rounded px-2 text-xs focus:outline-none" placeholder="New Password (optional)" />
+                          </div>
+                        ) : (
+                          <>
+                            <div className="font-mono text-xs text-primary">{adm.employee_id}</div>
+                            <div className="text-[10px]">{adm.facilities?.name || 'Unknown'}</div>
+                          </>
+                        )}
                       </td>
                       <td className="p-4 text-right">
-                        <button onClick={() => handleDeleteAdmin(adm.id, adm.name)} className="p-2 text-red-500 bg-white/60 dark:bg-white/5 rounded-xl hover:bg-white dark:hover:bg-white/10 transition-colors shadow-sm">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex justify-end gap-2">
+                          {editingAdminId === adm.id ? (
+                            <>
+                              <button onClick={() => handleUpdateAdmin(adm.id)} className="p-2 text-emerald-600 bg-white/60 dark:bg-white/5 rounded-xl hover:bg-white dark:hover:bg-white/10 transition-colors shadow-sm" title="Save changes">
+                                <Save className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => { setEditingAdminId(null); setEditAdminPassword(''); }} className="p-2 text-slate-500 bg-white/60 dark:bg-white/5 rounded-xl hover:bg-white dark:hover:bg-white/10 transition-colors shadow-sm" title="Cancel">
+                                <X className="w-4 h-4" />
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button onClick={() => { setEditingAdminId(adm.id); setEditAdminName(adm.name); setEditAdminEmail(adm.email || ''); setEditAdminEmpId(adm.employee_id || ''); setEditAdminFacilityId(adm.facility_id || ''); }} className="p-2 text-slate-600 dark:text-slate-300 bg-white/60 dark:bg-white/5 rounded-xl hover:bg-white dark:hover:bg-white/10 transition-colors shadow-sm" title="Edit Admin">
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+                              <button onClick={() => handleDeleteAdmin(adm.id, adm.name)} className="p-2 text-red-500 bg-white/60 dark:bg-white/5 rounded-xl hover:bg-white dark:hover:bg-white/10 transition-colors shadow-sm" title="Delete Admin">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}

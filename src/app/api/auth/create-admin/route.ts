@@ -12,7 +12,7 @@ import bcrypt from 'bcryptjs';
  * Platform-admin only. Returns facilities + existing admin list (used by system-admin UI).
  */
 
-async function getPlatformAdminSession() {
+async function getPlatformAdminUser() {
   const cookieStore = await cookies();
   const supabaseServer = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -24,15 +24,15 @@ async function getPlatformAdminSession() {
       },
     }
   );
-  const { data: { session } } = await supabaseServer.auth.getSession();
-  return session;
+  const { data: { user } } = await supabaseServer.auth.getUser();
+  return user;
 }
 
 export async function POST(request: Request) {
   try {
-    const session = await getPlatformAdminSession();
+    const user = await getPlatformAdminUser();
 
-    if (session?.user?.user_metadata?.role !== 'platform_admin') {
+    if (user?.user_metadata?.role !== 'platform_admin') {
       return NextResponse.json({ error: 'Forbidden: platform admin access required.' }, { status: 403 });
     }
 
@@ -104,7 +104,7 @@ export async function POST(request: Request) {
     // Audit log
     try {
       await supabaseAdmin.from('audit_logs').insert([{
-        actor_id: session.user.id,
+        actor_id: user.id,
         actor_role: 'platform_admin',
         action_type: 'CREATE_FACILITY_ADMIN',
         target_entity: {
@@ -126,9 +126,9 @@ export async function POST(request: Request) {
 
 export async function GET() {
   try {
-    const session = await getPlatformAdminSession();
+    const user = await getPlatformAdminUser();
 
-    if (session?.user?.user_metadata?.role !== 'platform_admin') {
+    if (user?.user_metadata?.role !== 'platform_admin') {
       return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
     }
 

@@ -25,55 +25,70 @@ function CustomTooltip({
   return (
     <div
       {...tooltipProps}
-      className={`w-[340px] p-5 rounded-2xl border backdrop-blur-md shadow-2xl transition-all duration-300 ${
+      className={`w-[360px] p-6 rounded-[28px] border backdrop-blur-2xl shadow-2xl transition-all duration-300 relative animate-in fade-in-50 zoom-in-95 ${
         isDark
-          ? 'bg-[#18181c]/95 border-zinc-800 text-zinc-100 shadow-black/40'
-          : 'bg-white/95 border-slate-200/80 text-slate-800 shadow-slate-200/50'
+          ? 'bg-slate-900/95 border-slate-800/80 text-slate-100 shadow-black/60'
+          : 'bg-white/95 border-slate-200/60 text-slate-850 shadow-slate-200/50'
       }`}
     >
+      {/* Header Accent Badge & Close Button */}
+      <div className="flex items-center justify-between mb-5">
+        <span className={`text-[10px] font-extrabold uppercase tracking-widest px-3 py-1.5 rounded-full ${
+          isDark ? 'bg-teal-500/10 text-teal-400 border border-teal-500/20' : 'bg-primary/10 text-primary border border-primary/20'
+        }`}>
+          ✨ Clinical Guide
+        </span>
+        <button
+          {...skipProps}
+          className={`p-1.5 rounded-full transition-all hover:scale-105 ${
+            isDark ? 'text-slate-500 hover:text-slate-200 hover:bg-slate-800' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+          }`}
+          title="Exit Tour"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+
       {/* Title / Header */}
       {step.title && (
-        <div className="mb-2 font-semibold text-base tracking-tight">
+        <h3 className="mb-2 font-extrabold text-base tracking-tight text-text-primary">
           {step.title}
-        </div>
+        </h3>
       )}
 
       {/* Content */}
-      <div className={`text-sm leading-relaxed ${isDark ? 'text-zinc-300' : 'text-slate-600'}`}>
+      <p className={`text-xs leading-relaxed font-medium ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
         {step.content}
-      </div>
+      </p>
 
-      {/* Progress & Actions Footer */}
-      <div className="mt-5 flex items-center justify-between border-t pt-4 border-slate-100 dark:border-zinc-800/60">
-        {/* Progress indicator */}
-        <div className={`text-xs font-semibold ${isDark ? 'text-zinc-500' : 'text-slate-400'}`}>
-          {index + 1} <span className="opacity-60">of</span> {size}
+      {/* Footer Navigation & Progress Indicator */}
+      <div className="mt-7 flex items-center justify-between">
+        {/* Progress Dots Indicator */}
+        <div className="flex items-center gap-1.5">
+          {Array.from({ length: size }).map((_, i) => (
+            <div
+              key={i}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                i === index
+                  ? `w-4 ${isDark ? 'bg-teal-400 shadow-[0_0_8px_rgba(20,184,166,0.6)]' : 'bg-primary'}`
+                  : `w-1.5 ${isDark ? 'bg-slate-800' : 'bg-slate-200'}`
+              }`}
+            />
+          ))}
         </div>
 
         {/* Navigation Buttons */}
         <div className="flex items-center gap-2">
-          {/* Skip Button (hidden on last step) */}
-          {!isLastStep && (
-            <button
-              {...skipProps}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                isDark
-                  ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
-              }`}
-            >
-              Skip
-            </button>
-          )}
-
           {/* Back Button */}
           {index > 0 && (
             <button
               {...backProps}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              className={`px-4 py-2.5 rounded-xl text-[11px] font-bold transition-all border outline-none active:scale-95 cursor-pointer ${
                 isDark
-                  ? 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50'
-                  : 'text-slate-500 hover:text-slate-800 hover:bg-slate-100'
+                  ? 'text-slate-350 border-slate-800 hover:bg-slate-800/80 hover:text-slate-100'
+                  : 'text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-850'
               }`}
             >
               Back
@@ -83,9 +98,16 @@ function CustomTooltip({
           {/* Next / Done Button */}
           <button
             {...primaryProps}
-            className={`px-4 py-1.5 rounded-lg text-xs font-semibold shadow-sm transition-all text-white bg-blue-600 hover:bg-blue-500 hover:shadow-blue-500/20 active:scale-95`}
+            className={`px-4.5 py-2.5 rounded-xl text-[11px] font-bold shadow-md transition-all text-white active:scale-95 flex items-center gap-1.5 cursor-pointer outline-none ${
+              isDark
+                ? 'bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-400 hover:to-emerald-400 shadow-teal-500/20'
+                : 'bg-gradient-to-r from-primary to-teal-400 hover:opacity-95 shadow-primary/20'
+            }`}
           >
-            {isLastStep ? 'Done' : 'Next'}
+            <span>{isLastStep ? 'Done' : 'Next'}</span>
+            <svg className="w-3 h-3 transition-transform group-hover:translate-x-0.5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
           </button>
         </div>
       </div>
@@ -97,6 +119,8 @@ export default function OnboardingTour() {
   const { user } = useAuth();
   const pathname = usePathname();
   const [run, setRun] = useState(false);
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
 
   const pageType = pathname === '/shift' ? 'shift' : 'dashboard';
 
@@ -124,49 +148,49 @@ export default function OnboardingTour() {
     {
       target: 'body',
       title: 'Welcome to Handoverly 👋',
-      content: 'Let us show you around your live care dashboard. This will only take a minute.',
+      content: 'Welcome to your real-time synchronization center. Let\'s get you familiarized with the clinical communication suite.',
       placement: 'center',
       skipBeacon: true,
     },
     {
       target: '#tour-theme-toggle',
       title: 'Appearance Mode 🌗',
-      content: 'Switch between Day and Night mode for comfortable viewing at any time.',
+      content: 'Toggle between Day and Night mode to ensure high readability during standard and overnight shifts.',
       placement: 'bottom',
       skipBeacon: true,
     },
     {
       target: '#tour-shift-action',
-      title: 'Active Shift Tasks 📋',
-      content: 'Access your current shift tasks and detailed handovers directly from here.',
+      title: 'Active Registry Roster 📋',
+      content: 'Access resident profiles, shift activities, and validate clinical summaries directly from here.',
       placement: 'bottom',
       skipBeacon: true,
     },
     {
       target: '#tour-role-switcher',
-      title: 'Role Switcher 🔄',
-      content: 'Toggle between Carer and RN views to view role-specific tasks and medical summaries.',
+      title: 'Clinical Role Customization 🔄',
+      content: 'Seamlessly toggle between Carer (task-oriented checklists) and RN (ISBAR summary and medical validation) views.',
       placement: 'bottom',
       skipBeacon: true,
     },
     {
       target: '#tour-calendar',
-      title: 'Shift Calendar 📅',
-      content: 'Navigate between days to review past shift handovers or prepare for upcoming ones.',
+      title: 'Temporal Registry Navigator 📅',
+      content: 'Navigate across shift dates to review historical clinical records or prepare for upcoming handovers.',
       placement: 'bottom',
       skipBeacon: true,
     },
     {
       target: '#tour-urgency-filter',
-      title: 'Urgency Filters ⚠️',
-      content: 'Quickly filter handovers by severity level: Critical, Attention, or Routine.',
+      title: 'Risk Urgency Triage ⚠️',
+      content: 'Instantly filter patient handovers by critical status, ensuring immediate attention to high-risk residents.',
       placement: 'bottom',
       skipBeacon: true,
     },
     {
       target: '#tour-search',
-      title: 'Smart Resident Search 🔍',
-      content: 'Search for specific resident names or room numbers instantly.',
+      title: 'Dynamic Resident Locator 🔍',
+      content: 'Locate residents instantly by typing their name, room number, or ward details.',
       placement: 'bottom',
       skipBeacon: true,
     },
@@ -176,56 +200,56 @@ export default function OnboardingTour() {
     {
       target: 'body',
       title: 'Welcome to your Shift Registry 🏥',
-      content: 'This is your central clinical workspace for managing resident admissions and recordings.',
+      content: 'This is your central workspace. Manage patient statuses, validate AI-generated clinical insights, and publish handovers.',
       placement: 'center',
       skipBeacon: true,
     },
     {
       target: '#tour-nav-registry',
-      title: 'Shift Registry List 📋',
-      content: 'This lists all active residents in your facility for this shift.',
+      title: 'Active Patient Roster 📋',
+      content: 'This lists all active residents currently assigned to this facility for the active shift.',
       placement: 'bottom',
       skipBeacon: true,
     },
     {
       target: '#tour-nav-tasks',
-      title: 'Shift Tasks ⚡',
-      content: 'Click here to access active shift tasks, completions, and declines.',
+      title: 'Clinical Task Suite ⚡',
+      content: 'Track active shift activities, checklist completions, and outstanding care directives.',
       placement: 'bottom',
       skipBeacon: true,
     },
     {
       target: '#tour-nav-dashboard',
-      title: 'Live Facility Dashboard 📊',
-      content: 'Click here to view live facility status, statistics, calendar, and role switchers.',
+      title: 'Real-Time Dashboard 📊',
+      content: 'Return to the main dashboard to view facility statistics, calendar views, and triage details.',
       placement: 'bottom',
       skipBeacon: true,
     },
     {
       target: '#tour-register-resident',
-      title: 'Register Resident ➕',
-      content: 'Quickly admit a new resident profile to the registry instantly.',
+      title: 'New Patient Admission ➕',
+      content: 'Admit a new resident profile to the registry database, assigning room numbers and care levels.',
       placement: 'bottom',
       skipBeacon: true,
     },
     {
       target: '#tour-resident-search',
-      title: 'Find Resident 🔍',
-      content: 'Search resident profiles by name or room number instantly.',
+      title: 'Smart Index Finder 🔍',
+      content: 'Filter the registry instantly to check on a specific resident\'s clinical status.',
       placement: 'bottom',
       skipBeacon: true,
     },
     {
       target: '#tour-wing-filter',
-      title: 'Wing Filter 🏢',
-      content: 'Filter the resident list by specific wings or areas.',
+      title: 'Ward Allocation Filter 🏢',
+      content: 'Segment residents by wings or specialized care units for optimized shift management.',
       placement: 'bottom',
       skipBeacon: true,
     },
     {
       target: '#tour-shift-tabs',
-      title: 'Registry States 🔄',
-      content: 'Toggle between All, Pending (awaiting handovers), and Completed handovers.',
+      title: 'Workflow State Triage 🔄',
+      content: 'Monitor completion progress by toggling between All, Pending (needs logs), and Published handovers.',
       placement: 'bottom',
       skipBeacon: true,
     },
@@ -245,8 +269,9 @@ export default function OnboardingTour() {
         zIndex: 10000,
         scrollOffset: 120,
         overlayClickAction: false,
-        spotlightRadius: 12,
+        spotlightRadius: 16,
         blockTargetInteraction: false,
+        arrowColor: isDark ? '#0f172a' : '#ffffff',
       }}
     />
   );

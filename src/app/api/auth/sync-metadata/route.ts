@@ -28,8 +28,8 @@ export async function POST(request: Request) {
             }
         );
 
-        const { data: { session } } = await supabaseServer.auth.getSession();
-        if (session?.user?.user_metadata?.role !== 'platform_admin') {
+        const { data: { user } } = await supabaseServer.auth.getUser();
+        if (user?.user_metadata?.role !== 'platform_admin') {
             return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
         }
 

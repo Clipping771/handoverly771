@@ -41,13 +41,13 @@ export default function Dashboard() {
     if (!authLoading) {
       if (!user) {
         router.replace('/login');
-      } else if (isPlatformAdmin) {
-        router.replace('/system-admin');
       } else if (isAdmin) {
         router.replace('/admin');
+      } else if (isPlatformAdmin) {
+        router.replace('/system-admin');
       }
     }
-  }, [authLoading, user, isPlatformAdmin, isAdmin, router]);
+  }, [authLoading, user, isAdmin, isPlatformAdmin, router]);
 
   const [handovers, setHandovers] = useState<HandoverWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -141,7 +141,7 @@ export default function Dashboard() {
         .from('handovers')
         .select('shift_date')
         .eq('facility_id', facility.id)
-        .eq('is_approved', true);
+        .eq('status', 'published');
 
       if (error) throw error;
       if (data) {
@@ -177,7 +177,7 @@ export default function Dashboard() {
           staff (name)
         `)
         .eq('facility_id', facility.id)
-        .eq('is_approved', true)
+        .eq('status', 'published')
         .eq('shift_date', dateStr);
 
       if (error) throw error;

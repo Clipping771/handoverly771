@@ -25,8 +25,8 @@ export async function POST(request: Request) {
       }
     );
 
-    const { data: { session } } = await supabaseServer.auth.getSession();
-    const callerRole = session?.user?.user_metadata?.role as string | undefined;
+    const { data: { user } } = await supabaseServer.auth.getUser();
+    const callerRole = user?.user_metadata?.role as string | undefined;
 
     const isAuthorized =
       callerRole === 'platform_admin' ||

@@ -119,7 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
-      
+
       if (event === 'SIGNED_OUT') {
         resolveUser(null);
         setIsLoading(false);
@@ -132,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: { user } } = await supabase.auth.getUser();
         resolveUser(user);
       }
-      
+
       setIsLoading(false);
     });
 
@@ -186,7 +186,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut();
     setUser(null);
     setFacility(null);
-    
+
     // Intelligently redirect to the correct login portal
     if (pathname?.startsWith('/admin')) {
       router.replace('/admin/login');
@@ -208,21 +208,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const { isCarer, isRN, isAdmin, isPlatformAdmin } = computeRoles(user?.role);
 
+  // Memoize the context value so consumers only re-render when something
+  // actually changes, not on every AuthProvider render cycle.
+  const contextValue = React.useMemo(() => ({
+    user,
+    facility,
+    isLoading,
+    login,
+    logout,
+    refreshUser,
+    isCarer,
+    isRN,
+    isAdmin,
+    isPlatformAdmin,
+  }), [user, facility, isLoading, login, logout, refreshUser, isCarer, isRN, isAdmin, isPlatformAdmin]);
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        facility,
-        isLoading,
-        login,
-        logout,
-        refreshUser,
-        isCarer,
-        isRN,
-        isAdmin,
-        isPlatformAdmin,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

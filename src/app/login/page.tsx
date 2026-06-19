@@ -8,24 +8,59 @@ import Link from 'next/link';
 import { ShieldAlert, LogIn, User, Lock, Sun, Moon, HeartPulse, Eye, EyeOff } from 'lucide-react';
 
 export default function Login() {
-  return (
-    <React.Suspense fallback={<div>Loading...</div>}>
-      <LoginContent />
-    </React.Suspense>
-  );
-}
-
-function LoginContent() {
-  const { login, user, isLoading, isCarer, isAdmin, isPlatformAdmin } = useAuth();
-  const { theme, toggleTheme } = useTheme();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
+  // State lives here, above Suspense, so it survives any inner remount
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Context hooks here — so LoginContent never subscribes to context directly
+  const { login, user, isLoading, isAdmin, isPlatformAdmin } = useAuth();
+  const { theme, toggleTheme } = useTheme();
+
+  return (
+    <React.Suspense fallback={<div>Loading...</div>}>
+      <LoginContent
+        username={username} setUsername={setUsername}
+        password={password} setPassword={setPassword}
+        showPassword={showPassword} setShowPassword={setShowPassword}
+        error={error} setError={setError}
+        isSubmitting={isSubmitting} setIsSubmitting={setIsSubmitting}
+        login={login} user={user} isLoading={isLoading}
+        isAdmin={isAdmin} isPlatformAdmin={isPlatformAdmin}
+        theme={theme} toggleTheme={toggleTheme}
+      />
+    </React.Suspense>
+  );
+}
+
+interface LoginContentProps {
+  username: string; setUsername: (v: string) => void;
+  password: string; setPassword: (v: string) => void;
+  showPassword: boolean; setShowPassword: React.Dispatch<React.SetStateAction<boolean>>;
+  error: string; setError: (v: string) => void;
+  isSubmitting: boolean; setIsSubmitting: (v: boolean) => void;
+  login: ReturnType<typeof useAuth>['login'];
+  user: ReturnType<typeof useAuth>['user'];
+  isLoading: boolean;
+  isAdmin: boolean;
+  isPlatformAdmin: boolean;
+  theme: string;
+  toggleTheme: () => void;
+}
+
+function LoginContent({
+  username, setUsername,
+  password, setPassword,
+  showPassword, setShowPassword,
+  error, setError,
+  isSubmitting, setIsSubmitting,
+  login, user, isLoading, isAdmin, isPlatformAdmin,
+  theme, toggleTheme,
+}: LoginContentProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   // Redirect already-authenticated users to their appropriate home
   useEffect(() => {
@@ -36,9 +71,9 @@ function LoginContent() {
         return;
       }
       if (isPlatformAdmin) {
-        router.replace('/system-admin');
+        router.replace('/system-admin?_cb=' + Date.now());
       } else if (isAdmin) {
-        router.replace('/admin');
+        router.replace('/admin?_cb=' + Date.now());
       } else {
         router.replace('/');
       }
@@ -62,16 +97,15 @@ function LoginContent() {
     // On success the onAuthStateChange → useEffect above handles redirect
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
-        <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen w-full relative flex items-center justify-center bg-background overflow-hidden font-sans p-4">
+
+      {/* Loading overlay — form stays mounted underneath to preserve state */}
+      {isLoading && (
+        <div className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm flex items-center justify-center">
+          <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
+        </div>
+      )}
 
       {/* Ambient gradient (layout mesh shines through) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -107,6 +141,21 @@ function LoginContent() {
             <p className="text-[11px] font-bold text-primary uppercase tracking-[0.22em]">Nurses & Carers Portal</p>
           </div>
 
+          <div className="flex bg-slate-100 dark:bg-slate-800/50 p-1 rounded-full mb-6">
+            <Link
+              href="/login"
+              className="flex-1 py-2 text-center text-sm font-bold rounded-full transition-all bg-white dark:bg-slate-700 text-primary shadow-sm"
+            >
+              Login
+            </Link>
+            <Link
+              href="/register"
+              className="flex-1 py-2 text-center text-sm font-bold rounded-full transition-all text-text-secondary hover:text-text-primary"
+            >
+              Register
+            </Link>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
 
             <div className="space-y-1.5 group/input">
@@ -120,7 +169,8 @@ function LoginContent() {
                   placeholder="e.g. EMP1001"
                   value={username}
                   onChange={e => setUsername(e.target.value)}
-                  autoComplete="username"
+                  name="employeeId"
+                  autoComplete="off"
                   className="w-full h-12 bg-white/60 dark:bg-slate-800/60 border border-white/60 dark:border-white/10 rounded-full pl-11 pr-4 text-sm font-medium text-text-primary placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all shadow-inner"
                 />
               </div>
@@ -137,7 +187,8 @@ function LoginContent() {
                   placeholder="••••••••"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  autoComplete="current-password"
+                  name="userPassword"
+                  autoComplete="new-password"
                   className="w-full h-12 bg-white/60 dark:bg-slate-800/60 border border-white/60 dark:border-white/10 rounded-full pl-11 pr-11 text-sm font-medium tracking-wider text-text-primary placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all shadow-inner"
                 />
                 <button

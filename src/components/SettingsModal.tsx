@@ -306,28 +306,30 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               </div>
             </div>
 
-            {/* OpenRouter Model Selector — always shown */}
-            <div className="space-y-1.5">
-              <CustomModelSelector
-                value={openrouterModel}
-                onChange={setOpenrouterModel}
-                apiKey={openrouterKey}
-                provider="openrouter"
-              />
-            </div>
+            {/* Model Selector based on Active Provider */}
+            {activeProvider === 'openrouter' && (
+              <div className="space-y-1.5">
+                <CustomModelSelector
+                  value={openrouterModel}
+                  onChange={setOpenrouterModel}
+                  apiKey={openrouterKey}
+                  provider="openrouter"
+                />
+              </div>
+            )}
 
-            {/* Groq Model Selector — always shown */}
-            <div className="space-y-1.5">
-              <CustomModelSelector
-                value={groqModel}
-                onChange={setGroqModel}
-                apiKey={groqKey}
-                provider="groq"
-              />
-            </div>
+            {activeProvider === 'groq' && (
+              <div className="space-y-1.5">
+                <CustomModelSelector
+                  value={groqModel}
+                  onChange={setGroqModel}
+                  apiKey={groqKey}
+                  provider="groq"
+                />
+              </div>
+            )}
 
-            {/* Gemini Model Selector — shown when key is entered */}
-            {geminiKey.trim().length > 5 && (
+            {activeProvider === 'gemini' && (
               <div className="space-y-1.5">
                 <CustomModelSelector
                   value={geminiModel}
@@ -338,8 +340,7 @@ export default function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
               </div>
             )}
 
-            {/* OpenAI Model Selector — shown when key is entered */}
-            {openaiKey.trim().length > 5 && (
+            {activeProvider === 'openai' && (
               <div className="space-y-1.5">
                 <CustomModelSelector
                   value={openaiModel}

@@ -22,7 +22,7 @@ interface HandoverEntry {
   carer_tasks?: any[];
   created_at: string;
   approved_at: string;
-  is_approved: boolean;
+  status: string;
   user: { name: string; role: string } | null;
 }
 
@@ -77,7 +77,7 @@ export default function FullHandoverReport({ onClose }: FullHandoverReportProps)
         const { data: handoverData } = await supabase
           .from('handovers')
           .select(`
-            id, resident_id, shift_type, shift_date, urgency, raw_input, rn_summary, carer_tasks, created_at, approved_at, is_approved,
+            id, resident_id, shift_type, shift_date, urgency, raw_input, rn_summary, carer_tasks, created_at, approved_at, status,
             user:submitted_by(name, role)
           `)
           .eq('facility_id', facility.id)
