@@ -69,13 +69,9 @@ export default function TasksPage() {
     if (!authLoading) {
       if (!user) {
         router.replace('/login');
-      } else if (isAdmin) {
-        router.replace('/admin');
-      } else if (isPlatformAdmin) {
-        router.replace('/system-admin');
       }
     }
-  }, [user, authLoading, isAdmin, isPlatformAdmin, router]);
+  }, [user, authLoading, router]);
 
 
 
