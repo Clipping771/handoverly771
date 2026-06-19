@@ -171,7 +171,7 @@ export default function SmartSearch() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const loadedUserIdRef = useRef<string | null>(null);
+  const [messagesOwnerId, setMessagesOwnerId] = useState<string | null>(null);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -203,30 +203,33 @@ export default function SmartSearch() {
     }
   }, [messages, isOpen]);
 
+  // Load messages when user changes
   useEffect(() => {
+    setIsOpen(false); // Close drawer for security on logout/switch
     if (user?.id) {
       const saved = localStorage.getItem(`handoverly_chat_${user.id}`);
+      let parsed = [];
       if (saved) {
         try {
-          setMessages(JSON.parse(saved));
+          parsed = JSON.parse(saved);
         } catch (e) {
-          setMessages([]);
+          parsed = [];
         }
-      } else {
-        setMessages([]);
       }
-      loadedUserIdRef.current = user.id;
+      setMessages(parsed);
+      setMessagesOwnerId(user.id);
     } else {
       setMessages([]);
-      loadedUserIdRef.current = null;
+      setMessagesOwnerId(null);
     }
   }, [user?.id]);
 
+  // Save messages when they change, but ONLY if they belong to the currently logged in user
   useEffect(() => {
-    if (user?.id && loadedUserIdRef.current === user.id) {
+    if (user?.id && messagesOwnerId === user.id) {
       localStorage.setItem(`handoverly_chat_${user.id}`, JSON.stringify(messages));
     }
-  }, [messages, user?.id]);
+  }, [messages, user?.id, messagesOwnerId]);
 
   // Fetch active residents to make suggestion chips dynamic and relevant
   useEffect(() => {
