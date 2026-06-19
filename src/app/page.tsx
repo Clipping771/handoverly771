@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import HeaderThemeSelector from '@/components/HeaderThemeSelector';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { User2, LogOut, Clock, ShieldAlert, Sparkles, Brain, CheckCircle2, Activity, Inbox, Volume2, Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, HeartHandshake } from 'lucide-react';
+import { User2, LogOut, Clock, ShieldAlert, ShieldCheck, Sparkles, Brain, CheckCircle2, Activity, Inbox, Volume2, Search, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, HeartHandshake } from 'lucide-react';
 import Link from 'next/link';
 import AdvancedCalendar from '@/components/AdvancedCalendar';
 import OnboardingTour from '@/components/OnboardingTour';
@@ -36,18 +36,34 @@ export default function Dashboard() {
   const { theme, toggleTheme } = useTheme();
   const router = useRouter();
 
+  const [platformFacilities, setPlatformFacilities] = useState<any[]>([]);
+  const [selectedPlatformFacility, setSelectedPlatformFacility] = useState<any>(null);
+  const activeFacility = facility || selectedPlatformFacility;
+
+  // Fetch all facilities if platform admin
+  useEffect(() => {
+    if (isPlatformAdmin) {
+      const fetchFacilities = async () => {
+        const { data, error } = await supabase.from('facilities').select('*');
+        if (!error && data) {
+          setPlatformFacilities(data);
+          if (data.length > 0 && !selectedPlatformFacility) {
+            setSelectedPlatformFacility(data[0]);
+          }
+        }
+      };
+      fetchFacilities();
+    }
+  }, [isPlatformAdmin, selectedPlatformFacility]);
+
   // Auth redirects — must be in useEffect, not during render
   useEffect(() => {
     if (!authLoading) {
       if (!user) {
         router.replace('/login');
-      } else if (isAdmin) {
-        router.replace('/admin');
-      } else if (isPlatformAdmin) {
-        router.replace('/system-admin');
       }
     }
-  }, [authLoading, user, isAdmin, isPlatformAdmin, router]);
+  }, [authLoading, user, router]);
 
   const [handovers, setHandovers] = useState<HandoverWithDetails[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,12 +151,12 @@ export default function Dashboard() {
   }, [user, authLoading, router, isCarer]);
 
   const fetchAvailableDates = async () => {
-    if (!facility) return;
+    if (!activeFacility) return;
     try {
       const { data, error } = await supabase
         .from('handovers')
         .select('shift_date')
-        .eq('facility_id', facility.id)
+        .eq('facility_id', activeFacility.id)
         .eq('status', 'published');
 
       if (error) throw error;
@@ -154,7 +170,7 @@ export default function Dashboard() {
   };
 
   const fetchHandovers = async () => {
-    if (!facility) return;
+    if (!activeFacility) return;
     try {
       setLoading(true);
       const year = selectedDate.getFullYear();
@@ -176,7 +192,7 @@ export default function Dashboard() {
           residents!inner (name, room_number, care_level, is_active),
           staff (name)
         `)
-        .eq('facility_id', facility.id)
+        .eq('facility_id', activeFacility.id)
         .eq('status', 'published')
         .eq('shift_date', dateStr);
 
@@ -212,7 +228,7 @@ export default function Dashboard() {
   };
 
   const fetchSentinelData = async () => {
-    if (!facility) return;
+    if (!activeFacility) return;
     try {
       const { data: facilityTasks } = await supabase
         .from('tasks')
@@ -221,7 +237,7 @@ export default function Dashboard() {
           resident:residents(name, room_number, is_active),
           handover:handovers(urgency)
         `)
-        .eq('facility_id', facility.id)
+        .eq('facility_id', activeFacility.id)
         .or('is_completed.is.null,is_completed.eq.false');
 
       const filteredTasks = (facilityTasks || []).filter((t: any) => {
@@ -234,7 +250,7 @@ export default function Dashboard() {
       const { data: cachedInsights } = await supabase
         .from('resident_insights')
         .select('resident_id, insights, residents:residents(name, room_number, is_active)')
-        .eq('facility_id', facility.id);
+        .eq('facility_id', activeFacility.id);
         
       const allAlerts: any[] = [];
       (cachedInsights || []).forEach((row: any) => {
@@ -258,14 +274,14 @@ export default function Dashboard() {
   };
 
   const handleAcknowledgeAlert = async (alertId: string, alertMessage: string, residentId?: string) => {
-    if (!user || !facility) return;
+    if (!user || !activeFacility) return;
     try {
       const { error } = await supabase
         .from('activity_timeline')
         .insert({
           resident_id: residentId || 'unknown',
           staff_id: user.id,
-          facility_id: facility.id,
+          facility_id: activeFacility.id,
           action_type: 'insight_acknowledged',
           description: `Acknowledged alert: ${alertId} (${alertMessage.substring(0, 45)}...) by ${user.name}`,
           metadata: { alert_id: alertId }
@@ -287,7 +303,7 @@ export default function Dashboard() {
   };
 
   const handleAcknowledgeTask = async (taskId: string) => {
-    if (!user || !facility) return;
+    if (!user || !activeFacility) return;
     try {
       const { error } = await supabase
         .from('tasks')
@@ -308,7 +324,7 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    if (!facility) {
+    if (!activeFacility) {
       setLoading(false);
       return;
     }
@@ -328,7 +344,7 @@ export default function Dashboard() {
       .channel('home-dashboard-updates')
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'handovers', filter: `facility_id=eq.${facility.id}` },
+        { event: '*', schema: 'public', table: 'handovers', filter: `facility_id=eq.${activeFacility.id}` },
         () => {
           fetchHandovers();
           fetchAvailableDates();
@@ -336,14 +352,14 @@ export default function Dashboard() {
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'tasks', filter: `facility_id=eq.${facility.id}` },
+        { event: '*', schema: 'public', table: 'tasks', filter: `facility_id=eq.${activeFacility.id}` },
         () => {
           fetchSentinelData();
         }
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'resident_insights', filter: `facility_id=eq.${facility.id}` },
+        { event: '*', schema: 'public', table: 'resident_insights', filter: `facility_id=eq.${activeFacility.id}` },
         () => {
           fetchSentinelData();
         }
@@ -353,7 +369,7 @@ export default function Dashboard() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [facility, selectedDate]);
+  }, [activeFacility, selectedDate]);
 
   const handleLogout = () => {
     logout();
@@ -369,7 +385,7 @@ export default function Dashboard() {
     }
   }, { dependencies: [paginatedGroups] });
 
-  if (authLoading || !user || !facility) {
+  if (authLoading || !user || (!activeFacility && !isPlatformAdmin)) {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center">
         <div className="w-12 h-12 border-[3px] border-teal-accent border-t-transparent rounded-full animate-spin"></div>
@@ -389,13 +405,50 @@ export default function Dashboard() {
               <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center font-bold text-lg text-primary border border-primary/20">
                 H
               </div>
-              <h1 className="text-[18px] font-bold text-text-primary tracking-tight">
-                {facility.name}
-              </h1>
+              {isPlatformAdmin && platformFacilities.length > 0 ? (
+                <select
+                  value={selectedPlatformFacility?.id || ''}
+                  onChange={(e) => {
+                    const fac = platformFacilities.find(f => f.id === e.target.value);
+                    if (fac) setSelectedPlatformFacility(fac);
+                  }}
+                  className="bg-transparent border-0 font-bold text-[18px] text-text-primary focus:outline-none focus:ring-0 cursor-pointer outline-none"
+                >
+                  {platformFacilities.map(f => (
+                    <option key={f.id} value={f.id} className="dark:bg-slate-900">
+                      {f.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <h1 className="text-[18px] font-bold text-text-primary tracking-tight">
+                  {activeFacility?.name || 'Handoverly'}
+                </h1>
+              )}
             </div>
           </div>
 
           <div className="flex items-center gap-2.5">
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 text-xs font-bold transition-all border border-slate-200 dark:border-white/10 flex items-center gap-1.5"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+                <span>Admin Panel</span>
+              </Link>
+            )}
+
+            {isPlatformAdmin && (
+              <Link
+                href="/system-admin"
+                className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 text-xs font-bold transition-all border border-slate-200 dark:border-white/10 flex items-center gap-1.5"
+              >
+                <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+                <span>System Admin</span>
+              </Link>
+            )}
+
             <SentinelBadge 
               userId={user.id}
               unacknowledgedTasks={facilityUnacknowledgedTasks}
