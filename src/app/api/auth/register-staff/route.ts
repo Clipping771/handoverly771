@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
+import { getAuthContext } from '@/lib/auth-context';
 
 /**
  * POST /api/auth/register-staff
@@ -13,20 +12,14 @@ import bcrypt from 'bcryptjs';
 export async function POST(request: Request) {
   try {
     // ── Auth check ──────────────────────────────────────────────────────────
-    const cookieStore = await cookies();
-    const supabaseServer = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll: () => cookieStore.getAll(),
-          setAll: () => { },
-        },
-      }
-    );
+    let authCtx;
+    try {
+      authCtx = await getAuthContext();
+    } catch (err: any) {
+      return NextResponse.json({ error: err.message || 'Unauthorized' }, { status: err.status || 401 });
+    }
 
-    const { data: { user } } = await supabaseServer.auth.getUser();
-    const callerRole = user?.user_metadata?.role as string | undefined;
+    const { role: callerRole, facilityId: callerFacilityId } = authCtx;
 
     const isAuthorized =
       callerRole === 'platform_admin' ||
@@ -40,18 +33,25 @@ export async function POST(request: Request) {
     }
 
     // ── Input validation ─────────────────────────────────────────────────────
-    const { facilityId, name, role, employeeId, email, password } = await request.json();
+    const { facilityId, name, role, employeeId, email, password, pin } = await request.json();
 
-    if (!facilityId || !name || !role || !employeeId || !email || !password) {
+    if (!facilityId || !name || !role || !employeeId || !email || !password || !pin) {
       return NextResponse.json(
-        { error: 'All fields (facilityId, name, role, employeeId, email, password) are required.' },
+        { error: 'All fields (facilityId, name, role, employeeId, email, password, pin) are required.' },
         { status: 400 }
       );
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       return NextResponse.json(
-        { error: 'Password must be at least 6 characters.' },
+        { error: 'Password must be at least 8 characters for clinical security.' },
+        { status: 400 }
+      );
+    }
+
+    if (!/^\d{4,6}$/.test(pin)) {
+      return NextResponse.json(
+        { error: 'Clinical PIN must be a 4 to 6 digit numeric code.' },
         { status: 400 }
       );
     }
@@ -59,6 +59,14 @@ export async function POST(request: Request) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return NextResponse.json({ error: 'Invalid email address.' }, { status: 400 });
+    }
+
+    // Check scope boundaries
+    if (callerRole === 'admin' && facilityId !== callerFacilityId) {
+      return NextResponse.json(
+        { error: 'Forbidden: Facility admins can only register staff for their own facility.' },
+        { status: 403 }
+      );
     }
 
     // Non-admins cannot register other admins
@@ -73,12 +81,14 @@ export async function POST(request: Request) {
     const staffId = crypto.randomUUID();
     const syntheticEmail = `${staffId}@handoverly.local`;
     const passwordHash = await bcrypt.hash(password, 10);
+    const pinHash = await bcrypt.hash(pin, 10);
 
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: syntheticEmail,
       password,
       email_confirm: true,
-      user_metadata: { facility_id: facilityId, role, name: name.trim(), staff_id: staffId },
+      app_metadata: { facility_id: facilityId, role, staff_id: staffId },
+      user_metadata: { name: name.trim() },
     });
 
     if (authError) {
@@ -101,7 +111,7 @@ export async function POST(request: Request) {
         employee_id: employeeId.trim(),
         email: email.trim().toLowerCase(),
         password_hash: passwordHash,
-        pin_hash: passwordHash,
+        pin_hash: pinHash,
       }])
       .select()
       .single();

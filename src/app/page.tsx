@@ -194,6 +194,7 @@ export default function Dashboard() {
         `)
         .eq('facility_id', activeFacility.id)
         .eq('status', 'published')
+        .eq('is_active', true)
         .eq('shift_date', dateStr);
 
       if (error) throw error;

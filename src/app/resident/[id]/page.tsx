@@ -794,6 +794,7 @@ function HandoverHistory({ residentId }: { residentId: string }) {
         .eq('resident_id', residentId)
         .eq('facility_id', facility?.id)
         .eq('status', 'published') // Only show published ones in EHR
+        .eq('is_active', true)
         .order('shift_date', { ascending: false })
         .order('created_at', { ascending: false });
       

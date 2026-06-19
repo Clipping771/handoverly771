@@ -9,30 +9,31 @@ import bcrypt from 'bcryptjs';
  *
  * Admin/platform-admin only. Updates the staff row AND syncs user_metadata in Supabase Auth.
  */
+import { getAuthContext } from '@/lib/auth-context';
+
+/**
+ * POST /api/auth/update-staff
+ *
+ * Admin/platform-admin only. Updates the staff row AND syncs app_metadata/user_metadata in Supabase Auth.
+ */
 export async function POST(request: Request) {
   try {
     // ── Auth check ───────────────────────────────────────────────────────────
-    const cookieStore = await cookies();
-    const supabaseServer = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll: () => cookieStore.getAll(),
-          setAll: () => { },
-        },
-      }
-    );
+    let authCtx;
+    try {
+      authCtx = await getAuthContext();
+    } catch (err: any) {
+      return NextResponse.json({ error: err.message || 'Unauthorized' }, { status: err.status || 401 });
+    }
 
-    const { data: { user } } = await supabaseServer.auth.getUser();
-    const callerRole = user?.user_metadata?.role as string | undefined;
+    const { role: callerRole, facilityId: callerFacilityId } = authCtx;
 
     if (callerRole !== 'platform_admin' && callerRole !== 'admin') {
       return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
     }
 
     // ── Input validation ─────────────────────────────────────────────────────
-    const { id, name, role, employeeId, email, facilityId, password } = await request.json();
+    const { id, name, role, employeeId, email, facilityId, password, pin } = await request.json();
 
     if (!id || !name || !role || !employeeId || !email) {
       return NextResponse.json(
@@ -42,23 +43,37 @@ export async function POST(request: Request) {
     }
 
     // ── Fetch staff to get the auth user_id ──────────────────────────────────
-    const { data: staffRow, error: fetchErr } = await supabaseAdmin
+    let staffQuery = supabaseAdmin
       .from('staff')
       .select('user_id, facility_id')
-      .eq('id', id)
-      .single();
+      .eq('id', id);
+
+    if (callerRole === 'admin') {
+      staffQuery = staffQuery.eq('facility_id', callerFacilityId);
+    }
+
+    const { data: staffRow, error: fetchErr } = await staffQuery.maybeSingle();
 
     if (fetchErr || !staffRow) {
-      return NextResponse.json({ error: 'Staff member not found.' }, { status: 404 });
+      return NextResponse.json({ error: 'Staff member not found or access denied.' }, { status: 404 });
     }
 
     // ── Handle password hashing if updating password ────────────────────────
     let passwordHash: string | undefined = undefined;
     if (password && password.trim() !== '') {
-      if (password.length < 6) {
-        return NextResponse.json({ error: 'Password must be at least 6 characters.' }, { status: 400 });
+      if (password.length < 8) {
+        return NextResponse.json({ error: 'Password must be at least 8 characters for clinical security.' }, { status: 400 });
       }
       passwordHash = await bcrypt.hash(password, 10);
+    }
+
+    // ── Handle pin hashing if updating pin ────────────────────────
+    let pinHash: string | undefined = undefined;
+    if (pin && pin.trim() !== '') {
+      if (!/^\d{4,6}$/.test(pin)) {
+        return NextResponse.json({ error: 'Clinical PIN must be a 4 to 6 digit numeric code.' }, { status: 400 });
+      }
+      pinHash = await bcrypt.hash(pin, 10);
     }
 
     // ── Update staff table ───────────────────────────────────────────────────
@@ -74,7 +89,9 @@ export async function POST(request: Request) {
     }
     if (passwordHash) {
       updateData.password_hash = passwordHash;
-      updateData.pin_hash = passwordHash;
+    }
+    if (pinHash) {
+      updateData.pin_hash = pinHash;
     }
 
     const { error: updateErr } = await supabaseAdmin
@@ -92,14 +109,16 @@ export async function POST(request: Request) {
       throw updateErr;
     }
 
-    // ── Sync Supabase Auth user_metadata & credentials ───────────────────────
+    // ── Sync Supabase Auth app_metadata, user_metadata & credentials ──────────
     if (staffRow.user_id) {
       const authUpdates: any = {
-        user_metadata: {
-          name: name.trim(),
+        app_metadata: {
           role,
           facility_id: (callerRole === 'platform_admin' && facilityId) ? facilityId : staffRow.facility_id,
           staff_id: id,
+        },
+        user_metadata: {
+          name: name.trim(),
         },
       };
 

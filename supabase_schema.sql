@@ -1,4 +1,4 @@
-﻿-- Migration script to enforce strict RLS without dropping existing data
+-- Migration script to enforce strict RLS without dropping existing data
 
 -- Add user_id to staff to link with auth.users
 ALTER TABLE public.staff ADD COLUMN IF NOT EXISTS user_id uuid references auth.users(id);
@@ -33,35 +33,35 @@ BEGIN
         ALTER TABLE public.tasks ENABLE ROW LEVEL SECURITY;
         DROP POLICY IF EXISTS "Strict Tenant Isolation - Tasks" ON public.tasks;
         CREATE POLICY "Strict Tenant Isolation - Tasks" ON public.tasks
-        FOR ALL USING ( facility_id = (auth.jwt() -> 'user_metadata' ->> 'facility_id')::uuid );
+        FOR ALL USING ( facility_id = (auth.jwt() -> 'app_metadata' ->> 'facility_id')::uuid );
     END IF;
     
     IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'medication_profiles') THEN
         ALTER TABLE public.medication_profiles ENABLE ROW LEVEL SECURITY;
         DROP POLICY IF EXISTS "Strict Tenant Isolation - Medication Profiles" ON public.medication_profiles;
         CREATE POLICY "Strict Tenant Isolation - Medication Profiles" ON public.medication_profiles
-        FOR ALL USING ( facility_id = (auth.jwt() -> 'user_metadata' ->> 'facility_id')::uuid );
+        FOR ALL USING ( facility_id = (auth.jwt() -> 'app_metadata' ->> 'facility_id')::uuid );
     END IF;
 
     IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'sirs_reports') THEN
         ALTER TABLE public.sirs_reports ENABLE ROW LEVEL SECURITY;
         DROP POLICY IF EXISTS "Strict Tenant Isolation - SIRS Reports" ON public.sirs_reports;
         CREATE POLICY "Strict Tenant Isolation - SIRS Reports" ON public.sirs_reports
-        FOR ALL USING ( facility_id = (auth.jwt() -> 'user_metadata' ->> 'facility_id')::uuid );
+        FOR ALL USING ( facility_id = (auth.jwt() -> 'app_metadata' ->> 'facility_id')::uuid );
     END IF;
 
     IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'handover_feedback') THEN
         ALTER TABLE public.handover_feedback ENABLE ROW LEVEL SECURITY;
         DROP POLICY IF EXISTS "Strict Tenant Isolation - Handover Feedback" ON public.handover_feedback;
         CREATE POLICY "Strict Tenant Isolation - Handover Feedback" ON public.handover_feedback
-        FOR ALL USING ( facility_id = (auth.jwt() -> 'user_metadata' ->> 'facility_id')::uuid );
+        FOR ALL USING ( facility_id = (auth.jwt() -> 'app_metadata' ->> 'facility_id')::uuid );
     END IF;
 
     IF EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'medication_reconciliation_logs') THEN
         ALTER TABLE public.medication_reconciliation_logs ENABLE ROW LEVEL SECURITY;
         DROP POLICY IF EXISTS "Strict Tenant Isolation - Medication Recon Logs" ON public.medication_reconciliation_logs;
         CREATE POLICY "Strict Tenant Isolation - Medication Recon Logs" ON public.medication_reconciliation_logs
-        FOR ALL USING ( facility_id = (auth.jwt() -> 'user_metadata' ->> 'facility_id')::uuid );
+        FOR ALL USING ( facility_id = (auth.jwt() -> 'app_metadata' ->> 'facility_id')::uuid );
     END IF;
 END $$;
 
@@ -70,32 +70,32 @@ END $$;
 -- 1. Facilities
 DROP POLICY IF EXISTS "Strict Tenant Isolation - Facilities" ON public.facilities;
 CREATE POLICY "Strict Tenant Isolation - Facilities" ON public.facilities
-FOR SELECT USING ( id = (auth.jwt() -> 'user_metadata' ->> 'facility_id')::uuid );
+FOR SELECT USING ( id = (auth.jwt() -> 'app_metadata' ->> 'facility_id')::uuid );
 
 -- 2. Staff
 DROP POLICY IF EXISTS "Strict Tenant Isolation - Staff" ON public.staff;
 CREATE POLICY "Strict Tenant Isolation - Staff" ON public.staff
-FOR SELECT USING ( facility_id = (auth.jwt() -> 'user_metadata' ->> 'facility_id')::uuid );
+FOR SELECT USING ( facility_id = (auth.jwt() -> 'app_metadata' ->> 'facility_id')::uuid );
 
 -- 3. Residents
 DROP POLICY IF EXISTS "Strict Tenant Isolation - Residents" ON public.residents;
 CREATE POLICY "Strict Tenant Isolation - Residents" ON public.residents
-FOR ALL USING ( facility_id = (auth.jwt() -> 'user_metadata' ->> 'facility_id')::uuid );
+FOR ALL USING ( facility_id = (auth.jwt() -> 'app_metadata' ->> 'facility_id')::uuid );
 
 -- 4. Handovers
 DROP POLICY IF EXISTS "Strict Tenant Isolation - Handovers" ON public.handovers;
 CREATE POLICY "Strict Tenant Isolation - Handovers" ON public.handovers
-FOR ALL USING ( facility_id = (auth.jwt() -> 'user_metadata' ->> 'facility_id')::uuid );
+FOR ALL USING ( facility_id = (auth.jwt() -> 'app_metadata' ->> 'facility_id')::uuid );
 
 -- 5. Wings
 DROP POLICY IF EXISTS "Strict Tenant Isolation - Wings" ON public.wings;
 CREATE POLICY "Strict Tenant Isolation - Wings" ON public.wings
-FOR ALL USING ( facility_id = (auth.jwt() -> 'user_metadata' ->> 'facility_id')::uuid );
+FOR ALL USING ( facility_id = (auth.jwt() -> 'app_metadata' ->> 'facility_id')::uuid );
 
 -- 6. Activity Timeline
 DROP POLICY IF EXISTS "Strict Tenant Isolation - Activity Timeline" ON public.activity_timeline;
 CREATE POLICY "Strict Tenant Isolation - Activity Timeline" ON public.activity_timeline
-FOR ALL USING ( facility_id = (auth.jwt() -> 'user_metadata' ->> 'facility_id')::uuid );
+FOR ALL USING ( facility_id = (auth.jwt() -> 'app_metadata' ->> 'facility_id')::uuid );
 -- Phase 1 Trust Core Migration
 
 -- 1. Modify handovers table
@@ -138,8 +138,11 @@ ALTER TABLE public.audit_log ENABLE ROW LEVEL SECURITY;
 
 -- handover_versions RLS
 CREATE POLICY "Strict Tenant Isolation - Handover Versions" ON public.handover_versions
-FOR ALL USING ( facility_id = (auth.jwt() -> 'user_metadata' ->> 'facility_id')::uuid );
+FOR ALL USING ( facility_id = (auth.jwt() -> 'app_metadata' ->> 'facility_id')::uuid );
 
 -- audit_log RLS
-CREATE POLICY "Strict Tenant Isolation - Audit Log" ON public.audit_log
-FOR ALL USING ( facility_id = (auth.jwt() -> 'user_metadata' ->> 'facility_id')::uuid );
+CREATE POLICY "Strict Tenant Isolation - Audit Log SELECT" ON public.audit_log
+FOR SELECT USING ( facility_id = (auth.jwt() -> 'app_metadata' ->> 'facility_id')::uuid );
+
+CREATE POLICY "Strict Tenant Isolation - Audit Log INSERT" ON public.audit_log
+FOR INSERT WITH CHECK ( facility_id = (auth.jwt() -> 'app_metadata' ->> 'facility_id')::uuid );

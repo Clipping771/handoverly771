@@ -79,6 +79,8 @@ export default function AdminSetup() {
   const [staffRole, setStaffRole] = useState<'rn' | 'carer' | 'admin'>('carer');
   const [staffPin, setStaffPin] = useState('');
   const [showStaffPin, setShowStaffPin] = useState(false);
+  const [staffClinicalPin, setStaffClinicalPin] = useState('');
+  const [showStaffClinicalPin, setShowStaffClinicalPin] = useState(false);
   const [staffEmployeeId, setStaffEmployeeId] = useState('');
   const [staffEmail, setStaffEmail] = useState('');
   const [editingStaffId, setEditingStaffId] = useState<string | null>(null);
@@ -86,6 +88,8 @@ export default function AdminSetup() {
   const [editStaffRole, setEditStaffRole] = useState<'rn' | 'carer' | 'admin'>('carer');
   const [editStaffEmployeeId, setEditStaffEmployeeId] = useState('');
   const [editStaffEmail, setEditStaffEmail] = useState('');
+  const [editStaffPassword, setEditStaffPassword] = useState('');
+  const [editStaffClinicalPin, setEditStaffClinicalPin] = useState('');
 
 
   // Roles states
@@ -348,13 +352,17 @@ export default function AdminSetup() {
           name: editStaffName,
           role: editStaffRole,
           employeeId: editStaffEmployeeId,
-          email: editStaffEmail
+          email: editStaffEmail,
+          password: editStaffPassword || undefined,
+          pin: editStaffClinicalPin || undefined
         })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to update staff member');
       setFeedback('Staff member updated successfully.');
       setEditingStaffId(null);
+      setEditStaffPassword('');
+      setEditStaffClinicalPin('');
       loadData();
     } catch (err: any) {
       setError(err.message || 'Failed to update staff member');
@@ -365,8 +373,8 @@ export default function AdminSetup() {
     e.preventDefault();
     setError('');
     setFeedback('');
-    if (!staffName || !staffPin || !staffEmployeeId || !staffEmail) {
-      setError('Please fill in all staff fields (Name, Employee ID, Email, and Password).');
+    if (!staffName || !staffPin || !staffClinicalPin || !staffEmployeeId || !staffEmail) {
+      setError('Please fill in all staff fields (Name, Employee ID, Email, Password, and Clinical PIN).');
       return;
     }
 
@@ -380,7 +388,8 @@ export default function AdminSetup() {
           role: staffRole,
           employeeId: staffEmployeeId,
           email: staffEmail,
-          password: staffPin
+          password: staffPin,
+          pin: staffClinicalPin
         })
       });
 
@@ -392,6 +401,7 @@ export default function AdminSetup() {
       setFeedback(`Staff member "${staffName}" added successfully.`);
       setStaffName('');
       setStaffPin('');
+      setStaffClinicalPin('');
       setStaffEmployeeId('');
       setStaffEmail('');
       loadData();
@@ -795,13 +805,26 @@ export default function AdminSetup() {
                     <div>
                       <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block pl-1 mb-2">Password</label>
                       <div className="relative flex items-center">
-                        <input type={showStaffPin ? 'text' : 'password'} value={staffPin} onChange={(e) => setStaffPin(e.target.value)} className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] pl-4 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner" placeholder="Min 6 chars" />
+                        <input type={showStaffPin ? 'text' : 'password'} value={staffPin} onChange={(e) => setStaffPin(e.target.value)} className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] pl-4 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner" placeholder="Min 8 chars" />
                         <button
                           type="button"
                           onClick={() => setShowStaffPin(!showStaffPin)}
-                          className="absolute right-3.5 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 focus:outline-none transition-colors cursor-pointer"
+                          className="absolute right-3.5 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-205 focus:outline-none transition-colors cursor-pointer"
                         >
                           {showStaffPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest block pl-1 mb-2">Clinical PIN</label>
+                      <div className="relative flex items-center">
+                        <input type={showStaffClinicalPin ? 'text' : 'password'} value={staffClinicalPin} onChange={(e) => setStaffClinicalPin(e.target.value)} className="w-full h-12 bg-white/60 dark:bg-black/20 backdrop-blur-md border border-white/40 dark:border-white/5 rounded-[16px] pl-4 pr-10 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-text-primary shadow-inner" placeholder="4-6 digits" />
+                        <button
+                          type="button"
+                          onClick={() => setShowStaffClinicalPin(!showStaffClinicalPin)}
+                          className="absolute right-3.5 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-205 focus:outline-none transition-colors cursor-pointer"
+                        >
+                          {showStaffClinicalPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                       </div>
                     </div>
@@ -852,14 +875,20 @@ export default function AdminSetup() {
                               </td>
                               <td className="px-4 py-3">
                                 {editingStaffId === member.id ? (
-                                  <input type="email" value={editStaffEmail} onChange={e => setEditStaffEmail(e.target.value)} className="w-full h-8 bg-white dark:bg-[#070a14] border border-slate-300 dark:border-white/10 rounded px-2 text-sm focus:outline-none" />
+                                  <div className="flex flex-col gap-1.5">
+                                    <input type="email" value={editStaffEmail} onChange={e => setEditStaffEmail(e.target.value)} className="w-full h-8 bg-white dark:bg-[#070a14] border border-slate-300 dark:border-white/10 rounded px-2 text-sm focus:outline-none" />
+                                    <input type="password" value={editStaffPassword} onChange={e => setEditStaffPassword(e.target.value)} placeholder="New Password (opt)" className="w-full h-8 bg-white dark:bg-[#070a14] border border-slate-300 dark:border-white/10 rounded px-2 text-xs focus:outline-none" />
+                                  </div>
                                 ) : member.email}
                               </td>
                               <td className="px-4 py-3 capitalize">
                                 {editingStaffId === member.id ? (
-                                  <select value={editStaffRole} onChange={e => setEditStaffRole(e.target.value as any)} className="w-full h-8 bg-white dark:bg-[#070a14] border border-slate-300 dark:border-white/10 rounded px-2 text-sm focus:outline-none">
-                                    {rolesList.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
-                                  </select>
+                                  <div className="flex flex-col gap-1.5">
+                                    <select value={editStaffRole} onChange={e => setEditStaffRole(e.target.value as any)} className="w-full h-8 bg-white dark:bg-[#070a14] border border-slate-300 dark:border-white/10 rounded px-2 text-sm focus:outline-none">
+                                      {rolesList.map(r => <option key={r.id} value={r.name}>{r.name}</option>)}
+                                    </select>
+                                    <input type="text" value={editStaffClinicalPin} onChange={e => setEditStaffClinicalPin(e.target.value)} placeholder="New PIN (opt)" className="w-full h-8 bg-white dark:bg-[#070a14] border border-slate-300 dark:border-white/10 rounded px-2 text-xs focus:outline-none" />
+                                  </div>
                                 ) : (
                                   <span className="px-2 py-1 rounded bg-slate-100 dark:bg-slate-800 text-xs font-semibold">{member.role}</span>
                                 )}

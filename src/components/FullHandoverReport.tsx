@@ -82,6 +82,7 @@ export default function FullHandoverReport({ onClose }: FullHandoverReportProps)
           `)
           .eq('facility_id', facility.id)
           .eq('shift_date', selectedDate)
+          .eq('is_active', true)
           .order('created_at', { ascending: true });
           
         setHandovers(handoverData as any || []);

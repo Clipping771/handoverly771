@@ -1,12 +1,21 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
+import { getAuthContext } from '@/lib/auth-context';
 
 export async function POST(request: Request) {
   try {
-    const { handoverId, facilityId, staffId, action, newSummary, rejectionReason } = await request.json();
+    let authCtx;
+    try {
+      authCtx = await getAuthContext();
+    } catch (err: any) {
+      return NextResponse.json({ error: err.message || 'Unauthorized' }, { status: err.status || 401 });
+    }
 
-    if (!handoverId || !facilityId || !staffId || !action) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    const { staffId: verifiedStaffId, facilityId: verifiedFacilityId, role } = authCtx;
+    const { handoverId, action, newSummary, rejectionReason, updatedAt } = await request.json();
+
+    if (!handoverId || !action || !updatedAt) {
+      return NextResponse.json({ error: 'Missing required fields (handoverId, action, updatedAt)' }, { status: 400 });
     }
 
     // Validate action
@@ -14,23 +23,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
     }
 
-    // Fetch the current handover state
-    const { data: currentHandover, error: fetchError } = await supabase
-      .from('handovers')
-      .select('*')
-      .eq('id', handoverId)
-      .eq('facility_id', facilityId)
-      .single();
-
-    if (fetchError || !currentHandover) {
-      return NextResponse.json({ error: 'Handover not found' }, { status: 404 });
-    }
-
-    // Since we are creating records across multiple tables (audit_log, handover_versions, handovers),
-    // and we need to bypass some RLS for system operations or ensure it's done atomically, 
+    // Since we are creating records across multiple tables and need to query safely,
     // we use the service role key.
     const { createClient } = require('@supabase/supabase-js');
     const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
+
+    // Fetch the current handover state
+    let handoverQuery = supabaseAdmin
+      .from('handovers')
+      .select('*')
+      .eq('id', handoverId);
+
+    if (role !== 'platform_admin') {
+      handoverQuery = handoverQuery.eq('facility_id', verifiedFacilityId);
+    }
+
+    const { data: currentHandover, error: fetchError } = await handoverQuery.single();
+
+    if (fetchError || !currentHandover) {
+      return NextResponse.json({ error: 'Handover not found or access denied' }, { status: 404 });
+    }
+
+    // Optimistic Concurrency Control (OCC) check
+    if (new Date(currentHandover.updated_at).getTime() !== new Date(updatedAt).getTime()) {
+      return NextResponse.json({ error: 'Handover was modified by another staff member, please refresh.' }, { status: 409 });
+    }
 
     let nextStatus = 'needs_review';
     let summaryToSave = currentHandover.rn_summary;
@@ -47,15 +64,18 @@ export async function POST(request: Request) {
       // Create a version record
       await supabaseAdmin.from('handover_versions').insert([{
         handover_id: handoverId,
-        facility_id: facilityId,
-        edited_by: staffId,
+        facility_id: currentHandover.facility_id,
+        edited_by: verifiedStaffId,
         previous_summary: currentHandover.rn_summary,
         new_summary: newSummary
       }]);
     }
 
     // Update the handover status
-    const updateData: any = { status: nextStatus };
+    const updateData: any = { 
+      status: nextStatus,
+      updated_at: new Date().toISOString()
+    };
     if (action === 'edit') {
       updateData.rn_summary = summaryToSave;
     }
@@ -63,18 +83,19 @@ export async function POST(request: Request) {
       updateData.approved_at = new Date().toISOString();
     }
 
-    const { error: updateError } = await supabaseAdmin
+    // Enforce Optimistic Concurrency Control (OCC) to prevent race conditions
+    const { data: updateDataResult, error: updateError } = await supabaseAdmin
       .from('handovers')
       .update(updateData)
-      .eq('id', handoverId);
+      .eq('id', handoverId)
+      .eq('updated_at', currentHandover.updated_at)
+      .select();
 
-    if (updateError) {
-      throw new Error(`Failed to update handover: ${updateError.message}`);
+    if (updateError || !updateDataResult || updateDataResult.length === 0) {
+      return NextResponse.json({ error: 'Handover was modified by another staff member, please refresh.' }, { status: 409 });
     }
 
     // If published (approved or edited), create the pending carer tasks IF they weren't created yet.
-    // Wait, if it was in `needs_review`, the tasks might not have been created.
-    // Let's check if there are tasks for this handover.
     if (nextStatus === 'published') {
       const { count } = await supabaseAdmin
         .from('tasks')
@@ -84,7 +105,7 @@ export async function POST(request: Request) {
       if (count === 0 && currentHandover.carer_tasks && currentHandover.carer_tasks.length > 0) {
         const taskInserts = currentHandover.carer_tasks.map((t: any) => ({
           resident_id: currentHandover.resident_id,
-          facility_id: facilityId,
+          facility_id: currentHandover.facility_id,
           handover_id: handoverId,
           title: t.title,
           description: t.description,
@@ -100,8 +121,8 @@ export async function POST(request: Request) {
     // Create Audit Log
     const actionType = action === 'approve' ? 'APPROVE_HANDOVER' : action === 'edit' ? 'EDIT_HANDOVER' : 'REJECT_HANDOVER';
     await supabaseAdmin.from('audit_log').insert([{
-      facility_id: facilityId,
-      actor_id: staffId,
+      facility_id: currentHandover.facility_id,
+      actor_id: verifiedStaffId,
       target_id: handoverId,
       action_type: actionType,
       before_state: { status: currentHandover.status, summary: currentHandover.rn_summary },

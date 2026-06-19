@@ -17,6 +17,8 @@ export default function Register() {
   const [role, setRole] = useState<'rn' | 'carer' | 'admin'>('carer');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [pin, setPin] = useState('');
+  const [showPin, setShowPin] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -51,6 +53,8 @@ export default function Register() {
         role={role} setRole={setRole}
         password={password} setPassword={setPassword}
         showPassword={showPassword} setShowPassword={setShowPassword}
+        pin={pin} setPin={setPin}
+        showPin={showPin} setShowPin={setShowPin}
         error={error} setError={setError}
         success={success} setSuccess={setSuccess}
         isSubmitting={isSubmitting} setIsSubmitting={setIsSubmitting}
@@ -71,6 +75,8 @@ interface RegisterContentProps {
   role: 'rn' | 'carer' | 'admin'; setRole: (v: 'rn' | 'carer' | 'admin') => void;
   password: string; setPassword: (v: string) => void;
   showPassword: boolean; setShowPassword: React.Dispatch<React.SetStateAction<boolean>>;
+  pin: string; setPin: (v: string) => void;
+  showPin: boolean; setShowPin: React.Dispatch<React.SetStateAction<boolean>>;
   error: string; setError: (v: string) => void;
   success: string; setSuccess: (v: string) => void;
   isSubmitting: boolean; setIsSubmitting: (v: boolean) => void;
@@ -91,6 +97,8 @@ function RegisterContent({
   role, setRole,
   password, setPassword,
   showPassword, setShowPassword,
+  pin, setPin,
+  showPin, setShowPin,
   error, setError,
   success, setSuccess,
   isSubmitting, setIsSubmitting,
@@ -120,12 +128,16 @@ function RegisterContent({
       setError('Please select a facility.');
       return;
     }
-    if (!name.trim() || !employeeId.trim() || !email.trim() || !password.trim()) {
-      setError('Please fill in all personal details.');
+    if (!name.trim() || !employeeId.trim() || !email.trim() || !password.trim() || !pin.trim()) {
+      setError('Please fill in all personal details including Clinical PIN.');
       return;
     }
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters.');
+    if (password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+    if (!/^\d{4,6}$/.test(pin)) {
+      setError('Clinical PIN must be a 4 to 6 digit numeric code.');
       return;
     }
 
@@ -142,7 +154,8 @@ function RegisterContent({
           employeeId,
           email,
           role,
-          password
+          password,
+          pin
         })
       });
 
@@ -348,6 +361,31 @@ function RegisterContent({
                   className="absolute right-4 p-1 text-slate-400 hover:text-text-secondary transition-colors"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-1.5 group/input">
+              <label className="text-[10px] font-bold text-text-secondary uppercase tracking-widest pl-1">
+                Clinical PIN
+              </label>
+              <div className="relative flex items-center">
+                <Lock className="absolute left-4 w-4 h-4 text-slate-400 group-focus-within/input:text-primary transition-colors z-10" />
+                <input
+                  type={showPin ? 'text' : 'password'}
+                  placeholder="4-6 digits (e.g. 1234)"
+                  value={pin}
+                  onChange={e => setPin(e.target.value)}
+                  name="registerPin"
+                  autoComplete="off"
+                  className="w-full h-12 bg-white/60 dark:bg-slate-800/60 border border-white/60 dark:border-white/10 rounded-full pl-11 pr-11 text-sm font-medium tracking-wider text-text-primary placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/50 transition-all shadow-inner"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPin(v => !v)}
+                  className="absolute right-4 p-1 text-slate-400 hover:text-text-secondary transition-colors"
+                >
+                  {showPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>

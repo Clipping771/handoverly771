@@ -1,17 +1,43 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getAuthContext } from '@/lib/auth-context';
 
 export async function GET(request: Request) {
   try {
+    let authCtx;
+    try {
+      authCtx = await getAuthContext();
+    } catch (err: any) {
+      return NextResponse.json({ success: false, error: err.message || 'Unauthorized' }, { status: err.status || 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const residentId = searchParams.get('residentId');
-    const facilityId = searchParams.get('facilityId');
-    if (!residentId || !facilityId) throw new Error('Missing residentId or facilityId');
+    let facilityId = searchParams.get('facilityId');
+    if (!residentId) throw new Error('Missing residentId');
+
+    if (authCtx.role !== 'platform_admin') {
+      facilityId = authCtx.facilityId;
+    } else if (!facilityId) {
+      throw new Error('Missing facilityId for platform admin query');
+    }
 
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
+
+    // Verify resident belongs to the facility
+    const { data: resident, error: resError } = await supabaseAdmin
+      .from('residents')
+      .select('facility_id')
+      .eq('id', residentId)
+      .eq('facility_id', facilityId)
+      .maybeSingle();
+
+    if (resError || !resident) {
+      return NextResponse.json({ success: false, error: 'Resident not found or access denied.' }, { status: 404 });
+    }
 
     const { data, error } = await supabaseAdmin
       .from('medication_profiles')
@@ -30,13 +56,38 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    let authCtx;
+    try {
+      authCtx = await getAuthContext();
+    } catch (err: any) {
+      return NextResponse.json({ success: false, error: err.message || 'Unauthorized' }, { status: err.status || 401 });
+    }
+
     const body = await request.json();
-    
-    // Create Supabase client with SERVICE_ROLE_KEY to bypass RLS
+
+    if (authCtx.role !== 'platform_admin') {
+      body.facility_id = authCtx.facilityId;
+    }
+    if (!body.facility_id) {
+      return NextResponse.json({ success: false, error: 'facility_id is required' }, { status: 400 });
+    }
+
     const supabaseAdmin = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
+
+    // Verify resident belongs to the facility
+    const { data: resident, error: resError } = await supabaseAdmin
+      .from('residents')
+      .select('facility_id')
+      .eq('id', body.resident_id)
+      .eq('facility_id', body.facility_id)
+      .maybeSingle();
+
+    if (resError || !resident) {
+      return NextResponse.json({ success: false, error: 'Resident not found or access denied.' }, { status: 404 });
+    }
 
     const { data, error } = await supabaseAdmin
       .from('medication_profiles')
@@ -54,6 +105,13 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
+    let authCtx;
+    try {
+      authCtx = await getAuthContext();
+    } catch (err: any) {
+      return NextResponse.json({ success: false, error: err.message || 'Unauthorized' }, { status: err.status || 401 });
+    }
+
     const body = await request.json();
     const { medIds, userId, updates, medId } = body;
     
@@ -62,13 +120,19 @@ export async function PUT(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
+    const targetFacilityId = authCtx.role === 'platform_admin' ? body.facilityId : authCtx.facilityId;
+
+    if (!targetFacilityId) {
+      return NextResponse.json({ success: false, error: 'facilityId is required' }, { status: 400 });
+    }
+
     // Handle generic update for a single medication
     if (medId && updates) {
       const { error } = await supabaseAdmin
         .from('medication_profiles')
         .update(updates)
         .eq('id', medId)
-        .eq('facility_id', body.facilityId);
+        .eq('facility_id', targetFacilityId);
       if (error) throw error;
       return NextResponse.json({ success: true });
     }
@@ -76,6 +140,17 @@ export async function PUT(request: Request) {
     // Handle reconcile all
     if (!medIds || !medIds.length || !userId) {
       throw new Error('Missing medIds or userId for reconcile');
+    }
+
+    // Verify all medication IDs belong to target facility
+    const { data: meds, error: fetchErr } = await supabaseAdmin
+      .from('medication_profiles')
+      .select('id')
+      .in('id', medIds)
+      .eq('facility_id', targetFacilityId);
+
+    if (fetchErr || !meds || meds.length !== medIds.length) {
+      return NextResponse.json({ success: false, error: 'One or more medications not found or access denied.' }, { status: 404 });
     }
 
     const { error } = await supabaseAdmin
@@ -97,8 +172,17 @@ export async function PUT(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    let authCtx;
+    try {
+      authCtx = await getAuthContext();
+    } catch (err: any) {
+      return NextResponse.json({ success: false, error: err.message || 'Unauthorized' }, { status: err.status || 401 });
+    }
+
     const body = await request.json();
-    const { medId, residentId, facilityId } = body;
+    const { medId, residentId } = body;
+    const facilityId = authCtx.role === 'platform_admin' ? body.facilityId : authCtx.facilityId;
+
     if (!facilityId) throw new Error('Missing facilityId');
     
     const supabaseAdmin = createClient(

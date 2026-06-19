@@ -327,7 +327,8 @@ export default function MyShift() {
         .select('id, resident_id, status, urgency, shift_type, created_at, raw_input, rn_summary')
         .eq('facility_id', facility.id)
         .eq('shift_date', todayStr)
-        .eq('shift_type', currentShiftType);
+        .eq('shift_type', currentShiftType)
+        .eq('is_active', true);
 
       if (handError) throw handError;
 

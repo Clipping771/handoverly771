@@ -93,7 +93,7 @@ export default async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  const roleRaw = user.user_metadata?.role as string | undefined;
+  const roleRaw = user.app_metadata?.role as string | undefined;
   const role = roleRaw ? roleRaw.toLowerCase().trim() : undefined;
 
   // Platform-admin-only routes

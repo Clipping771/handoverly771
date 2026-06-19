@@ -1,8 +1,7 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
+import { getAuthContext } from '@/lib/auth-context';
 
 /**
  * POST /api/auth/create-admin
@@ -12,38 +11,32 @@ import bcrypt from 'bcryptjs';
  * Platform-admin only. Returns facilities + existing admin list (used by system-admin UI).
  */
 
-async function getPlatformAdminUser() {
-  const cookieStore = await cookies();
-  const supabaseServer = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => cookieStore.getAll(),
-        setAll: () => { },
-      },
-    }
-  );
-  const { data: { user } } = await supabaseServer.auth.getUser();
-  return user;
-}
-
 export async function POST(request: Request) {
   try {
-    const user = await getPlatformAdminUser();
+    let authCtx;
+    try {
+      authCtx = await getAuthContext();
+    } catch (err: any) {
+      return NextResponse.json({ error: err.message || 'Unauthorized' }, { status: err.status || 401 });
+    }
 
-    if (user?.user_metadata?.role !== 'platform_admin') {
+    if (authCtx.role !== 'platform_admin') {
       return NextResponse.json({ error: 'Forbidden: platform admin access required.' }, { status: 403 });
     }
 
-    const { name, email, employeeId, password, facilityId } = await request.json();
+    const { name, email, employeeId, password, facilityId, pin } = await request.json();
 
     if (!name || !email || !employeeId || !password || !facilityId) {
       return NextResponse.json({ error: 'All fields are required.' }, { status: 400 });
     }
 
-    if (password.length < 6) {
-      return NextResponse.json({ error: 'Password must be at least 6 characters.' }, { status: 400 });
+    if (password.length < 8) {
+      return NextResponse.json({ error: 'Password must be at least 8 characters for clinical security.' }, { status: 400 });
+    }
+
+    const pinToUse = pin || '1111';
+    if (!/^\d{4,6}$/.test(pinToUse)) {
+      return NextResponse.json({ error: 'Clinical PIN must be a 4 to 6 digit numeric code.' }, { status: 400 });
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -54,14 +47,18 @@ export async function POST(request: Request) {
     const staffId = crypto.randomUUID();
     const syntheticEmail = `${staffId}@handoverly.local`;
     const passwordHash = await bcrypt.hash(password, 10);
+    const pinHash = await bcrypt.hash(pinToUse, 10);
 
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: syntheticEmail,
       password,
       email_confirm: true,
-      user_metadata: {
+      app_metadata: {
         facility_id: facilityId,
         role: 'admin',
+        staff_id: staffId,
+      },
+      user_metadata: {
         name: name.trim(),
       },
     });
@@ -82,7 +79,7 @@ export async function POST(request: Request) {
         employee_id: employeeId.trim(),
         email: email.trim().toLowerCase(),
         password_hash: passwordHash,
-        pin_hash: passwordHash,
+        pin_hash: pinHash,
       }])
       .select()
       .single();
@@ -104,7 +101,7 @@ export async function POST(request: Request) {
     // Audit log
     try {
       await supabaseAdmin.from('audit_logs').insert([{
-        actor_id: user.id,
+        actor_id: authCtx.userId,
         actor_role: 'platform_admin',
         action_type: 'CREATE_FACILITY_ADMIN',
         target_entity: {
@@ -126,9 +123,14 @@ export async function POST(request: Request) {
 
 export async function GET() {
   try {
-    const user = await getPlatformAdminUser();
+    let authCtx;
+    try {
+      authCtx = await getAuthContext();
+    } catch (err: any) {
+      return NextResponse.json({ error: err.message || 'Unauthorized' }, { status: err.status || 401 });
+    }
 
-    if (user?.user_metadata?.role !== 'platform_admin') {
+    if (authCtx.role !== 'platform_admin') {
       return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
     }
 

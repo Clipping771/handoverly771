@@ -1,13 +1,15 @@
+// TODO: CRITICAL SECURITY WARNING — DELETE OR DISABLE THIS ROUTE BEFORE PRODUCTION DEPLOY.
+// This is a one-time migration tool only. Leaving this active in production poses a privilege escalation risk.
+
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { getAuthContext } from '@/lib/auth-context';
 
 /**
  * POST /api/auth/sync-metadata
  *
  * Platform-admin only.
- * Iterates all staff rows and ensures their Supabase Auth user_metadata
+ * Iterates all staff rows and ensures their Supabase Auth app_metadata
  * contains the correct staff_id, role, name, and facility_id.
  *
  * Run this once after deploying the new auth system to fix any existing
@@ -16,20 +18,14 @@ import { cookies } from 'next/headers';
 export async function POST(request: Request) {
     try {
         // Auth check
-        const cookieStore = await cookies();
-        const supabaseServer = createServerClient(
-            process.env.NEXT_PUBLIC_SUPABASE_URL!,
-            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-            {
-                cookies: {
-                    getAll: () => cookieStore.getAll(),
-                    setAll: () => { },
-                },
-            }
-        );
+        let authCtx;
+        try {
+            authCtx = await getAuthContext();
+        } catch (err: any) {
+            return NextResponse.json({ error: err.message || 'Unauthorized' }, { status: err.status || 401 });
+        }
 
-        const { data: { user } } = await supabaseServer.auth.getUser();
-        if (user?.user_metadata?.role !== 'platform_admin') {
+        if (authCtx.role !== 'platform_admin') {
             return NextResponse.json({ error: 'Forbidden.' }, { status: 403 });
         }
 
@@ -45,11 +41,13 @@ export async function POST(request: Request) {
 
         for (const s of allStaff ?? []) {
             const { error } = await supabaseAdmin.auth.admin.updateUserById(s.user_id, {
-                user_metadata: {
+                app_metadata: {
                     staff_id: s.id,
-                    name: s.name,
                     role: s.role,
                     facility_id: s.facility_id ?? null,
+                },
+                user_metadata: {
+                    name: s.name,
                 },
             });
 

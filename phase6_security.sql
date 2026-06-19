@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS public.audit_logs (
 
 ALTER TABLE public.audit_logs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Platform Admins can view audit logs" ON public.audit_logs
-FOR SELECT USING ( auth.jwt() -> 'user_metadata' ->> 'role' = 'platform_admin' );
+FOR SELECT USING ( auth.jwt() -> 'app_metadata' ->> 'role' = 'platform_admin' );
 
 -- 2. Update RLS Policies to allow Platform Admin Bypass
 -- (Re-run for every major table)
@@ -35,16 +35,16 @@ BEGIN
             EXECUTE format('
                 CREATE POLICY "Strict Tenant Isolation - %I" ON public.%I
                 FOR ALL USING ( 
-                    (auth.jwt() -> ''user_metadata'' ->> ''role'' = ''platform_admin'') OR 
-                    (id = (auth.jwt() -> ''user_metadata'' ->> ''facility_id'')::uuid) 
+                    (auth.jwt() -> ''app_metadata'' ->> ''role'' = ''platform_admin'') OR 
+                    (id = (auth.jwt() -> ''app_metadata'' ->> ''facility_id'')::uuid) 
                 );
             ', t, t);
         ELSE
             EXECUTE format('
                 CREATE POLICY "Strict Tenant Isolation - %I" ON public.%I
                 FOR ALL USING ( 
-                    (auth.jwt() -> ''user_metadata'' ->> ''role'' = ''platform_admin'') OR 
-                    (facility_id = (auth.jwt() -> ''user_metadata'' ->> ''facility_id'')::uuid) 
+                    (auth.jwt() -> ''app_metadata'' ->> ''role'' = ''platform_admin'') OR 
+                    (facility_id = (auth.jwt() -> ''app_metadata'' ->> ''facility_id'')::uuid) 
                 );
             ', t, t);
         END IF;

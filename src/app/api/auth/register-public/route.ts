@@ -11,18 +11,35 @@ import bcrypt from 'bcryptjs';
  */
 export async function POST(request: Request) {
   try {
-    const { action, facilityId, name, role, employeeId, email, password } = await request.json();
+    const { action, facilityId, name, role, employeeId, email, password, pin } = await request.json();
 
-    if (!action || !name || !role || !employeeId || !email || !password) {
+    if (!action || !name || !role || !employeeId || !email || !password || !pin) {
       return NextResponse.json(
-        { error: 'Missing required fields.' },
+        { error: 'Missing required fields (including pin).' },
         { status: 400 }
       );
     }
 
-    if (password.length < 6) {
+    // Enforce role boundaries for public sign-ups using a strict allowlist
+    const ALLOWED_PUBLIC_ROLES = ['carer', 'rn'];
+    const requestedRole = role.toLowerCase().trim();
+    if (!ALLOWED_PUBLIC_ROLES.includes(requestedRole)) {
       return NextResponse.json(
-        { error: 'Password must be at least 6 characters.' },
+        { error: 'Forbidden: Public registration can only be used to register as a carer or rn.' },
+        { status: 403 }
+      );
+    }
+
+    if (password.length < 8) {
+      return NextResponse.json(
+        { error: 'Password must be at least 8 characters for clinical security.' },
+        { status: 400 }
+      );
+    }
+
+    if (!/^\d{4,6}$/.test(pin)) {
+      return NextResponse.json(
+        { error: 'Clinical PIN must be a 4 to 6 digit numeric code.' },
         { status: 400 }
       );
     }
@@ -58,12 +75,14 @@ export async function POST(request: Request) {
     const staffId = crypto.randomUUID();
     const syntheticEmail = `${staffId}@handoverly.local`;
     const passwordHash = await bcrypt.hash(password, 10);
+    const pinHash = await bcrypt.hash(pin, 10);
 
     const { data: authUser, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: syntheticEmail,
       password,
       email_confirm: true,
-      user_metadata: { facility_id: targetFacilityId, role, name: name.trim(), staff_id: staffId },
+      app_metadata: { facility_id: targetFacilityId, role, staff_id: staffId },
+      user_metadata: { name: name.trim() },
     });
 
     if (authError) {
@@ -86,7 +105,7 @@ export async function POST(request: Request) {
         employee_id: employeeId.trim(),
         email: email.trim().toLowerCase(),
         password_hash: passwordHash,
-        pin_hash: passwordHash,
+        pin_hash: pinHash,
       }])
       .select()
       .single();
